@@ -1,0 +1,22 @@
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Temporary & editor files
+*.tmp
+*.log
+.vscode/
+.idea/
+
+# Builds & dependencies placeholder
+build/
+dist/
+node_modules/
+Binaries/
+Saved/
+Library/
+Temp/
+Obj/
