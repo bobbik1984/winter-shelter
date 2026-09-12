@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="24" fill="#1b2838"/>
+  <!-- Mountain / Slope -->
+  <path d="M 16 104 L 54 36 L 80 72 L 96 48 L 116 104 Z" fill="#4a6572"/>
+  <!-- Snow Cap -->
+  <path d="M 54 36 L 66 54 L 58 58 L 54 52 L 46 56 Z" fill="#e2ebf0"/>
+  <path d="M 96 48 L 104 62 L 96 66 L 90 58 Z" fill="#e2ebf0"/>
+  <!-- Shelter Cutaway Arc -->
+  <path d="M 38 104 A 20 20 0 0 1 78 104 Z" fill="#0f171e"/>
+  <!-- Warm Candle Light -->
+  <circle cx="58" cy="98" r="4" fill="#f39c12"/>
+</svg>

@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3 uid="uid://c6v2n7x8p1m34"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud_controller.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.08, 0.1, 0.14, 0.75)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+
+[node name="HUD" type="CanvasLayer"]
+
+[node name="HUDController" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="TopRightCard" type="PanelContainer" parent="HUDController"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 28.0
+offset_right = -32.0
+offset_bottom = 190.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="HUDController/TopRightCard"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TimeLabel" type="Label" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Jan 14  14:20"
+
+[node name="SunsetLabel" type="Label" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.75, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Sunset 16:18 (1h 58m left)"
+
+[node name="HSeparator" type="HSeparator" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+
+[node name="TempLabel" type="Label" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "-17°C"
+
+[node name="WindLabel" type="Label" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "W 32 km/h"
+
+[node name="HintLabel" type="Label" parent="HUDController/TopRightCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.7, 0.75, 1)
+theme_override_font_sizes/font_size = 12
+text = "Strong winds from west. Leeward slopes are safer."
+autowrap_mode = 2
+
+[node name="ProbePopup" type="PanelContainer" parent="HUDController"]
+visible = false
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 60.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="Margin" type="MarginContainer" parent="HUDController/ProbePopup"]
+layout_mode = 2
+
+[node name="ProbeText" type="Label" parent="HUDController/ProbePopup/Margin"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+text = "Good depth
+↓ 2.15m"
+horizontal_alignment = 1
+
+[node name="Instructions" type="Label" parent="HUDController"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = -68.0
+offset_right = 450.0
+offset_bottom = -28.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 0.8)
+theme_override_font_sizes/font_size = 14
+text = "[WASD / Arrows] Move  |  [Space / Right-Click] Snow Depth Probe"

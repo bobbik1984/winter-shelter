@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://b2k8y0c6m4l71"]
+
+[ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="1_cam"]
+
+[node name="CameraRig" type="Node3D"]
+transform = Transform3D(0.707107, -0.435502, 0.55667, 0, 0.788011, 0.615661, -0.707107, -0.435502, 0.55667, 0, 0, 0)
+script = ExtResource("1_cam")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+projection = 1
+size = 18.0
+current = true
+far = 200.0
