@@ -12,9 +12,11 @@
 ```text
 Camera Type:          Orthographic (无透视消失点，平行投影)
 Horizontal Rotation:  45° (固定的对角对方位角，保证对角线方阵平衡)
-Vertical Pitch:       35° – 45° (视感可微调区间，不被纯数学 35.264° 锁死)
+Vertical Pitch:       35° – 45° (经典等距 35.264°，保留 35°–40° 视感微调区间)
+Initial Size:         18.0 [TUNE] (Godot 正交 size 代表 KEEP_HEIGHT 垂直高度，16:9 下宽约 32m)
 Clipping / Cutaway:   支持沿地形/雪洞壁平滑做剖面切削（Cutaway View）
 ```
+
 
 ### 为什么选择正交 45° ISO？
 1. **美术资产生产极其友好**：同一棵松树、同一块岩石，只要旋转 90°/180° 或水平镜像，即可直接复用，完全无透视形变。

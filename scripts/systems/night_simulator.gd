@@ -1,66 +1,114 @@
 class_name NightSimulator
 extends RefCounted
 
+## 6 维可解释雪洞评估模型 (MVP 01)
+## 遵循 Hard != Obscure 原则：向玩家提供透明的 6 项评分与自然语言归因复盘。
+
 static func evaluate_shelter(
-	shelter_type: String,
-	wind_azimuth_difference: float, # 入口法线与风向夹角 (度)
-	has_cold_pit: bool,
-	has_vent: bool,
-	has_spruce_bedding: bool
+	shelter_type: String,             # "RaisedCave", "BasicCave", "SnowTrench", "None"
+	wind_angle_diff: float,           # 入口朝向与迎风方向夹角 (0度=正对迎风面, 180度=完全背风)
+	has_cold_pit: bool,               # 是否挖出沉降冷气槽
+	has_vent: bool,                   # 是否插设可伸缩通风管 (Telescopic Vent)
+	vent_snow_clogged: bool,          # 夜间降雪是否部分遮蔽通气管
+	bedding_quality: float,           # 地面垫层质量 (0.0=无垫层贴雪, 1.0=厚松针干草层)
+	roof_thickness_meters: float,     # 顶部雪层厚度 (m)
+	completion_ratio: float           # 施工完成度 (0.0 - 1.0)
 ) -> Dictionary:
-	var outside_temp = -24.0 # 夜间极端低温
-	var outside_wind = 45.0 # 夜间强阵风 km/h
-	var inside_temp = 0.0
-	var is_survived = true
-	var status_title = "SURVIVED COZY"
-	var failure_reason = ""
 	
-	# 1. 基础保暖增益 (雪洞结构)
+	var report_notes: Array[String] = []
+	
+	# 1. Thermal Protection (保暖指数 0-100)
+	var thermal_score: float = 0.0
 	if shelter_type == "RaisedCave":
-		inside_temp = outside_temp + (24.0 if has_cold_pit else 18.0)
+		thermal_score = 85.0 if has_cold_pit else 70.0
+		if has_cold_pit:
+			report_notes.append("高床与冷空气槽有效隔离了底层沉积冷空气，显著改善了睡眠区热环境。")
+		else:
+			report_notes.append("卧榻高度与底面齐平，缺少冷气槽沉淀重冷空气。")
 	elif shelter_type == "BasicCave":
-		inside_temp = outside_temp + 14.0
+		thermal_score = 60.0
+		report_notes.append("基础雪洞提供基本隔温，但热空气容易随平底隧道向外流失。")
 	elif shelter_type == "SnowTrench":
-		inside_temp = outside_temp + 9.0
+		thermal_score = 42.0
+		report_notes.append("雪沟空间狭窄且覆顶薄弱，热量散失较快。")
 	else:
-		inside_temp = outside_temp + 2.0
-	
-	# 2. 入口迎风惩罚 (若迎风夹角小于 45 度，冷风直接灌入)
-	if abs(wind_azimuth_difference) < 45.0:
-		inside_temp -= 12.0
-		
-	# 3. 松针床垫层 (防止直接吸走体温)
-	if has_spruce_bedding:
-		inside_temp += 3.0
+		thermal_score = 10.0
+		report_notes.append("未构筑有效庇护所，露天暴露在极寒气温中。")
+
+	# 2. Wind Protection (防风指数 0-100)
+	# wind_angle_diff: 0度迎风, 180度背风
+	var wind_score: float = clamp(remap(wind_angle_diff, 0.0, 180.0, 20.0, 95.0), 10.0, 100.0)
+	if wind_angle_diff < 45.0:
+		report_notes.append("西风强劲，入口直接朝向迎风面，造成严重的穿堂风与积雪倒灌。")
+	elif wind_angle_diff < 90.0:
+		report_notes.append("入口处于侧风区，偶有强阵风切入入口，造成部分风冷渗透。")
 	else:
-		inside_temp -= 8.0
-		
-	# 4. 氧气通气孔检查 (致命判定)
-	var oxygen_status = "Good (Vent Clear)"
+		report_notes.append("入口处于背风安全面，有效避开了夜间 32–45 km/h 的凛冽西风。")
+
+	# 3. Ground Insulation (地面隔热 0-100)
+	var insulation_score: float = clamp(remap(bedding_quality, 0.0, 1.0, 15.0, 95.0), 0.0, 100.0)
+	if bedding_quality >= 0.8:
+		report_notes.append("铺设了厚实的干松针与干燥树皮垫层，有效切断了冰雪的直接传导散热。")
+	elif bedding_quality >= 0.3:
+		report_notes.append("垫层厚度单薄，后半夜背部结霜，体感寒冷刺骨。")
+	else:
+		report_notes.append("严重失误：人体直接接触雪面过夜，雪地迅速抽干核心体温！")
+
+	# 4. Ventilation (通风指数 0-100)
+	var vent_score: float = 95.0
 	if not has_vent:
-		oxygen_status = "Depleted (Suffocated)"
-		is_survived = false
-		status_title = "SUFFOCATED"
-		failure_reason = "Snow cave sealed airtight. Carbon dioxide buildup caused fatal asphyxiation."
-	elif inside_temp < -12.0:
-		is_survived = false
-		status_title = "PERISHED IN FROST"
-		failure_reason = "Severe hypothermia. Shelter entrance faced west wind or lacked floor insulation."
-	elif inside_temp < -2.0:
-		is_survived = true
-		status_title = "SURVIVED HYPOTHERMIC"
-		failure_reason = "Shivering through the night. Survived, but near edge of frostbite."
+		vent_score = 10.0
+		report_notes.append("致命隐患：未插设可伸缩通风管！密闭雪洞内二氧化碳急剧上升，引发窒息危险。")
+	elif vent_snow_clogged:
+		vent_score = 55.0
+		report_notes.append("通风孔在后半夜被新增降雪部分掩埋，空气流通受阻，出现轻微缺氧头痛。")
 	else:
-		is_survived = true
-		status_title = "SURVIVED COZY"
-		failure_reason = "Shelter provided effective insulation and wind barrier. Rested and safe."
-		
+		report_notes.append("可伸缩通风管高度合适且保持通畅，成功排出湿气并保持洞内新鲜氧气。")
+
+	# 5. Structural Safety (结构安全 0-100)
+	var struct_score: float = 85.0
+	if roof_thickness_meters < 1.0:
+		struct_score = 30.0
+		report_notes.append("顶部积雪厚度不足 1.0m，雪顶在自身重力下出现微裂纹，存在局部塌陷风险。")
+	elif roof_thickness_meters < 1.5:
+		struct_score = 65.0
+		report_notes.append("顶部厚度勉强合格（约 1.2m），保温良好但需警惕融雪变薄。")
+	else:
+		struct_score = 92.0
+		report_notes.append("拱顶弧度匀称且顶部厚度充足（≥1.5m），自支撑结构极为稳固。")
+
+	# 6. Completion (完工度 0-100)
+	var completion_score: float = clamp(completion_ratio * 100.0, 0.0, 100.0)
+	if completion_ratio < 0.7:
+		report_notes.append("赶工仓促，入口挡雪墙与修整工作未彻底完成即进入黑夜。")
+
+	# 综合判定 Outcome: SAFE / COLD / DANGEROUS
+	var outcome: String = "SAFE"
+	var outcome_title: String = "SURVIVED COZY"
+	
+	if vent_score < 30.0:
+		outcome = "DANGEROUS"
+		outcome_title = "SUFFOCATED (窒息)"
+	elif insulation_score < 30.0 or (wind_score < 35.0 and thermal_score < 45.0):
+		outcome = "DANGEROUS"
+		outcome_title = "PERISHED IN FROST (严重失温致死)"
+	elif thermal_score < 55.0 or wind_score < 50.0 or insulation_score < 50.0 or vent_score < 60.0:
+		outcome = "COLD"
+		outcome_title = "SURVIVED HYPOTHERMIC (轻度失温熬过)"
+	else:
+		outcome = "SAFE"
+		outcome_title = "SURVIVED COZY (舒适安全过夜)"
+
 	return {
-		"survived": is_survived,
-		"status_title": status_title,
-		"outside_temp": outside_temp,
-		"outside_wind": outside_wind,
-		"inside_temp": inside_temp,
-		"oxygen_status": oxygen_status,
-		"reason": failure_reason
+		"outcome": outcome,
+		"outcome_title": outcome_title,
+		"scores": {
+			"thermal_protection": int(thermal_score),
+			"ventilation": int(vent_score),
+			"wind_protection": int(wind_score),
+			"ground_insulation": int(insulation_score),
+			"structural_safety": int(struct_score),
+			"completion": int(completion_score)
+		},
+		"notes": report_notes
 	}

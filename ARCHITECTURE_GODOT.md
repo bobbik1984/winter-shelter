@@ -1,7 +1,8 @@
 # ARCHITECTURE_GODOT.md — Godot 4 技术架构与实现图景
 
 > **引擎版本定位**：Godot 4.x (Forward+ / Mobile)  
-> **核心渲染模型**：Orthographic 45° Isometric 3D + 2D CanvasLayer HUD
+> **核心渲染模型**：Orthographic 45° Isometric 3D + 2D CanvasLayer HUD  
+> **参数标注规范**：`[REAL]` 现实规律 | `[GAME]` 机制抽象 | `[TUNE]` 调参基准
 
 ---
 
@@ -10,37 +11,33 @@
 ```text
 wild/
 ├── project.godot                     # Godot 4 主工程配置文件
-├── scenes/                           # 场景文件
+├── icon.svg                          # 项目图标
+├── scenes/                           # 场景文件 (.tscn)
 │   ├── main.tscn                     # 顶层集成场景 (主关卡)
 │   ├── world/
-│   │   ├── blockout_terrain.tscn     # 灰模地形 (CSG 80-120m 斜坡与背风区)
-│   │   ├── tree_spruce.tscn          # 灰模针叶树
-│   │   └── tree_deadwood.tscn        # 立枯木与采集判定
+│   │   └── blockout_terrain.tscn     # 灰模地形 (CSG 80-120m 斜坡与背风区)
 │   ├── player/
 │   │   └── player.tscn               # 玩家实体 (CharacterBody3D + 探针)
 │   ├── camera/
 │   │   └── camera_rig.tscn           # 45° 正交相机云台 (平滑跟随)
 │   └── ui/
-│       ├── hud.tscn                  # 右上角气象卡片 + 右下角风向罗盘
-│       └── world_label.tscn          # 3D 投射到 2D 的微标签
-├── scripts/                          # GDScript 核心逻辑
+│       └── hud.tscn                  # 右上角气象卡片 + 世界空间探针深度读数
+├── scripts/                          # GDScript 核心逻辑 (.gd)
+│   ├── main.gd                       # 顶层关卡主控
 │   ├── player/
 │   │   └── player_controller.gd      # 45° ISO 运动解算与输入
 │   ├── camera/
 │   │   └── isometric_camera_rig.gd   # 正交镜头平滑追踪
 │   ├── systems/
 │   │   ├── weather_controller.gd     # 时间、落日、风向控制器
-│   │   ├── probe_system.gd           # 探针测深与地形采样
-│   │   └── night_simulator.gd        # 夜间热力学判定与报告生成器
-│   └── ui/
-│       ├── hud_controller.gd         # HUD 数据驱动刷新
-│       └── world_label_manager.gd    # 世界空间标签投射管理
-├── resources/                        # 自定义 Resource 定义与预设
-│   ├── wind_data.gd                  # 气象数据类
-│   ├── default_wind.tres             # 默认西风资源
-│   └── shelter_preset.gd             # 雪洞预设数据结构
-└── shaders/                          # 着色器
-    └── wind_sway.gdshader            # 树木随风摇摆着色器
+│   │   └── night_simulator.gd        # 6 维可解释雪洞评估与报告生成器
+│   ├── ui/
+│   │   └── hud_controller.gd         # HUD 数据驱动刷新
+│   └── resources/                    # 自定义 Resource 脚本类
+│       ├── wind_data.gd              # 气象数据类定义
+│       └── shelter_preset.gd         # 雪洞预设数据结构定义
+└── resources/                        # 资源实例 (.tres)
+    └── default_wind.tres             # 默认西风资源实例
 ```
 
 ---
@@ -52,37 +49,30 @@ wild/
 ```text
 Main (Node3D) [main.gd]
 ├── WorldEnvironment (环境光: 极寒蓝冷色调, 启用法线与粗糙度)
-├── DirectionalLight3D (太阳光: 低角度 18° 斜射, 暖金橙色, 开启硬阴影)
+├── SunLight (DirectionalLight3D: 低角度斜射, 暖金橙色, 开启硬阴影)
 │
-├── World (Node3D)
-│   ├── BlockoutTerrain (Node3D) [blockout_terrain.tscn]
-│   │   ├── BaseGround (CSGBox3D: 100m x 2m x 100m)
-│   │   ├── SnowSlope (CSGPolygon3D / 斜坡 30°: 适宜雪洞选址)
-│   │   ├── LeewardDrift (CSGBox3D / 背风深积雪堆: 标定雪深 2.2m)
-│   │   └── FlatClearing (平缓区: 标定雪深 0.6m)
-│   │
-│   ├── Vegetation (Node3D)
-│   │   ├── Conifers (多实例针叶树，迎风倾斜)
-│   │   └── StandingDeadwoods (直立枯木，挂载 HarvestableComponent)
-│   │
-│   └── WeatherController (Node) [weather_controller.gd]
-│       ├── WindData (Resource)
-│       └── BlizzardParticles (GPUParticles3D: 迎风水平飞雪)
+├── BlockoutTerrain (Node3D) [blockout_terrain.tscn]
+│   ├── BaseGround (CSGBox3D: 100m x 2m x 100m, [TUNE] 积雪深 0.65m)
+│   ├── SnowSlope (CSGBox3D 倾斜 30°: 适宜雪洞选址, [TUNE] 积雪深 2.15m)
+│   └── Trees (Node3D)
+│       ├── Spruce1, Spruce2 (活针叶树)
+│       └── DeadwoodTree (立枯木，带 harvestable 标签)
 │
 ├── Player (CharacterBody3D) [player.tscn]
 │   ├── CollisionShape3D (CapsuleShape3D)
-│   ├── MeshInstance3D (测试胶囊人 / 低模求生者)
-│   ├── AvalancheProbe (RayCast3D: 向下探测深度与碰撞组)
-│   └── InteractionArea (Area3D: 枯木与建造点扫描)
+│   ├── Visual (Node3D: 橙色防寒服小人 + 背包)
+│   └── AvalancheProbe (RayCast3D: 向下探测深度与碰撞体元数据)
 │
 ├── CameraRig (Node3D) [camera_rig.tscn]
-│   └── Camera3D (Projection=Orthogonal, Size=18m, Rot=[-35.264°, 45°, 0°])
+│   └── Camera3D (Projection=Orthogonal, Size=18m [TUNE], Rot=[-38°, 45°, 0°])
 │
-└── UI (CanvasLayer) [hud.tscn]
-    ├── EnvironmentCard (MarginContainer: 右上角气象与日落时间)
-    ├── WindCompass (Control: 右下角风向罗盘)
-    ├── WorldLabels (Control: 3D 世界坐标标签映射容器)
-    └── NightReportModal (Control: 结算报告面板)
+├── WeatherController (Node) [weather_controller.gd]
+│   └── (驱动 SunLight 旋转俯角、颜色与日落时间流逝)
+│
+└── HUD (CanvasLayer) [hud.tscn]
+    └── HUDController (Control)
+        ├── TopRightCard (PanelContainer: 时间/落日/温度/风向)
+        └── ProbePopup (PanelContainer: 世界投影浮动测深读数)
 ```
 
 ---
@@ -92,98 +82,67 @@ Main (Node3D) [main.gd]
 ### 3.1 45° 正交相机云台 (Isometric Camera Rig)
 - **数学对齐**：
   - 水平旋转（Yaw）：固定 `45.0°`（镜头对角对齐世界网格对角线）；
-  - 俯角（Pitch）：默认 `-35.264°`（经典 True Isometric）或 `-38.0°`（视感微调）；
+  - 俯角（Pitch）：默认 `-38.0°`（经典 True Isometric 为 `-35.264°`，保留视感微调区间）；
   - 投影模式：`Camera3D.PROJECTION_ORTHOGONAL`；
-  - 视口尺寸（Size）：`18.0`（视野覆盖约 25m × 15m 的局部工作区）。
+  - 视口尺寸（Size）：`18.0` `[TUNE]`。  
+    *注：Godot 正交 size 代表完整视口跨度（在默认 16:9 横屏 `KEEP_HEIGHT` 下，高度为 18m，水平宽度约为 32m）。*
 - **坐标系转换（ISO Movement Mapping）**：
   - 在 45° 相机下，屏幕正上方（W 键）对应世界坐标的 `(-1, 0, -1).normalized()`；
   - 屏幕正右方（D 键）对应世界坐标的 `(1, 0, -1).normalized()`；
-  - 角色运动向量必须乘以相机的水平偏转矩阵，确保操作方向完全符合玩家屏幕直觉。
+  - `player_controller.gd` 使用 `raw_dir.rotated(Vector3.UP, deg_to_rad(45.0))` 进行底层向量转换，保证移动方向绝对符合玩家屏幕直觉。
 
 ### 3.2 探针测深系统 (Snowpack Probing System)
 - **采样方案**：
-  - 地形网格在特定区域预设积雪深度值。
-  - 在 Blockout 阶段，采用 **Meta 属性 / 区域 Area3D 标签**：
-    - 深雪坡区域设置 `metadata["snow_depth"] = 2.1`；
-    - 浅雪平原设置 `metadata["snow_depth"] = 0.5`；
-  - 探针向落点发射射线：
-    ```gdscript
-    var collider = raycast.get_collider()
-    var depth = collider.get_meta("snow_depth", 0.8) # 默认 0.8m
-    probe_sampled.emit(hit_position, depth)
-    ```
-  - UI 接收到信号后，在 `hit_position` 处生成世界微标签，显示 `Good depth: 2.1m`。
+  - 地形网格区域赋予 `metadata["snow_depth"]`：
+    - 深雪坡设置 `metadata["snow_depth"] = 2.15`；
+    - 浅雪平原设置 `metadata["snow_depth"] = 0.65`；
+  - 探针向落点发射射线采样，命中后触发信号 `probe_activated(world_pos, depth)`；
+  - `MainLevel` 调度器通过 `camera.unproject_position(world_pos)` 将 3D 碰撞点实时映射到 2D 屏幕坐标，由 HUD 弹出微标签。
 
-### 3.3 枯木识别与采集组件 (Harvestable Component)
-- 树木分为 `Spruce`（活针叶树）与 `StandingDeadwood`（立枯木）。
-- 靠近立枯木触发 `Area3D` 检测：
-  - 激活高亮描边着色器（微弱浅橙色）；
-  - 屏幕弹出微标签：`Deadwood (Press E to Harvest)`；
-  - 耗时 15 游戏分钟采集，背包获得 `Firewood`。
+### 3.3 气象、连续日落与暮光抉择 (Continuous Daylight System)
+- **`[GAME]` 连续衰减曲线（拒绝硬性开关惩罚）**：
+  - 时间步进：`14:20`（860m）匀速向 `16:18`（978m）推进；
+  - `DirectionalLight3D` 俯角从 `-25°` 逐渐压低至 `-4°`，光色由冷白平滑过渡到落日熔金；
+  - 日落后不触发暴力翻倍，而是通过能见度收缩、温度持续下探、风寒效应加剧，诱导玩家在“冒黑赶工作业”与“提前钻洞过夜”之间进行心理权衡。
 
-### 3.4 气象与时间流逝 (Weather & Daylight Controller)
-- **时间步进**：
-  - 开场时间：`14:20`（游戏内时间戳：`14 * 60 + 20 = 860` 分钟）；
-  - 日落时间：`16:18`（`16 * 60 + 18 = 978` 分钟）；
-  - 现实时间 1 秒 = 游戏内 12 秒（一局 10 分钟现实时间相当于游戏内 120 分钟）；
-- **光照响应**：
-  - `DirectionalLight3D` 旋转随时间降低，光照颜色从 `Color(1.0, 0.95, 0.9)` 渐变过渡至落日金红 `Color(1.0, 0.5, 0.2)`，最后降至暗蓝夜色。
-
-### 3.5 夜间热力学模拟器 (Night Simulator)
-纯逻辑无状态计算器类，点击“Spend the Night”时计算存活指标：
+### 3.4 6 维可解释夜间模拟 (Night Review System)
+纯逻辑无状态评估器 `NightSimulator.gd`，输入雪洞几何与施工指标，产出 6 项 0-100 分及自然语言归因复盘：
 
 ```gdscript
 class_name NightSimulator
 
-static func evaluate_shelter(shelter_type: String, entrance_wind_angle: float, has_cold_pit: bool, has_vent: bool, insulation_layers: int) -> Dictionary:
-    var base_temp = -24.0 # 外部极端温度
-    var inside_temp = 0.0
-    var oxygen_rating = 1.0 # 1.0 良好, 0.0 窒息
-    var is_survived = true
-    var death_reason = ""
-    
-    # 1. 入口迎风判定
-    if abs(entrance_wind_angle) < 45.0:
-        inside_temp -= 12.0 # 强风直接倒灌
-    
-    # 2. 结构类型与冷气槽
-    if shelter_type == "RaisedCave":
-        inside_temp += (18.0 if has_cold_pit else 10.0)
-    elif shelter_type == "BasicCave":
-        inside_temp += 10.0
-    elif shelter_type == "SnowTrench":
-        inside_temp += 6.0
-        
-    # 3. 垫层隔热
-    if insulation_layers <= 0:
-        inside_temp -= 8.0 # 地面直接导热失温
-        
-    # 4. 通气孔判定
-    if not has_vent:
-        oxygen_rating = 0.0
-        is_survived = false
-        death_reason = "Suffocation: Snow cave completely sealed without air vent."
-    elif inside_temp < -15.0:
-        is_survived = false
-        death_reason = "Severe Hypothermia: Cold air infiltration or lack of ground insulation."
-        
-    return {
-        "survived": is_survived,
-        "inside_temp": inside_temp,
-        "oxygen": oxygen_rating,
-        "reason": death_reason
-    }
+static func evaluate_shelter(
+    shelter_type: String,         # "RaisedCave", "BasicCave", "SnowTrench", "None"
+    wind_angle_diff: float,       # 入口朝向与迎风方向夹角 (0度迎风, 180度背风)
+    has_cold_pit: bool,           # 是否挖出沉降冷气槽
+    has_vent: bool,               # 是否插设可伸缩通风管 (Telescopic Vent)
+    vent_snow_clogged: bool,      # 夜间降雪是否部分遮蔽通气管
+    bedding_quality: float,       # 地面垫层质量 (0.0=无垫层, 1.0=厚松针干草)
+    roof_thickness_meters: float, # 顶部雪层厚度 (m)
+    completion_ratio: float       # 施工完成度 (0.0 - 1.0)
+) -> Dictionary:
+    # 返回：
+    # {
+    #   "outcome": "SAFE" / "COLD" / "DANGEROUS",
+    #   "outcome_title": "SURVIVED COZY" / "SURVIVED HYPOTHERMIC" / "PERISHED IN FROST" / "SUFFOCATED",
+    #   "scores": { thermal_protection, ventilation, wind_protection, ground_insulation, structural_safety, completion },
+    #   "notes": [ "西风 32 km/h，入口偏向西北造成风冷侵入...", "高床与冷空气槽改善了睡眠区热环境...", ... ]
+    # }
 ```
 
 ---
 
 ## 4. 四阶段开发执行路径 (Godot Milestones)
 
-- [ ] **Milestone 1: Blockout (当前目标)**
-  - 建立 `project.godot`、标准目录、CSG 灰模地形、CharacterBody3D 45° 移动与平滑正交相机。
-- [ ] **Milestone 2: Playable**
-  - 探针探雪、立枯木识别采集、预设雪洞位置放置。
-- [ ] **Milestone 3: Systems + UI**
-  - 风雪粒子系统、落日渐变光影、雪洞剖面透视、夜间报告弹窗。
-- [ ] **Milestone 4: Target Look**
-  - 材质打磨、雪地脚印效果、音效集成，达成垂直切片。
+- [x] **Milestone 1: Blockout 工程骨架搭建就绪**
+  - 已建立 `project.godot`、标准目录、CSG 灰模地形、CharacterBody3D 45° 屏幕坐标平滑移动、45° 正交相机云台与探针测深反馈。
+- [ ] **Milestone 1: Blockout 核心体验验收 (唯三指标)**
+  - 1. 角色在 45° ISO 雪地上移动是否舒服顺手？
+  - 2. 风向和风势能否完全从环境画面（吹雪、树木）中直观读出来？
+  - 3. 玩家进入地图后，是否会出于本能想去某个背风雪坡扎下第一根 probe？
+- [ ] **Milestone 2: Playable (核心交互闭环)**
+  - 立枯木识别与 `E` 键砍柴、树皮与松针垫层收集、在满足 $\ge 1.5\text{m}$ 雪深坡面放置预设雪洞。
+- [ ] **Milestone 3: Systems + UI (气象与剖面切削)**
+  - 西风 GPUParticles3D 粒子、雪洞 Cutaway 剖面视图、"Spend the Night" 结算弹窗与 6 维报告展示。
+- [ ] **Milestone 4: Target Look (垂直切片)**
+  - 材质打磨、雪地脚印 displacement、低角度落日金晖体积感、环境音效集成。
