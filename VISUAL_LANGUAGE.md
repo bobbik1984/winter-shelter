@@ -54,30 +54,38 @@ Clipping / Cutaway:   支持沿地形/雪洞壁平滑做剖面切削（Cutaway V
   - 不做悬浮的风向箭头 UI —— 玩家通过**空中狂吹的雪尘、剧烈摇摆的树梢**判断风向风速。
   - 不做夸张的头顶血条 —— 玩家通过**角色呼吸哈出的白汽频率、行走颤抖动作**感知体温。
   - 不做艳俗的拾取物描边 —— 枯木本身有泛灰脱皮的材质区分，仅在光标移上时给予极其内敛的**浅琥珀色微弱描边 (Subtle Warm Highlight)**。
-- **Screen HUD**：
-  - 仅保留极小巧的怀表/日照刻度指示，以及探针插下时弹出的极简技术标尺。
+- **Screen HUD & World-Space Annotations (世界内微注记体系)**：
+  - **右上角极简环境卡片 (Environment Widget)**：
+    - 日期时间与日落倒计时：`Jan 14 14:20` / `Sunset 16:18`
+    - 环境温度与风况：`-17°C` / `W 32 km/h`
+    - 认知提示：`Strong winds from west. Leeward slopes are safer.`
+  - **右下角定向罗盘 (Wind Compass)**：
+    - 标定 N/S/W/E 方位，并以动态弧度指示西风主导方向与迎风/背风状态。
+  - **世界空间微标签 (Floating In-World Cues)**：
+    - 探针即时读数：`Good depth 1.8 - 2.1 m`（带落点垂直基准标尺）
+    - 地形潜能锚点：`Deeper snow (Ideal for shelter)`（背风雪堆处的微弱圈形标）
+    - 资源识别与交互：`Deadwood (Harvest for fuel)`（仅在光标悬停时给出弱橙圈与小图标）
+    - 空间剖面标注：在雪洞截面直观展示 `Vent/Chimney`、`Raised sleeping platform`、`Cold-air pit`。
 
 ---
 
-## 4. 视觉里程碑制度 (Development Snapshot System)
+## 4. 阶段里程碑体系 (Same Game, Increasing Fidelity)
 
-> **原则**：拒绝“闭门写两个月代码，却连游戏长什么样都看不到”。  
-> 每完成一个关键阶段，**必须产出一张全分辨率实机截图/渲染快照**，归档进 `snapshots/`。
+依据概念图底部确立的 **4 阶递进交付模型**，确保同一款游戏在开发演进中仅提升画面保真度（Fidelity），而不偏离核心逻辑：
 
 ```mermaid
 graph LR
-    S1[Snapshot 01<br/>Blockout] --> S2[Snapshot 02<br/>Environmental]
-    S2 --> S3[Snapshot 03<br/>Shelter Cutaway]
-    S3 --> S4[Snapshot 04<br/>First Night]
-    S4 --> S5[Snapshot 05<br/>Target Prototype]
+    M1["1. Blockout<br/>(白模/尺度/手感)"] --> M2["2. Playable<br/>(基础美术/收集建造)"]
+    M2 --> M3["3. Systems + UI<br/>(气象/交互/反馈)"]
+    M3 --> M4["4. Target Look<br/>(落日氛围/材质/垂直切片)"]
 ```
 
-### 里程碑快照定义表：
+### 里程碑定义表：
 
-| 快照编号 | 里程碑名称 | 画面中必须呈现的要素 | 验证的核心问题 |
+| 阶段 | 里程碑名称 | 画面中必须呈现的要素 | 验证的核心目标 |
 | :--- | :--- | :--- | :--- |
-| **Snapshot 01** | **Blockout** | 白色地形高低坡、纯灰模型树、橙色胶囊人体、45° ISO 基础镜头 | 地图比例、坡度感与角色移动感是否舒适？ |
-| **Snapshot 02** | **Environmental Reading** | 粒子风雪（有明确吹向）、落日光照与长阴影、立枯木对比、探针插地读数 | 玩家光看画面能否直接读出风向和枯木？ |
-| **Snapshot 03** | **Shelter Cutaway** | 雪坡上的洞口、剖开的雪洞内部高低床结构、通向外部的通气管 | 剖面透视与外部世界的衔接是否直观自然？ |
-| **Snapshot 04** | **First Night** | 夜间狂暴风雪特效、洞内一缕温暖火光、半透明结算报告卡片 | 是否实现了 *Brutal Outside, Cozy Inside*？ |
-| **Snapshot 05** | **Target Prototype** | 材质、雪面脚印、树枝积雪、雾气光晕完全就绪的垂直切片画面 | 是否达到甚至超越了 Visual North Star v0.1？ |
+| **01** | **Blockout** | 纯灰模白块地形、低多边形灰树、等距网格、测试角色胶囊/小人、45° 正交相机 | 验证核心空间尺度（80–120m）、45° ISO 移动手感与坡度通过性 |
+| **02** | **Playable** | 具有初步辨识度的雪坡、针叶树与直立枯木色彩区分、基础橙圈交互高亮 | 验证采集（Gather）与选址建造（Build）核心闭环与基础生存逻辑 |
+| **03** | **Systems + UI** | 动态风雪粒子系统、右上角 HUD、探针测深反馈、雪洞 Cutaway 剖面 | 验证环境阅读（Read the Land）、气象压迫感与 UI 反馈流畅度 |
+| **04** | **Target Look** | 低角度落日体积光、雪地凹陷脚印（Displacement）、树冠积雪微动、冷暖极致对比 | 达到并呈现概念图（Visual North Star v0.1）水准的完整垂直切片 |
+
