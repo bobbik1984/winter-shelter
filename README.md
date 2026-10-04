@@ -21,6 +21,8 @@
 5. [**`ARCHITECTURE_GODOT.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/ARCHITECTURE_GODOT.md)  
    Godot 4 引擎技术实现图景：场景节点树、正交等距运动解算、探针与气象总线、6 维可解释 `NightSimulator`。
 
+> **执行入口**：[**`PRODUCTION_PLAN.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/PRODUCTION_PLAN.md) —— 依据参考图拆解出的 M0–M4 任务、完成标准、退出闸门与待决策项。
+
 ---
 
 ## 项目当前阶段与路线图 (Roadmap)

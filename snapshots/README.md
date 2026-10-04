@@ -11,13 +11,14 @@
 ```text
 snapshots/
 ├── README.md
-├── snapshot_00_visual_north_star.png   # 初始概念视觉锚点
-├── snapshot_01_blockout.png             # 比例、镜头、灰模地形
-├── snapshot_02_environmental.png        # 风雪粒子、日照、枯木、探针
-├── snapshot_03_shelter_cutaway.png      # 雪坡入口、剖面高低床、排气管
-├── snapshot_04_first_night.png          # 外部暴雪、内部烛火、结算报告
-└── snapshot_05_target_prototype.png     # 完整垂直切片
+├── snapshot_00_visual_north_star.png   # 初始概念视觉锚点（参考图）
+├── snapshot_01_blockout.png             # M1：比例、镜头、灰模地形、最小风
+├── snapshot_02_playable.png             # M2：采集 + 建造 + 过夜报告完整循环
+├── snapshot_03_systems_ui.png           # M3：天气、HUD、世界标签、雪洞剖面
+└── snapshot_04_target_look.png          # M4：终版画面，与 00 并排评审
 ```
+
+> 与 [`PRODUCTION_PLAN.md`](../PRODUCTION_PLAN.md) 的 M1–M4 一一对应。
 
 ---
 
