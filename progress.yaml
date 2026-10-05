@@ -1,0 +1,66 @@
+# progress.yaml — 机器可读进度投影（派生自 CURRENT_STAGE.md 与已验收证据）
+# 状态取值：todo | written-unverified | done | blocked
+# 规则：只有证据齐全才写 done（见 AGENTS.md §5）；任务 ID 与 PRODUCTION_PLAN.md §4 一致。
+project:
+  name: Winter Shelter (Snow Shelter Challenge)
+  code: wild
+  version: "0.2-alpha"
+  status: dev
+  tech: [Godot 4.3+, GDScript, Orthographic ISO, NightSimulator 6-axis]
+  current_milestone: M0
+  blocker: "本机未安装 Godot（T0.1），所有代码任务无法验证"
+  updated: "2026-10-05"
+
+phases:
+  - id: PRE
+    name: "设计边界与规格（M0 之前）"
+    tasks:
+      - {id: DOC, text: "设计文档 VISION / CORE_GAMEPLAY / MVP / VISUAL / ARCHITECTURE / PRODUCTION_PLAN", status: done, evidence: "commit 1501d2c"}
+      - {id: SKEL, text: "Godot 工程骨架（project.godot、scenes、scripts、resources）", status: written-unverified, note: "从未在 Godot 中打开"}
+      - {id: RES, text: "雪庇护所调研 research/SNOW_SHELTER_RESEARCH.md", status: done, note: "基于网页检索摘要，原始出处未逐条核验"}
+
+  - id: M0
+    name: "M0 对齐与能跑"
+    tasks:
+      - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: blocked, note: "需要人工安装"}
+      - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: todo}
+      - {id: T0.3, text: "F5 冒烟测试（含 T0.3-prep 截图工具）", status: todo, depends: [T0.1, T0.2]}
+      - {id: T0.4, text: "D1–D7 决策入档", status: blocked, note: "D1/D2/D3/D5 已入档；D4/D6/D7 待拍板"}
+      - {id: T0.5, text: "Tuning 唯一调参源", status: todo}
+      - {id: T0.6, text: "NightSimulator 移植 + headless 测试（含倒棚分支）", status: todo, depends: [T0.5]}
+      - {id: T0.7, text: "Web 原型试玩 PT00", status: blocked, note: "npm 网络失败，需人工在正常网络下构建"}
+
+  - id: M1
+    name: "M1 Blockout"
+    gate: "≥2/3 测试者 30 秒内说出风向；首针落背风区；无人抱怨移动"
+    tasks:
+      - {id: T1.1a, text: "高度函数 + 测试", status: todo}
+      - {id: T1.1b, text: "地形网格 + 碰撞", status: todo, depends: [T1.1a]}
+      - {id: T1.2, text: "SnowField 雪深场 + 测试", status: todo, depends: [T1.1a]}
+      - {id: T1.3, text: "相机调参热键并定稿", status: todo, depends: [T0.2]}
+      - {id: T1.4, text: "移动阻尼", status: todo, depends: [T1.2]}
+      - {id: T1.5, text: "最小风粒子", status: todo, depends: [T0.5]}
+      - {id: T1.6, text: "探针手感 + 地面标记", status: todo, depends: [T1.2]}
+      - {id: T1.7, text: "三种灰模树", status: todo, depends: [T1.1b]}
+      - {id: T1.8, text: "试玩 PT01", status: todo, note: "人工"}
+
+  - id: M2
+    name: "M2 Playable（过 M1 闸门后细化）"
+    tasks:
+      - {id: T2.1-T2.3, text: "交互框架 / 资源背包 / 时间与效率", status: todo}
+      - {id: T2.4-T2.6, text: "建造模式（D5 校验）/ 预设参数 / 挖掘进度", status: todo}
+      - {id: T2.7-T2.7b, text: "火（D2/D3）与倒棚预设", status: todo}
+      - {id: T2.8-T2.11, text: "过夜纯文字报告 / 简报 / 基础美术 / PT02", status: todo}
+
+  - id: M3
+    name: "M3 Systems + UI"
+    tasks:
+      - {id: T3.1-T3.3, text: "天气 / AtmosphereState 连续日落 / 天空背景层（D1）", status: todo}
+      - {id: T3.4-T3.7, text: "HUD / 世界标签 / Cutaway 剖面 / 报告 UI", status: todo}
+      - {id: T3.8-T3.10, text: "音频灰盒 / 内容一轮 / PT03", status: todo}
+
+  - id: M4
+    name: "M4 Target Look"
+    tasks:
+      - {id: T4.1-T4.4, text: "终版资产 / 雪材质与脚印 / 光照 / 洞内陈设", status: todo}
+      - {id: T4.5-T4.7, text: "标题画面 / 性能 / North Star 对照评审", status: todo}

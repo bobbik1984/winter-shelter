@@ -11,6 +11,12 @@ $RECYCLE.BIN/
 .vscode/
 .idea/
 
+# Godot 4 cache (regenerated on import; keep *.import files tracked)
+.godot/
+
+# External / historical materials (not source of truth, not committed)
+references/
+
 # Builds & dependencies placeholder
 build/
 dist/

@@ -21,25 +21,22 @@
 5. [**`ARCHITECTURE_GODOT.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/ARCHITECTURE_GODOT.md)  
    Godot 4 引擎技术实现图景：场景节点树、正交等距运动解算、探针与气象总线、6 维可解释 `NightSimulator`。
 
-> **执行入口**：[**`PRODUCTION_PLAN.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/PRODUCTION_PLAN.md) —— 依据参考图拆解出的 M0–M4 任务、完成标准、退出闸门与待决策项。
+> **路线**：[**`PRODUCTION_PLAN.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/PRODUCTION_PLAN.md) —— M0–M4 任务、完成标准、退出闸门与决策记录。
 
 ---
 
-## 项目当前阶段与路线图 (Roadmap)
+## 现在在做什么
 
-```text
-[阶段 0：设计边界与技术规格冻结]  <-- 已完成
-        ↓
-[阶段 1：Milestone 1 — Snowfield Blockout]
-   ├── [x] Godot 4 基础工程骨架就绪 (project.godot, scenes, scripts, resources)
-   └── [ ] 核心体验验收 (1. 移动舒适 | 2. 风向可读 | 3. 主动探雪冲动)
-        ↓
-[阶段 2：Milestone 2 — Playable (探雪与采集闭环)]
-        ↓
-[阶段 3：Milestone 3 — Systems + UI (风雪粒子与雪洞剖面)]
-        ↓
-[阶段 4：Milestone 4 — Target Look (落日氛围与垂直切片)]
-```
+| 想知道 | 看这里 |
+| :--- | :--- |
+| 当前里程碑、可派发任务、依赖与任务卡 | [`CURRENT_STAGE.md`](file:///d:/OneDrive/Learning/Code/Gemini/wild/CURRENT_STAGE.md) |
+| 各任务状态 | [`progress.yaml`](file:///d:/OneDrive/Learning/Code/Gemini/wild/progress.yaml) |
+| 需要人来做的事、待判断事项 | [`todo.md`](file:///d:/OneDrive/Learning/Code/Gemini/wild/todo.md) |
+| Agent 工作规则 | [`AGENTS.md`](file:///d:/OneDrive/Learning/Code/Gemini/wild/AGENTS.md) |
+
+路线：M0 对齐与能跑 → M1 Blockout → M2 Playable → M3 Systems + UI → M4 Target Look。
+
+**Godot 版本**：尚未安装（T0.1 完成后写入）。
 
 ---
 
@@ -49,7 +46,12 @@
 wild/
 ├── project.godot                 # Godot 4 主工程配置
 ├── icon.svg                      # 项目图标
-├── README.md                     # 项目全局索引与进度
+├── README.md                     # 项目入口索引
+├── AGENTS.md                     # Agent 工作规则与 subagent 协议
+├── CURRENT_STAGE.md              # 当前施工合同（任务依赖、任务卡、闸门）
+├── PRODUCTION_PLAN.md            # M0–M4 路线、任务 ID 与决策记录
+├── todo.md                       # 需求池与需要人来做的事
+├── progress.yaml                 # 机器可读进度投影
 ├── VISION.md                     # 愿景、设计边界与非目标
 ├── CORE_GAMEPLAY.md              # 9 步核心循环与 6 维可解释规则
 ├── MVP_SNOW_SHELTER.md           # MVP 01 范围与 12 项检查清单
