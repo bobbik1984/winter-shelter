@@ -66,16 +66,20 @@ static func evaluate_shelter(
 		report_notes.append("可伸缩通风管高度合适且保持通畅，成功排出湿气并保持洞内新鲜氧气。")
 
 	# 5. Structural Safety (结构安全 0-100)
+	# [REAL] 野外指南常见顶厚下限约 0.3 m，保守建议 0.6 m（research/SNOW_SHELTER_RESEARCH.md §2）
+	# [TUNE] 阈值暂定为常量，T0.5 迁入 tuning.tres
+	const ROOF_DANGER_M := 0.3
+	const ROOF_GOOD_M := 0.45
 	var struct_score: float = 85.0
-	if roof_thickness_meters < 1.0:
+	if roof_thickness_meters < ROOF_DANGER_M:
 		struct_score = 30.0
-		report_notes.append("顶部积雪厚度不足 1.0m，雪顶在自身重力下出现微裂纹，存在局部塌陷风险。")
-	elif roof_thickness_meters < 1.5:
+		report_notes.append("顶部雪层不足 %.2fm，承重和隔热都不够，存在塌陷风险。" % ROOF_DANGER_M)
+	elif roof_thickness_meters < ROOF_GOOD_M:
 		struct_score = 65.0
-		report_notes.append("顶部厚度勉强合格（约 1.2m），保温良好但需警惕融雪变薄。")
+		report_notes.append("顶部雪层约 %.2fm，勉强合格，后半夜体温会让顶棚变薄。" % roof_thickness_meters)
 	else:
 		struct_score = 92.0
-		report_notes.append("拱顶弧度匀称且顶部厚度充足（≥1.5m），自支撑结构极为稳固。")
+		report_notes.append("穹顶匀称，顶部雪层约 %.2fm，结构稳固。" % roof_thickness_meters)
 
 	# 6. Completion (完工度 0-100)
 	var completion_score: float = clamp(completion_ratio * 100.0, 0.0, 100.0)

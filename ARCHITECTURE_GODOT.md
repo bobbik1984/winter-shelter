@@ -105,8 +105,14 @@ Main (Node3D) [main.gd]
   - `DirectionalLight3D` 俯角从 `-25°` 逐渐压低至 `-4°`，光色由冷白平滑过渡到落日熔金；
   - 日落后不触发暴力翻倍，而是通过能见度收缩、温度持续下探、风寒效应加剧，诱导玩家在“冒黑赶工作业”与“提前钻洞过夜”之间进行心理权衡。
 
+### 3.3b 大气状态与天空背景层 (AtmosphereState & Sky Backdrop)
+- **`AtmosphereState`**（`scripts/systems/atmosphere_state.gd`）是时间和天气的**唯一数据源**：时间、太阳方向和颜色、天空渐变三色、雾色和雾密度、云量、降雪强度。`WeatherController` 每帧写入；以下节点只读：`SunLight`、`WorldEnvironment`（环境光、雾）、`BlizzardParticles`、`SkyBackdrop`。
+- **`SkyBackdrop`**：`Environment.background_mode = BG_CANVAS`，配合一个低层级的 CanvasLayer（`background_canvas_max_layer` 指向它），里面是全屏 `ColorRect` + `shaders/sky_gradient.gdshader`（渐变、太阳 / 星点、2–3 层远山剪影，uniform 来自 `AtmosphereState`）。只在 3D 地形没覆盖的地方露出来。
+- **约束**：远景雾色必须等于天空地平线颜色。规格和已知限制见 `VISUAL_LANGUAGE.md` §2.1。
+
 ### 3.4 6 维可解释夜间模拟 (Night Review System)
-纯逻辑无状态评估器 `NightSimulator.gd`，输入雪洞几何与施工指标，产出 6 项 0-100 分及自然语言归因复盘：
+纯逻辑无状态评估器 `NightSimulator.gd`，输入庇护所几何与施工指标，产出 6 项 0-100 分及自然语言归因复盘。
+> 待办（T2.7b）：增加倒棚 + 反射火分支（备柴能否烧到天亮、反射墙、棚背朝向），见 `CORE_GAMEPLAY.md` §6。顶厚阈值已按调研改为 0.3 / 0.45 m。
 
 ```gdscript
 class_name NightSimulator
