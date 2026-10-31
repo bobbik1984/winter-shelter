@@ -7,9 +7,9 @@ project:
   version: "0.2-alpha"
   status: dev
   tech: [Godot 4.3+, GDScript, Orthographic ISO, NightSimulator 6-axis]
-  current_milestone: M0
-  blocker: "本机未安装 Godot（T0.1），所有代码任务无法验证"
-  updated: "2026-10-05"
+  current_milestone: M1
+  blocker: "T0.3 F5 人工冒烟与 T1.4–T1.8 未完成；push 缺 GitHub 凭据"
+  updated: "2026-10-31"
 
 phases:
   - id: PRE
@@ -22,26 +22,26 @@ phases:
   - id: M0
     name: "M0 对齐与能跑"
     tasks:
-      - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: blocked, note: "Godot 4.3.169 已安装（/home/bobbik/.local/bin/godot）；headless --import 零错误；待人工在编辑器打开并写版本到 README"}
-      - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: written-unverified, note: "Camera3D 本地 +Z 40 m；camera_distance=40.0 / camera_size=18.0 为 rig @export；near=0.05 / far=200；yaw 45°、pitch -38° 未改。Godot 4.3.169 语法检查、隔离相机探针与 snapshots/m0_smoke.png 窗口截图通过：角色完整、居中；仍待 verifier 独立复核"}
+      - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: written-unverified, note: "Godot 4.3.169 已安装（/home/bobbik/.local/bin/godot）；headless --import 零错误；未在编辑器打开，README 未写版本"}
+      - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: done, note: "Camera3D 本地 +Z 40 m；camera_distance=40.0 / camera_size=18.0 为 rig @export；near=0.05 / far=200；yaw 45°、pitch -38° 未改。snapshots/m1_blockout_diorama.png 实机截图验证角色可见、居中；pitch -38 与卡片 35.264 的偏差留 T1.3"}
       - {id: T0.3, text: "F5 冒烟测试（含 T0.3-prep 截图工具）", status: todo, depends: [T0.1, T0.2], note: "T0.3-prep 已写 tools/capture_snapshot.gd 并窗口试跑成功；F5 冒烟与探针读数（坡上 2.15 m / 平地 0.65 m）待人工 + verifier"}
       - {id: T0.4, text: "D1–D7 决策入档", status: blocked, note: "D1/D2/D3/D5 已入档；D4/D6/D7 待拍板"}
-      - {id: T0.5, text: "Tuning 唯一调参源", status: todo}
-      - {id: T0.6, text: "NightSimulator 移植 + headless 测试（含倒棚分支）", status: todo, depends: [T0.5]}
+      - {id: T0.5, text: "Tuning 唯一调参源", status: done, note: "scripts/resources/tuning.gd（133 个 @export / 22 组，全部带 [REAL]/[GAME]/[TUNE]）+ resources/tuning.tres（无手写 uid）；D5 门槛与睡前篝火规则已落地"}
+      - {id: T0.6, text: "NightSimulator 移植 + headless 测试（含倒棚分支）", status: done, depends: [T0.5], note: "6 维 site/structure/insulation/isolation/air/heat；4 预设 + None + 倒棚备柴/吹灭；13 个测试/72 assertions；run_all.gd 全绿"}
       - {id: T0.7, text: "Web 原型试玩 PT00", status: blocked, note: "npm 网络失败，需人工在正常网络下构建"}
 
   - id: M1
     name: "M1 Blockout"
     gate: "≥2/3 测试者 30 秒内说出风向；首针落背风区；无人抱怨移动"
     tasks:
-      - {id: T1.1a, text: "高度函数 + 测试", status: todo}
-      - {id: T1.1b, text: "地形网格 + 碰撞", status: todo, depends: [T1.1a]}
-      - {id: T1.2, text: "SnowField 雪深场 + 测试", status: todo, depends: [T1.1a]}
-      - {id: T1.3, text: "相机调参热键并定稿", status: todo, depends: [T0.2]}
+      - {id: T1.1a, text: "高度函数 + 测试", status: done, note: "scripts/world/terrain_height.gd：world.ts buildTerrain 移植；6 assertions 通过（脊线最高、东坡更缓、法线/范围）"}
+      - {id: T1.1b, text: "地形网格 + 碰撞", status: written-unverified, depends: [T1.1a], note: "terrain_builder.gd：SurfaceTool ArrayMesh + trimesh 碰撞，100×100 m；snapshots/m1_blockout_diorama.png 实机渲染；F5 走遍全图待人工"}
+      - {id: T1.2, text: "SnowField 雪深场 + 测试", status: written-unverified, depends: [T1.1a], note: "scripts/world/snow_field.gd + 8 assertions 通过（背风更深、范围、连续性）；探针仍读碰撞体 meta，T1.6 接入"}
+      - {id: T1.3, text: "相机调参热键并定稿", status: todo, depends: [T0.2], note: "截图暂用 size 36 的 diorama 机位；14/18/24 与 35/38/42 热键待做"}
       - {id: T1.4, text: "移动阻尼", status: todo, depends: [T1.2]}
-      - {id: T1.5, text: "最小风粒子", status: todo, depends: [T0.5]}
+      - {id: T1.5, text: "最小风粒子", status: written-unverified, depends: [T0.5], note: "snow_terrain.gdshader 冷暖/坡度/雪深 + 低角度暖阳 + 冷蓝天光 + WindParticles 已实机出图；风声低通/避风传感器未做"}
       - {id: T1.6, text: "探针手感 + 地面标记", status: todo, depends: [T1.2]}
-      - {id: T1.7, text: "三种灰模树", status: todo, depends: [T1.1b]}
+      - {id: T1.7, text: "三种灰模树", status: written-unverified, depends: [T1.1b], note: "多层积雪云杉（东倾 5°）/枯立木/倒木根盘/脊岩已入场景并出图；根盘避风碰撞与灰度可辨验收未做"}
       - {id: T1.8, text: "试玩 PT01", status: todo, note: "人工"}
 
   - id: M2

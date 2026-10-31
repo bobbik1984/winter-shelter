@@ -1,15 +1,25 @@
 class_name MainLevel
 extends Node3D
 
+const SPAWN_POSITION := Vector3(4.0, 0.0, 4.0)
+
 @onready var player: PlayerController = $Player
 @onready var camera_rig: IsometricCameraRig = $CameraRig
 @onready var weather: WeatherController = $WeatherController
 @onready var hud: HUDController = $HUD/HUDController
 
 func _ready() -> void:
-	# 相机跟随设置
+	if player:
+		player.global_position = Vector3(
+			SPAWN_POSITION.x,
+			TerrainHeight.height_at(SPAWN_POSITION.x, SPAWN_POSITION.z) + 1.0,
+			SPAWN_POSITION.z
+		)
+
+	# 相机跟随设置：首帧即对准玩家，避免截图时还在 lerp 途中
 	if camera_rig and player:
 		camera_rig.target = player
+		camera_rig.global_position = player.global_position
 
 	# 天气信号连接到 HUD
 	if weather and hud:

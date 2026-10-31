@@ -1,84 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://df7k4m5y6n123"]
+[gd_scene load_steps=3 format=3 uid="uid://df7k4m5y6n123"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_snow"]
-albedo_color = Color(0.91, 0.94, 0.98, 1)
-roughness = 0.85
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_deepsnow"]
-albedo_color = Color(0.86, 0.90, 0.96, 1)
-roughness = 0.8
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_foliage"]
-albedo_color = Color(0.18, 0.32, 0.25, 1)
-roughness = 0.9
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood"]
-albedo_color = Color(0.35, 0.28, 0.22, 1)
-roughness = 0.9
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_deadwood"]
-albedo_color = Color(0.55, 0.52, 0.48, 1)
-roughness = 0.95
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_trunk"]
-material = SubResource("StandardMaterial3D_wood")
-top_radius = 0.2
-bottom_radius = 0.35
-height = 3.0
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_pine"]
-material = SubResource("StandardMaterial3D_foliage")
-top_radius = 0.0
-bottom_radius = 1.8
-height = 4.5
+[ext_resource type="Script" path="res://scripts/world/terrain_builder.gd" id="1_terrain"]
+[ext_resource type="Script" path="res://scripts/world/scenery_builder.gd" id="2_scenery"]
 
 [node name="BlockoutTerrain" type="Node3D"]
+script = ExtResource("1_terrain")
 
-[node name="BaseGround" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
-use_collision = true
-size = Vector3(100, 2, 100)
-material = SubResource("StandardMaterial3D_snow")
-metadata/snow_depth = 0.65
-
-[node name="SnowSlope" type="CSGBox3D" parent="."]
-transform = Transform3D(0.866025, -0.5, 0, 0.5, 0.866025, 0, 0, 0, 1, 15, 3.5, -5)
-use_collision = true
-size = Vector3(24, 4, 30)
-material = SubResource("StandardMaterial3D_deepsnow")
-metadata/snow_depth = 2.15
-
-[node name="Trees" type="Node3D" parent="."]
-
-[node name="Spruce1" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -6)
-
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Spruce1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-mesh = SubResource("CylinderMesh_trunk")
-
-[node name="Foliage" type="MeshInstance3D" parent="Trees/Spruce1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
-mesh = SubResource("CylinderMesh_pine")
-
-[node name="Spruce2" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 10)
-
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Spruce2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-mesh = SubResource("CylinderMesh_trunk")
-
-[node name="Foliage" type="MeshInstance3D" parent="Trees/Spruce2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
-mesh = SubResource("CylinderMesh_pine")
-
-[node name="DeadwoodTree" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 8)
-metadata/harvestable = "deadwood"
-
-[node name="Trunk" type="CSGCylinder3D" parent="Trees/DeadwoodTree"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
-use_collision = true
-radius = 0.28
-height = 5.0
-material = SubResource("StandardMaterial3D_deadwood")
+[node name="Scenery" type="Node3D" parent="."]
+script = ExtResource("2_scenery")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://mainlevel001"]
+[gd_scene load_steps=11 format=3 uid="uid://mainlevel001"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://df7k4m5y6n123" path="res://scenes/world/blockout_terrain.tscn" id="2_terrain"]
@@ -6,6 +6,8 @@
 [ext_resource type="PackedScene" uid="uid://b2k8y0c6m4l71" path="res://scenes/camera/camera_rig.tscn" id="4_cam"]
 [ext_resource type="Script" path="res://scripts/systems/weather_controller.gd" id="5_weather"]
 [ext_resource type="PackedScene" uid="uid://c6v2n7x8p1m34" path="res://scenes/ui/hud.tscn" id="6_hud"]
+[ext_resource type="Script" path="res://scripts/world/atmosphere_setup.gd" id="7_atmosphere"]
+[ext_resource type="Script" path="res://scripts/world/wind_particles.gd" id="8_wind"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_cold"]
 sky_top_color = Color(0.25, 0.45, 0.72, 1)
@@ -29,6 +31,7 @@ script = ExtResource("1_main")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_winter")
+script = ExtResource("7_atmosphere")
 
 [node name="SunLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 20, 0)
@@ -37,12 +40,17 @@ light_energy = 1.2
 shadow_enabled = true
 directional_shadow_max_distance = 80.0
 
+[node name="WindParticles" type="GPUParticles3D" parent="."]
+position = Vector3(0, 8, 0)
+script = ExtResource("8_wind")
+
 [node name="BlockoutTerrain" parent="." instance=ExtResource("2_terrain")]
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
 [node name="CameraRig" parent="." instance=ExtResource("4_cam")]
+camera_size = 36.0
 
 [node name="WeatherController" type="Node" parent="." node_paths=PackedStringArray("sun_light")]
 script = ExtResource("5_weather")
