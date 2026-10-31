@@ -1,9 +1,9 @@
 class_name TerrainHeight
 extends RefCounted
 
-## M1 高度场：从 Web 原型 world.ts 的 buildTerrain() 移植。
-## 纯函数、可测试、无节点依赖。世界坐标 x 向西(-) / 向东(+)，z 向南(-) / 向北(+)。
-## 布局：西侧迎风坡 -> 脊线 -> 东侧背风缓坡 -> 雪棚平台 -> 南侧沟谷。
+## M1->M2 多尺度雪原高度场（主创定标版）：
+## 结合参考图 Box 1 (阶梯台地体块) -> Box 2/3 (蜿蜒主脊 + 背风风积雪包 + 局部雪枕 + 远景下沉谷口)。
+## 纯函数、可测试、无节点依赖。
 
 const GRID := 52
 const WORLD_SIZE := 100.0
@@ -47,20 +47,44 @@ static func fbm(x: float, y: float, noise_seed: int, octaves: int = 4) -> float:
 static func _grid_coord(value: float) -> float:
 	return clampf((value + HALF_SIZE) / WORLD_SIZE * float(GRID - 1), 0.0, float(GRID - 1))
 
+static func _ridge_center_i(j: float) -> float:
+	var wy := j / float(GRID - 1)
+	# 在 z=0 (wy=0.5) 处锚定在 i=17.8，向南北两侧呈自然 S 型蜿蜒，彻底消除尺子画出的直线白光带
+	var s_curve := sin((wy - 0.5) * PI * 2.1) * 4.2
+	var organic := (fbm(wy * 3.2, 1.7, SEED + 19, 3) - 0.5) * 3.8 * absf(wy - 0.5) * 2.0
+	return 17.8 + s_curve + organic
+
 static func _height_from_grid(i: float, j: float) -> float:
 	var wx := i / float(GRID - 1)
 	var wy := j / float(GRID - 1)
-	var windward := clampf((18.0 - i) / 10.0, 0.0, 1.0)
-	var slope := windward * (18.0 - i) * 0.55
-	var crest := exp(-pow((i - 18.0) / 3.4, 2.0)) * 5.6
-	var lee_shelf := 2.15 + exp(-pow((i - 32.0) / 7.0, 2.0)) * 0.35
-	var rolling := (fbm(i / 11.0, j / 11.0, SEED) - 0.5) * 1.55
-	var gully := -exp(-(pow((i - 28.0) / 4.5, 2.0) + pow((j - 36.0) / 3.2, 2.0))) * 1.1
-	var bench := exp(-(pow((i - 34.0) / 6.5, 2.0) + pow((j - 22.0) / 5.5, 2.0)))
+	var ridge_i := _ridge_center_i(j)
 
-	var h := maxf(slope, 0.0) + crest * (1.0 - windward * 0.15)
-	h = h * (1.0 - bench) + 2.05 * bench + lee_shelf * maxf(wx - 0.42, 0.0) * 0.4
-	h += rolling + gully + sin(wy * PI) * 0.15
+	# 1. 宏观地形：西北迎风高坡 -> 蜿蜒脊线 -> 东南背风深雪坡 -> 东北远景下沉谷口
+	var windward := clampf((ridge_i - i) / 10.5, 0.0, 1.0)
+	var slope := windward * (ridge_i - i) * 0.48
+	var crest := exp(-pow((i - ridge_i) / 3.8, 2.0)) * 5.5
+	var lee_shelf := 2.15 + exp(-pow((i - (ridge_i + 13.5)) / 7.5, 2.0)) * 0.55
+
+	# 2. 中尺度风积雪丘 (Snow Drifts) 与阶梯台地柔化 (Box 1 -> Box 2)
+	var rolling := (fbm(i / 8.5, j / 8.5, SEED, 4) - 0.5) * 1.85
+	var drift_rib := (fbm((i * 0.85 + j * 0.52) / 4.2, (j * 0.85 - i * 0.52) / 6.5, SEED + 31, 3) - 0.5) * 0.68
+	var gully := -exp(-(pow((i - 29.0) / 5.0, 2.0) + pow((j - 36.0) / 3.8, 2.0))) * 1.15
+	var bench := exp(-(pow((i - 34.0) / 6.8, 2.0) + pow((j - 22.0) / 5.8, 2.0)))
+
+	# 3. 东北/远端山谷自然下沉（让等距镜头右上角能透出远山与夕阳天际线）
+	var valley_vista := smoothstep(0.62, 0.96, wx) * smoothstep(0.55, 0.10, wy) * 1.35
+
+	var h := maxf(slope, 0.0) + crest * (1.0 - windward * 0.18)
+	h = h * (1.0 - bench) + 2.10 * bench + lee_shelf * maxf(wx - 0.40, 0.0) * 0.42
+	h += rolling + drift_rib + gully - valley_vista + sin(wy * PI) * 0.18
+
+	# 4. 轻度阶梯化（保留参考图 Box 1 -> Box 2 的台地体块结构感，外覆厚雪柔化）
+	var step_size: float = 1.15
+	var step_frac: float = fmod(maxf(h, 0.0), step_size) / step_size
+	var terraced: float = (floorf(h / step_size) + smoothstep(0.15, 0.85, step_frac)) * step_size
+	var center_guard: float = smoothstep(1.5, 5.5, Vector2(i - 20.4, j - 25.5).length())
+	h = lerpf(h, terraced, 0.22 * center_guard)
+
 	return maxf(0.2, h)
 
 static func height_at(x: float, z: float) -> float:
@@ -73,8 +97,7 @@ static func snow_depth_at(x: float, z: float) -> float:
 	var hw := _height_from_grid(maxf(0.0, i - 3.0), j)
 	var lee := clampf((hw - h) / 1.8, -1.2, 1.4)
 	var base := 0.28 + fbm(i / 6.5, j / 6.5, SEED + 91) * 0.7
-	# 背风 shelf 的深雪带：对应参考图的东南深雪坡，供雪洞/高床雪洞选址。
-	var lee_band := smoothstep(0.55, 0.78, i / float(GRID - 1)) * 1.55
+	var lee_band := smoothstep(0.52, 0.78, i / float(GRID - 1)) * 1.55
 	return clampf(base + lee * 0.62 + lee_band - maxf(0.0, h - 5.2) * 0.14, 0.04, 3.0)
 
 static func gradient_at(x: float, z: float) -> Vector2:

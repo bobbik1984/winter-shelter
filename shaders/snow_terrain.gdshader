@@ -1,8 +1,10 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 
-// M1 雪面：迎光暖金、背光群青、按坡度/高度/雪深分层。
-// 顶点色 R 通道编码归一化雪深，由 terrain_builder.gd 写入。
+// M1->M2 雪面与岩壁覆雪 Shader（主创定标版）：
+// 1. 消除直线过曝白光带，采用自然暖クリーム色受光雪面 + 群青冰蓝背风雪面；
+// 2. 加入程序化风蚀雪纹 (Sastrugi) 法线微扰动与冰晶闪点 (Sparkle)；
+// 3. 陡坡自然裸露深灰层状山岩，且岩壁朝上微台地自动覆雪。
 
 varying float snow_depth;
 varying vec3 world_normal;
@@ -10,36 +12,83 @@ varying vec3 world_pos;
 varying float slope_v;
 varying float height_v;
 
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	float a = hash21(i);
+	float b = hash21(i + vec2(1.0, 0.0));
+	float c = hash21(i + vec2(0.0, 1.0));
+	float d = hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(vec2 p) {
+	float v = 0.0;
+	float a = 0.5;
+	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	for (int i = 0; i < 4; i++) {
+		v += a * vnoise(p);
+		p = rot * p * 2.05;
+		a *= 0.5;
+	}
+	return v;
+}
+
 void vertex() {
 	snow_depth = COLOR.r;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	slope_v = 1.0 - clamp(world_normal.y, 0.0, 1.0);
-	height_v = clamp(VERTEX.y / 8.0, 0.0, 1.0);
+	height_v = clamp(VERTEX.y / 8.5, 0.0, 1.0);
 }
 
 void fragment() {
-	float up = clamp(world_normal.y, 0.0, 1.0);
-	float sun_face = clamp(dot(world_normal, normalize(vec3(-0.55, 0.50, -0.36))), 0.0, 1.0);
+	// 1. 风蚀雪波纹 (沿西北->东南风向拉长的 Sastrugi 纹理)
+	vec2 wind_uv = vec2(world_pos.x * 0.28 + world_pos.z * 0.14, world_pos.z * 0.52 - world_pos.x * 0.12);
+	float drift_n = fbm(wind_uv);
+	float detail_n = fbm(world_pos.xz * 1.35);
 
-	vec3 snow_warm = vec3(0.98, 0.88, 0.72);
-	vec3 snow_cool = vec3(0.42, 0.55, 0.78);
-	vec3 snow_deep = vec3(0.55, 0.68, 0.90);
-	vec3 rock = vec3(0.14, 0.15, 0.18);
+	// 2. 微法线扰动：让雪面呈现真实的风积凹凸起伏，告别塑料平滑感
+	float eps = 0.25;
+	float nx = fbm(wind_uv + vec2(eps, 0.0)) - drift_n;
+	float nz = fbm(wind_uv + vec2(0.0, eps)) - drift_n;
+	vec3 bumped_world_n = normalize(world_normal + vec3(-nx * 0.38, 0.0, -nz * 0.38));
+	NORMAL = normalize((VIEW_MATRIX * vec4(bumped_world_n, 0.0)).xyz);
 
-	// 朝向太阳的坡面偏暖；背光面偏群青。
-	vec3 base = mix(snow_cool, snow_warm, smoothstep(0.12, 0.82, sun_face));
-	// 陡坡露出深色岩层；深雪更冷更蓝。
-	base = mix(base, rock, smoothstep(0.50, 0.84, slope_v));
-	base = mix(base, snow_deep, smoothstep(0.25, 0.95, snow_depth) * 0.45);
-	// 高处脊线略亮，低洼处略暗，让起伏可读。
-	base *= mix(0.72, 1.08, smoothstep(0.0, 0.85, height_v));
+	float up = clamp(bumped_world_n.y, 0.0, 1.0);
+	vec3 sun_dir = normalize(vec3(-0.62, 0.38, -0.45));
+	float sun_face = clamp(dot(bumped_world_n, sun_dir), 0.0, 1.0);
 
-	float ripple = sin(world_pos.x * 1.7 + sin(world_pos.z * 1.3) * 1.4) * 0.5 + 0.5;
-	base += vec3(0.018, 0.020, 0.024) * ripple;
+	// 3. 参考图冷暖色盘：受光面暖金奶油白，背风坡冰钴蓝，凹坑深群青
+	vec3 snow_sunlit = vec3(0.95, 0.90, 0.82);
+	vec3 snow_mid_cool = vec3(0.72, 0.81, 0.93);
+	vec3 snow_deep_drift = vec3(0.56, 0.69, 0.87);
 
-	ALBEDO = base;
-	ROUGHNESS = mix(0.92, 0.48, smoothstep(0.15, 0.85, snow_depth));
-	SPECULAR = mix(0.18, 0.42, up);
-	AO = mix(0.62, 1.0, up) * mix(0.80, 1.0, smoothstep(0.0, 1.0, snow_depth));
+	vec3 snow_col = mix(snow_mid_cool, snow_sunlit, smoothstep(0.10, 0.78, sun_face));
+	snow_col = mix(snow_col, snow_deep_drift, smoothstep(0.35, 0.92, snow_depth) * (1.0 - sun_face * 0.55));
+	snow_col += (drift_n - 0.5) * vec3(0.045, 0.050, 0.065);
+
+	// 4. 陡坡岩层裸露与台地覆雪过渡（复刻参考图左侧与山脊的覆雪岩体）
+	vec3 rock_dark = vec3(0.19, 0.21, 0.25);
+	vec3 rock_warm = vec3(0.31, 0.28, 0.26);
+	vec3 rock_col = mix(rock_dark, rock_warm, detail_n * sun_face);
+	float rock_mask = smoothstep(0.34, 0.62, slope_v + (detail_n - 0.5) * 0.18 - snow_depth * 0.12);
+	vec3 base = mix(snow_col, rock_col, rock_mask);
+
+	// 5. 高频雪晶闪点 (Sparkle)
+	float sparkle_grid = hash21(floor(world_pos.xz * 14.0));
+	float sparkle = step(0.965, sparkle_grid) * sun_face * (1.0 - rock_mask) * 0.14;
+	base += vec3(sparkle);
+
+	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
+	ROUGHNESS = mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12;
+	SPECULAR = mix(0.28, 0.12, rock_mask);
+	AO = mix(0.72, 1.0, up) * mix(0.85, 1.0, drift_n);
 }
