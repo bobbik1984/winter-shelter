@@ -15,6 +15,11 @@ uniform float snow_softness : hint_range(0.01, 0.6) = 0.16;
 uniform float noise_scale = 1.7;
 uniform float noise_strength : hint_range(0.0, 0.6) = 0.22;
 uniform float base_roughness : hint_range(0.0, 1.0) = 0.92;
+// 遮挡透视：挡在玩家前面的树按抖动镂空，保证玩家永远可见。
+// focus_pos 由相机 rig 经 "occlusion_fade" 组每帧推送；occlusion_radius 为屏幕空间半径（tan 单位）。
+uniform bool occlusion_fade = false;
+uniform vec3 focus_pos = vec3(0.0);
+uniform float occlusion_radius = 0.26;
 
 varying vec3 w_normal;
 varying vec3 w_pos;
@@ -43,6 +48,21 @@ void vertex() {
 }
 
 void fragment() {
+	// 阴影 pass（平行光正交投影）不镂空，否则地上的树影会变成网点；
+	// 代价：正交相机模式下也不做透视镂空（俯视基本不遮挡）。
+	bool ortho_pass = PROJECTION_MATRIX[3][3] > 0.5;
+	if (occlusion_fade && !ortho_pass) {
+		vec3 fv = (VIEW_MATRIX * vec4(focus_pos + vec3(0.0, 0.9, 0.0), 1.0)).xyz;
+		if (-VERTEX.z < -fv.z - 1.2) {
+			vec2 d = VERTEX.xy / -VERTEX.z - fv.xy / -fv.z;
+			float k = 1.0 - smoothstep(occlusion_radius * 0.55, occlusion_radius, length(d));
+			// 4x4 Bayer 抖动
+			ivec2 c = ivec2(FRAGCOORD.xy) % 4;
+			int idx = c.x + c.y * 4;
+			float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+			if (k * 0.85 > (bayer[idx] + 0.5) / 16.0) discard;
+		}
+	}
 	float up = normalize(w_normal).y;
 	float n = vnoise(w_pos * noise_scale) - 0.5;
 	float threshold = mix(1.0, -0.25, snow_amount);

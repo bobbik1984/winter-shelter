@@ -9,6 +9,11 @@ extends Control
 @onready var probe_text: Label = $ProbePopup/Margin/ProbeText
 
 var popup_timer: float = 0.0
+## 日落时刻字符串，由 MainLevel 从 WeatherController.sunset_clock() 注入。
+var _sunset_clock: String = "16:18"
+
+func set_sunset_clock(clock: String) -> void:
+	_sunset_clock = clock
 
 func _ready() -> void:
 	if probe_popup:
@@ -24,7 +29,7 @@ func update_time(time_str: String, sunset_str: String) -> void:
 	if time_label:
 		time_label.text = "Jan 14  " + time_str
 	if sunset_label:
-		sunset_label.text = "Sunset 16:18 (" + sunset_str + " left)"
+		sunset_label.text = "Sunset %s (%s left)" % [_sunset_clock, sunset_str]
 
 func update_weather(temp: float, wind_str: String) -> void:
 	if temp_label:

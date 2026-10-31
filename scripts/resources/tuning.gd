@@ -24,6 +24,14 @@ extends Resource
 ## [TUNE] 一个游戏小时对应的现实秒数。
 @export var real_seconds_per_game_hour: float = 300.0
 
+@export_group("Sun")
+## [REAL] 场景纬度 47.8°N（中纬度山地；与 1 月 14 日 16:18 日落一致）。
+@export var sun_latitude_deg: float = 47.8
+## [REAL] 1 月 14 日太阳赤纬约 -21.3°。
+@export var sun_declination_deg: float = -21.3
+## [GAME] 真太阳时正午 12:00 = 720 分钟（忽略时差方程与时区偏移）。
+@export var solar_noon_minutes: float = 720.0
+
 # -----------------------------------------------------------------------------
 # 天气
 # -----------------------------------------------------------------------------

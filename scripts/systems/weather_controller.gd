@@ -8,39 +8,62 @@ signal weather_updated(temp_celsius: float, wind_str: String)
 @export var sun_light: DirectionalLight3D
 @export var time_scale: float = 12.0 # 现实 1 秒 = 游戏 12 秒
 
-# 14:20 = 860 分钟，16:18 = 978 分钟
+const TUNING_PATH := "res://resources/tuning.tres"
+## [GAME] 太阳光强与色温随高度角变化：低角度暖橙、高角度近白金。
+const SUN_ENERGY_DAY := 1.35
+const SUN_COLOR_LOW := Color(1.0, 0.52, 0.22)
+const SUN_COLOR_HIGH := Color(1.0, 0.90, 0.76)
+
+var tuning: Tuning
 var current_time_minutes: float = 860.0
-const SUNSET_MINUTES: float = 978.0
+var sunset_minutes: float = 978.0
+## 当前太阳高度角 / 方位角（°），供 HUD 或教学提示读取。
+var sun_elevation_deg: float = 0.0
+var sun_azimuth_deg: float = 0.0
 
 func _ready() -> void:
 	if wind_data == null:
 		wind_data = WindData.new()
+	tuning = load(TUNING_PATH) as Tuning
+	if tuning == null:
+		tuning = Tuning.new()
+	current_time_minutes = float(tuning.start_minutes)
+	sunset_minutes = SunModel.sunset_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
 	_update_weather_signals()
+	_apply_sun.call_deferred()
 
 func _process(delta: float) -> void:
 	current_time_minutes += (delta * time_scale) / 60.0
-	
-	# 格式化时间
+
 	var total_min = int(current_time_minutes)
-	var hrs = total_min / 60
-	var mins = total_min % 60
-	var time_str = "%02d:%02d" % [hrs, mins]
-	
-	var rem_min = int(max(0.0, SUNSET_MINUTES - current_time_minutes))
-	var rem_hrs = rem_min / 60
-	var rem_m = rem_min % 60
-	var rem_str = "%dh %02dm" % [rem_hrs, rem_m]
-	
+	var time_str = "%02d:%02d" % [total_min / 60, total_min % 60]
+	var rem_min = int(max(0.0, sunset_minutes - current_time_minutes))
+	var rem_str = "%dh %02dm" % [rem_min / 60, rem_min % 60]
 	time_changed.emit(time_str, rem_str)
-	
-	# 更新落日光线
-	if sun_light:
-		var progress = clamp((current_time_minutes - 860.0) / (SUNSET_MINUTES - 860.0), 0.0, 1.0)
-		# [GAME] 低角度逆光：俯角从 8° 降到 0.5°（太阳要留在移轴镜头的画面上沿内）
-		sun_light.rotation_degrees.x = lerp(-8.0, -0.5, progress)
-		# 颜色从微冷白渐变到低角度落日金黄
-		sun_light.light_color = Color(1.0, 0.82, 0.60).lerp(Color(1.0, 0.48, 0.15), progress)
-		get_tree().call_group("sun_receivers", "set_sun_dir", sun_light.global_transform.basis.z.normalized())
+	_apply_sun()
+
+## 太阳沿真实日轨移动：方位自东南经南到西南，高度角先升后降——影子长→短→长。
+func _apply_sun() -> void:
+	if sun_light == null:
+		return
+	var p := SunModel.position(current_time_minutes, tuning.sun_latitude_deg,
+		tuning.sun_declination_deg, tuning.solar_noon_minutes)
+	sun_elevation_deg = p.x
+	sun_azimuth_deg = p.y
+	var to_sun := SunModel.direction(current_time_minutes, tuning.sun_latitude_deg,
+		tuning.sun_declination_deg, tuning.solar_noon_minutes)
+	# 光照方向 = 从太阳射来；DirectionalLight3D 沿自身 -Z 照射，所以 +Z 指向太阳
+	sun_light.global_transform.basis = Basis.looking_at(-to_sun, Vector3.UP)
+	var day := smoothstep(-1.0, 4.0, p.x)
+	sun_light.light_energy = SUN_ENERGY_DAY * day
+	sun_light.light_color = SUN_COLOR_LOW.lerp(SUN_COLOR_HIGH, smoothstep(2.0, 22.0, p.x))
+	sun_light.shadow_enabled = day > 0.01
+	get_tree().call_group("sun_receivers", "set_sun_dir", to_sun)
+
+## 当前时刻的 HH:MM 日落字符串（HUD 用，不再写死 16:18）。
+func sunset_clock() -> String:
+	var m := int(round(sunset_minutes))
+	return "%02d:%02d" % [m / 60, m % 60]
 
 func _update_weather_signals() -> void:
 	var wind_str = "W %d km/h" % [int(wind_data.speed_kmh)]

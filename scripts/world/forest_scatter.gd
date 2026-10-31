@@ -22,7 +22,7 @@ const KEEP_OUT := [
 
 ## 视野走廊：从出生点朝远景（相机前方 / 落日）方向稀疏化树木，露出山谷与天际线。
 const VISTA_ORIGIN := Vector2(18.0, 8.0)
-const VISTA_DIR := Vector2(0.7071, -0.7071)
+const VISTA_DIR := Vector2(-0.7071, 0.7071)
 ## [TUNE] 走廊半角（度）与走廊内保留比例。
 @export var vista_half_angle_deg: float = 28.0
 @export var vista_keep_ratio: float = 0.12
@@ -36,7 +36,15 @@ const VISTA_DIR := Vector2(0.7071, -0.7071)
 @export var rock_count: int = 46
 @export var seed_idx: int = 3
 
+var _fade_materials: Array[ShaderMaterial] = []
+
+## "occlusion_fade" 组回调：玩家位置，用于把挡住玩家的树镂空。
+func set_focus(pos: Vector3) -> void:
+	for m in _fade_materials:
+		m.set_shader_parameter("focus_pos", pos)
+
 func _ready() -> void:
+	add_to_group("occlusion_fade")
 	if wind_data == null:
 		wind_data = load("res://resources/default_wind.tres") as WindData
 	var blow := wind_data.get_blow_direction_3d() if wind_data else Vector3.RIGHT
@@ -56,7 +64,15 @@ func _in_vista(x: float, z: float) -> bool:
 	var d := Vector2(x, z) - VISTA_ORIGIN
 	if d.length() < 6.0:
 		return false
+	# 前方视野走廊 + 出生点身后（相机一侧）25 m 内的空地
+	if d.dot(-VISTA_DIR) > 0.0 and d.length() < 25.0 and absf(rad_to_deg(d.angle_to(-VISTA_DIR))) < 40.0:
+		return true
 	return absf(rad_to_deg(d.angle_to(VISTA_DIR))) < vista_half_angle_deg
+
+
+func _enable_fade(m: ShaderMaterial) -> void:
+	m.set_shader_parameter("occlusion_fade", true)
+	_fade_materials.append(m)
 
 
 func _material(base: Color, snow_amount: float, softness: float = 0.16) -> ShaderMaterial:
@@ -97,6 +113,7 @@ func _scatter_spruce(blow: Vector3) -> void:
 				Vector3(x, TerrainHeight.height_at(x, z) - 0.15, z))
 			buckets[(i * 7 + j * 3) % SPRUCE_VARIANTS].append(t)
 	var mat := _material(Color(0.05, 0.13, 0.10), 0.70)
+	_enable_fade(mat)
 	for v in range(SPRUCE_VARIANTS):
 		_add_multimesh("Spruce%d" % v, SpruceMesh.build(20 + v, blow), mat, buckets[v], true)
 
@@ -120,6 +137,7 @@ func _scatter_snags() -> void:
 		buckets[k % SNAG_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.2, z)))
 		placed += 1
 	var mat := _material(Color(0.34, 0.27, 0.21), 0.25, 0.10)
+	_enable_fade(mat)
 	for v in range(SNAG_VARIANTS):
 		_add_multimesh("Snag%d" % v, PropMeshes.snag(40 + v), mat, buckets[v], true)
 

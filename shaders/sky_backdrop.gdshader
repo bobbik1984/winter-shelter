@@ -44,8 +44,14 @@ void sky() {
 	col += sun_color * (pow(sd, 18.0) * 0.6 + pow(sd, 400.0) * 1.5) * sun_glow * (1.0 - up * 0.6);
 	col += vec3(1.0, 0.90, 0.70) * smoothstep(1.0 - sun_size, 1.0 - sun_size * 0.5, sd) * 3.0;
 
+	// 日落后：天空整体转入暮色 / 夜色；太阳越低地平线暖带越浓
+	float day = smoothstep(-0.12, 0.10, sun.y);
+	float dusk = 1.0 - smoothstep(0.02, 0.30, sun.y);
+	col = mix(col, col * vec3(1.05, 0.82, 0.70), dusk * pow(toward, 1.5) * (1.0 - up) * 0.6);
+	vec3 night = mix(vec3(0.05, 0.07, 0.14), vec3(0.01, 0.02, 0.05), pow(up, 0.5));
+	col = mix(night, col, day);
 	if (dir.y < 0.0) {
-		col = mix(horizon, ground_color, clamp(-dir.y * 3.0, 0.0, 1.0));
+		col = mix(mix(night, horizon, day), ground_color * mix(0.15, 1.0, day), clamp(-dir.y * 3.0, 0.0, 1.0));
 	}
 	COLOR = col;
 }

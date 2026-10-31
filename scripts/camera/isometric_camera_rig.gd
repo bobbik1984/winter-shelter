@@ -11,9 +11,9 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 @export var camera_size: float = 18.0
 ## 俯仰角（度）。-38° 为当前仓库既有值，保持到 T1.3 再定稿。
 @export var camera_pitch_degrees: float = -38.0
-## 偏航角（度）。-45°：从迎风脊线一侧俯看背风坡与远处山谷 / 落日（north star 构图）。
-## 玩家输入与罗盘都从相机朝向推导，改这里不需要改别处。
-@export var camera_yaw_degrees: float = -45.0
+## 偏航角（度）。135° = 镜头朝西南：1 月午后太阳的真实方位（SunModel），
+## 太阳与影子随时间在画面里移动、变长。玩家输入与罗盘都从相机朝向推导。
+@export var camera_yaw_degrees: float = 135.0
 @export var target: Node3D
 @export var follow_speed: float = 6.0
 
@@ -26,7 +26,7 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 ## [TUNE] 光轴俯仰（度）：接近 0 = 竖线不汇聚。
 @export var tilt_shift_pitch_degrees: float = 0.0
 ## [TUNE] 镜头下移量（占半高比例，负 = 向下看地面）。
-@export var lens_shift: float = -0.52
+@export var lens_shift: float = -0.38
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var player_screen_y: float = 0.58
 ## [TUNE] 默认相机到玩家的距离（m）；滚轮按比例推拉。
@@ -120,3 +120,5 @@ func _process(delta: float) -> void:
 		global_position = global_position.lerp(target.global_position, follow_speed * delta)
 	# 基向量只随模式变；每帧推送开销很小，也顺带处理窗口缩放后的宽高比
 	_push_lens()
+	if is_instance_valid(target):
+		get_tree().call_group("occlusion_fade", "set_focus", target.global_position)

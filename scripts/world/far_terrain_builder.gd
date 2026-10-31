@@ -47,8 +47,8 @@ func _build_coords() -> PackedFloat32Array:
 		all.append(v)
 	return all
 
-## 远景方向（= 相机前方、太阳方位）：这一侧做深谷，远处才起山，留出天际线与落日。
-const VISTA_DIR := Vector2(0.7071, -0.7071)
+## 远景方向（= 相机前方 = 西南，午后太阳方位）：这一侧做深谷，远处才起山，留出天际线与落日。
+const VISTA_DIR := Vector2(-0.7071, 0.7071)
 
 func _height(x: float, z: float) -> float:
 	var cx := clampf(x, -map_half, map_half)

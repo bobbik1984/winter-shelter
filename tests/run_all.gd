@@ -20,6 +20,7 @@ const SUITES := [
 	{"name": "snow_field", "path": "res://tests/test_snow_field.gd", "required": false},
 	{"name": "warmth", "path": "res://tests/test_warmth.gd", "required": true},
 	{"name": "shelter_builder", "path": "res://tests/test_shelter_builder.gd", "required": true},
+	{"name": "sun_model", "path": "res://tests/test_sun_model.gd", "required": true},
 ]
 
 

@@ -33,6 +33,7 @@ func _ready() -> void:
 
 	# 天气信号连接到 HUD
 	if weather and hud:
+		hud.set_sunset_clock(weather.sunset_clock())
 		weather.time_changed.connect(hud.update_time)
 		weather.weather_updated.connect(hud.update_weather)
 

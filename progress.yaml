@@ -79,3 +79,10 @@ visual_pass_2:
   scope: "north star 构图：默认移轴透视 + 太阳入画、远景深谷/远山/远景林、地图内密林+枯立木+岩石（MultiMesh 分块）、逆光雪面、泛光/SSAO"
   evidence: "run_all.gd 155 PASS；snapshots/visual_pass2_{tiltshift,ortho}.png；本机 ~12 FPS（基线 13）"
   note: "未人工 F5；性能仅在 Intel UHD 620 上测过"
+
+visual_pass_3:
+  branch: claude/visual-pass-1
+  status: written-unverified
+  scope: "真实日轨 SunModel（影子长→短→长 = 时钟）、相机朝西南、暮色/夜色天空、挡人树木镂空"
+  evidence: "run_all.gd 164 PASS（新增 sun_model 9 条）；snapshots/visual_pass3_sun_cycle.png（10:00/14:20/16:05/16:40）；本机 ~13 FPS"
+  note: "未人工 F5"

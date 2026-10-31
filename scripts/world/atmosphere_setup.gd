@@ -3,15 +3,19 @@ extends WorldEnvironment
 ## M1->M2 大气与夕阳光照（主创定标版）：
 ## 对齐 VISUAL_LANGUAGE.md：低角度暖金夕阳（俯角 -24°）+ 钴蓝高空环境光 + 远景暖雾。
 
-const SUN_YAW_DEG := 135.0
 const SKY_SHADER := preload("res://shaders/sky_backdrop.gdshader")
 
 var _sky_mat: ShaderMaterial
 
-## "sun_receivers" 组回调：天空 shader 的太阳方向。
+## "sun_receivers" 组回调：天空 shader 的太阳方向 + 随日高变化的环境光 / 雾。
 func set_sun_dir(dir: Vector3) -> void:
 	if _sky_mat:
 		_sky_mat.set_shader_parameter("sun_dir", dir)
+	if environment:
+		var day := smoothstep(-0.10, 0.12, dir.y)
+		environment.ambient_light_energy = lerpf(0.18, 0.75, day)
+		environment.fog_light_energy = lerpf(0.12, 0.75, day)
+		environment.fog_sun_scatter = 0.25 * day
 
 ## "lens_receivers" 组回调：移轴镜头参数（见 sky_backdrop.gdshader 的说明）。
 func set_lens(enabled: bool, half_t: float, aspect: float, shift_t: float, basis: Basis) -> void:
@@ -72,13 +76,7 @@ func _ready() -> void:
 
 	var sun := get_parent().get_node_or_null("SunLight") as DirectionalLight3D
 	if sun:
-		# [GAME] 构图：太阳摆在相机正前方（相机偏航 -45° → 太阳方位 135°），
-		# 低角度逆光，拉出朝向镜头的长树影（north star）。高度由 WeatherController 随时间推进。
-		sun.rotation_degrees = Vector3(-8.0, SUN_YAW_DEG, 0.0)
-		sun.light_color = Color(1.0, 0.80, 0.56)
-		sun.light_energy = 1.35
+		# 太阳的方向 / 颜色 / 强度由 WeatherController 按 SunModel 真实日轨驱动，这里只设阴影质量。
 		sun.shadow_enabled = true
 		sun.directional_shadow_max_distance = 90.0
 		sun.shadow_blur = 1.2
-		# 等兄弟节点（地形）_ready 完再推送
-		get_tree().call_group.call_deferred("sun_receivers", "set_sun_dir", sun.global_transform.basis.z.normalized())

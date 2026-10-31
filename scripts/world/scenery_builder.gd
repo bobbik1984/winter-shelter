@@ -18,7 +18,7 @@ const SPECIAL_DEADWOOD := Vector3(5.5, 0.0, 3.5)
 var _mat_green: StandardMaterial3D
 var _mat_snow: StandardMaterial3D
 var _mat_bark: StandardMaterial3D
-var _mat_deadwood: StandardMaterial3D
+var _mat_deadwood: Material
 var _mat_rock: StandardMaterial3D
 var _mat_grass: StandardMaterial3D
 var _mat_footprint: StandardMaterial3D
@@ -52,9 +52,16 @@ func _make_materials() -> void:
 	_mat_spruce.shader = SNOW_COVER_SHADER
 	_mat_spruce.set_shader_parameter("base_color", Color(0.06, 0.15, 0.11))
 	_mat_spruce.set_shader_parameter("snow_amount", 0.72)
+	_mat_spruce.set_shader_parameter("occlusion_fade", true)
+	add_to_group("occlusion_fade")
 	_mat_snow = _make_material(Color(0.92, 0.95, 1.0), 0.78)
 	_mat_bark = _make_material(Color(0.16, 0.11, 0.07), 0.95)
-	_mat_deadwood = _make_material(Color(0.30, 0.27, 0.23), 0.96)
+	var dw := ShaderMaterial.new()
+	dw.shader = SNOW_COVER_SHADER
+	dw.set_shader_parameter("base_color", Color(0.30, 0.25, 0.20))
+	dw.set_shader_parameter("snow_amount", 0.22)
+	dw.set_shader_parameter("occlusion_fade", true)
+	_mat_deadwood = dw
 	_mat_rock = _make_material(Color(0.12, 0.13, 0.16), 0.98)
 	_mat_grass = _make_material(Color(0.68, 0.56, 0.32), 0.94)
 	_mat_footprint = _make_material(Color(0.42, 0.49, 0.60), 0.92)
@@ -64,6 +71,12 @@ func _make_materials() -> void:
 	_mat_ring.emission_enabled = true
 	_mat_ring.emission = Color(1.0, 0.55, 0.12)
 	_mat_ring.emission_energy_multiplier = 2.2
+
+## "occlusion_fade" 组回调（见 snow_cover.gdshader）。
+func set_focus(pos: Vector3) -> void:
+	for m in [_mat_spruce, _mat_deadwood]:
+		if m is ShaderMaterial:
+			(m as ShaderMaterial).set_shader_parameter("focus_pos", pos)
 
 func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -340,7 +353,7 @@ func _deadwood(pos: Vector3, scale_factor: float, yaw_deg: float, seed_idx: int)
 		)
 
 func _add_cone(parent: Node3D, bottom_radius: float, height: float, y: float,
-		material: StandardMaterial3D) -> MeshInstance3D:
+		material: Material) -> MeshInstance3D:
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = 0.0
 	mesh.bottom_radius = bottom_radius
@@ -357,7 +370,7 @@ func _add_cone(parent: Node3D, bottom_radius: float, height: float, y: float,
 	return mi
 
 func _add_cylinder(parent: Node3D, top_radius: float, bottom_radius: float,
-		height: float, y: float, material: StandardMaterial3D) -> MeshInstance3D:
+		height: float, y: float, material: Material) -> MeshInstance3D:
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = top_radius
 	mesh.bottom_radius = bottom_radius
@@ -372,7 +385,7 @@ func _add_cylinder(parent: Node3D, top_radius: float, bottom_radius: float,
 	return mi
 
 func _add_branch(parent: Node3D, y: float, yaw_degrees: float,
-		length: float, radius: float, material: StandardMaterial3D) -> void:
+		length: float, radius: float, material: Material) -> void:
 	var pivot := Node3D.new()
 	pivot.position = Vector3(0.0, y, 0.0)
 	pivot.rotation_degrees = Vector3(0.0, yaw_degrees, 58.0)
