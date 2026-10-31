@@ -19,6 +19,11 @@ signal changed(level: int)
 signal cycled(level: int)
 
 var level: int = 1
+## 启动后窗口会重建一次 swapchain（窗口管理器映射 / 调整窗口）。在那之前改 3D 渲染缩放 / 阴影设置
+## 偶发引擎原生崩溃（模糊测试复现）。所以等 READY_FRAMES 帧后才应用设置，之前的 F10 忽略。
+const READY_FRAMES := 30
+var _ready_frames := 0
+var _ready_to_apply := false
 ## 界面缩放（可读性）：[-] / [=] 切换，保存。
 const UI_SCALES := [0.9, 1.0, 1.15, 1.3]
 var ui_scale_idx: int = 1
@@ -30,7 +35,7 @@ func _ready() -> void:
 		AudioServer.set_bus_mute(0, bool(cfg.get_value("audio", "muted", false)))
 		ui_scale_idx = clampi(int(cfg.get_value("ui", "scale_idx", 1)), 0, UI_SCALES.size() - 1)
 	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
-	apply.call_deferred()
+	set_process(true)
 
 ## [M] 静音（保存）；[F11] 全屏（不保存，跟随窗口）。
 func toggle_mute() -> bool:
@@ -55,7 +60,16 @@ func toggle_fullscreen() -> void:
 	var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
+func _process(_delta: float) -> void:
+	_ready_frames += 1
+	if _ready_frames >= READY_FRAMES:
+		_ready_to_apply = true
+		set_process(false)
+		apply()
+
 func cycle() -> void:
+	if not _ready_to_apply:
+		return
 	level = (level + 1) % PRESETS.size()
 	apply()
 	cycled.emit(level)
