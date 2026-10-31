@@ -87,7 +87,7 @@ func _ready() -> void:
 
 	graphics = GraphicsSettings.new()
 	add_child(graphics)
-	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast(Loc.t("Graphics: %s  [F10]") % graphics.level_name(), 2.5))
+	graphics.cycled.connect(func(l: int) -> void: if ui: ui.toast(Loc.t("Graphics: %s  [F10]") % graphics.level_name(), 2.5))
 
 	var prints := Footprints.new()
 	prints.name = "Footprints"

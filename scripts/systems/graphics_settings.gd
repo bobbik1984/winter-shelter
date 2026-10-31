@@ -15,6 +15,8 @@ const PRESETS := [
 ]
 
 signal changed(level: int)
+## 只在玩家按 F10 切换时发出（启动时应用存档不提示）。
+signal cycled(level: int)
 
 var level: int = 1
 
@@ -27,6 +29,7 @@ func _ready() -> void:
 func cycle() -> void:
 	level = (level + 1) % PRESETS.size()
 	apply()
+	cycled.emit(level)
 	var cfg := ConfigFile.new()
 	cfg.set_value("graphics", "level", level)
 	cfg.save(PATH)
