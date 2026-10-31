@@ -111,4 +111,8 @@ polish:
   - {id: P7, text: "树干 / 岩石 / 树根碰撞", status: written-unverified, note: "射线检测 9/9 命中；林间仍可穿行"}
   - {id: P8, text: "合成动作音效（探针 / 砍 / 采 / 挖 / 生火）", status: written-unverified, note: "录音验证有起音与衰减"}
   - {id: P9, text: "体感：呼吸白汽随体温加快、低体温寒颤", status: written-unverified}
+  - {id: P10, text: "界面缩放 [-]/[=]（90–130%，保存）", status: written-unverified, note: "1.3x 截图无重叠"}
+  - {id: P11, text: "风积雪枕标出最深雪区（Read the Land 第 2 条）", status: written-unverified, note: "雪深 >= 2.2 m 处 21 个，顺风拉长，无碰撞"}
+  - {id: P12, text: "导出预设 Linux / Windows + tools/build.sh", status: blocked, note: "预设可被 Godot 解析；缺 4.3.stable 导出模板（需授权下载）"}
+  - {id: P13, text: "低画质雪面简化路径", status: done, note: "测量在噪声范围内；本机每帧约 13 ms 为固定呈现开销"}
   - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}
