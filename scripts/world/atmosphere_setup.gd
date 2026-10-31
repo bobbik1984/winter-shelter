@@ -23,16 +23,16 @@ func _ready() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_sky_contribution = 0.62
 	env.ambient_light_color = Color(0.38, 0.52, 0.78)
-	env.ambient_light_energy = 0.68
+	env.ambient_light_energy = 0.55
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 0.82
+	env.tonemap_exposure = 0.58
 	env.tonemap_white = 4.5
 
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.72, 0.76, 0.86)
 	env.fog_light_energy = 0.65
-	env.fog_density = 0.0035
+	env.fog_density = 0.0028
 	env.fog_aerial_perspective = 0.70
 	env.fog_sky_affect = 0.40
 
@@ -43,7 +43,7 @@ func _ready() -> void:
 		# 低角度西北偏西落日：拉出斜向长树影，同时避免脊线正顶面垂直过曝
 		sun.rotation_degrees = Vector3(-24.0, -42.0, 0.0)
 		sun.light_color = Color(1.0, 0.78, 0.54)
-		sun.light_energy = 1.15
+		sun.light_energy = 0.90
 		sun.shadow_enabled = true
 		sun.directional_shadow_max_distance = 110.0
 		sun.shadow_blur = 1.35
