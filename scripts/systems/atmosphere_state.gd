@@ -16,8 +16,17 @@ var sun_azimuth_deg: float = 215.0
 var day: float = 1.0
 ## 傍晚降雪强度 0..1。
 var snowfall: float = 0.0
+## 云量 0..1（阴天 / 暴风雪）。
+var cloud: float = 0.0
+## 当前风速（km/h）与天气类型（"clear" / "overcast" / "storm"）。
+var wind_kmh: float = 32.0
+var kind: String = "clear"
 
-func update(p_minutes: float, p_sun_dir: Vector3, elevation: float, azimuth: float, p_snowfall: float) -> void:
+func update(p_minutes: float, p_sun_dir: Vector3, elevation: float, azimuth: float, p_snowfall: float,
+		p_cloud: float = 0.0, p_wind: float = 32.0, p_kind: String = "clear") -> void:
+	cloud = p_cloud
+	wind_kmh = p_wind
+	kind = p_kind
 	minutes = p_minutes
 	sun_dir = p_sun_dir
 	sun_elevation_deg = elevation

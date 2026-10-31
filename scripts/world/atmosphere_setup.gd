@@ -30,8 +30,17 @@ func set_lens(enabled: bool, half_t: float, aspect: float, shift_t: float, basis
 func _connect_atmosphere() -> void:
 	var a := AtmosphereState.of(get_tree())
 	if a:
-		a.changed.connect(func(s: AtmosphereState) -> void: set_sun_dir(s.sun_dir))
+		a.changed.connect(func(s: AtmosphereState) -> void:
+			set_sun_dir(s.sun_dir)
+			set_cloud(s.cloud))
 		set_sun_dir(a.sun_dir)
+
+## 云量：天空变灰、雾更浓、环境光更平。
+func set_cloud(c: float) -> void:
+	if _sky_mat:
+		_sky_mat.set_shader_parameter("cloud", c)
+	if environment:
+		environment.fog_density = lerpf(0.0011, 0.004, c)
 
 func _ready() -> void:
 	var env := Environment.new()

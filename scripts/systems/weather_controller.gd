@@ -27,6 +27,10 @@ var atmosphere := AtmosphereState.new()
 const SNOW_START_MINUTES := 960.0
 const SNOW_RAMP_MINUTES := 70.0
 
+## 本局天气（每局开局抽取；测试可用命令行 -- --weather=storm 指定）。
+var weather_kind: String = "clear"
+var _last_wind_int := -1
+
 func _ready() -> void:
 	add_to_group("weather")
 	if wind_data == null:
@@ -37,6 +41,7 @@ func _ready() -> void:
 	current_time_minutes = float(tuning.start_minutes)
 	time_scale = 3600.0 / maxf(tuning.real_seconds_per_game_hour, 1.0)
 	sunset_minutes = SunModel.sunset_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
+	weather_kind = _roll_weather()
 	_update_weather_signals()
 	_apply_sun.call_deferred()
 
@@ -63,11 +68,17 @@ func _apply_sun() -> void:
 	# 光照方向 = 从太阳射来；DirectionalLight3D 沿自身 -Z 照射，所以 +Z 指向太阳
 	sun_light.global_transform.basis = Basis.looking_at(-to_sun, Vector3.UP)
 	var day := smoothstep(-1.0, 4.0, p.x)
-	sun_light.light_energy = SUN_ENERGY_DAY * day
+	var cloud := current_cloud()
+	sun_light.light_energy = SUN_ENERGY_DAY * day * (1.0 - 0.65 * cloud)
 	sun_light.light_color = SUN_COLOR_LOW.lerp(SUN_COLOR_HIGH, smoothstep(2.0, 22.0, p.x))
 	sun_light.shadow_enabled = day > 0.01
-	var snow := clampf((current_time_minutes - SNOW_START_MINUTES) / SNOW_RAMP_MINUTES, 0.0, 1.0) * 0.9
-	atmosphere.update(current_time_minutes, to_sun, p.x, p.y, snow)
+	var snow_start := SNOW_START_MINUTES - (30.0 if weather_kind == "storm" else 0.0)
+	var snow := clampf((current_time_minutes - snow_start) / SNOW_RAMP_MINUTES, 0.0, 1.0) * (1.0 if weather_kind == "storm" else 0.9)
+	var wind := current_wind_kmh()
+	atmosphere.update(current_time_minutes, to_sun, p.x, p.y, snow, cloud, wind, weather_kind)
+	if int(wind) != _last_wind_int:
+		_last_wind_int = int(wind)
+		_update_weather_signals()
 
 ## 动作消耗游戏时间：时钟直接跳进（采集 / 建造 / 融雪），太阳随之更新。
 func advance_minutes(minutes: float) -> void:
@@ -86,6 +97,43 @@ func sunset_clock() -> String:
 	var m := int(round(sunset_minutes))
 	return "%02d:%02d" % [m / 60, m % 60]
 
+func _roll_weather() -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--weather="):
+			return a.substr(10)
+	var total := tuning.weather_weight_clear + tuning.weather_weight_overcast + tuning.weather_weight_storm
+	var r := randf() * maxf(total, 0.001)
+	if r < tuning.weather_weight_clear:
+		return "clear"
+	if r < tuning.weather_weight_clear + tuning.weather_weight_overcast:
+		return "overcast"
+	return "storm"
+
+## 暴风雪进程 0..1（其余天气恒为 0）。
+func storm_progress() -> float:
+	if weather_kind != "storm":
+		return 0.0
+	return clampf((current_time_minutes - tuning.storm_start_minutes) / tuning.storm_ramp_minutes, 0.0, 1.0)
+
+func current_cloud() -> float:
+	match weather_kind:
+		"overcast": return tuning.overcast_cloud
+		"storm": return lerpf(0.25, 0.9, storm_progress())
+	return 0.0
+
+func current_wind_kmh() -> float:
+	return wind_data.speed_kmh + tuning.storm_extra_wind_kmh * storm_progress()
+
+## 夜间气温：暴风雪夜更冷。
+func night_temp_c() -> float:
+	return tuning.temp_at_night_c - (tuning.storm_extra_cold_c if weather_kind == "storm" else 0.0)
+
+func forecast_text() -> String:
+	match weather_kind:
+		"overcast": return "Forecast: overcast — a weak, hazy sun. Shadows will be faint; keep an eye on the clock."
+		"storm": return "Forecast: a storm is coming in this afternoon — stronger wind, early snow, a colder night."
+	return "Forecast: clear and cold — long, sharp shadows to read the time by."
+
 func _update_weather_signals() -> void:
-	var wind_str = "W %d km/h" % [int(wind_data.speed_kmh)]
+	var wind_str = "W %d km/h" % [int(current_wind_kmh() if tuning else wind_data.speed_kmh)]
 	weather_updated.emit(wind_data.temperature_celsius, wind_str)

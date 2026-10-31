@@ -509,6 +509,19 @@ extends Resource
 ## [GAME] 入睡时降雪强度达到此值，单根且没插木棍的通风管会被新雪部分堵塞（报告里可解释、可预防）。
 @export var vent_clog_snowfall: float = 0.5
 
+@export_group("Weather Variety")
+## [GAME] 每局天气的抽取权重：晴 / 阴 / 暴风雪将至。
+@export var weather_weight_clear: float = 0.5
+@export var weather_weight_overcast: float = 0.3
+@export var weather_weight_storm: float = 0.2
+## [GAME] 阴天云量（0..1）：天空发灰、太阳变弱、影子变淡。
+@export var overcast_cloud: float = 0.7
+## [GAME] 暴风雪：开始增强的时刻（分钟）、增强用时、最大风速增量（km/h）、夜间额外降温（°C）。
+@export var storm_start_minutes: float = 930.0
+@export var storm_ramp_minutes: float = 90.0
+@export var storm_extra_wind_kmh: float = 20.0
+@export var storm_extra_cold_c: float = 5.0
+
 @export_group("Campfire")
 ## [GAME] 生火按住秒数。
 @export var fire_hold_seconds: float = 2.0

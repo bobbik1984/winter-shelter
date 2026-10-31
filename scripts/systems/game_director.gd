@@ -151,7 +151,7 @@ func _enter_briefing() -> void:
 	interaction.enabled = false
 	_saved_time_scale = weather.time_scale
 	weather.time_scale = 0.0
-	ui.show_briefing(true)
+	ui.show_briefing(true, weather.forecast_text())
 
 func start_game() -> void:
 	state = State.PLAYING
@@ -347,6 +347,7 @@ func _tick_playing(delta: float) -> void:
 	var atm := weather.atmosphere
 	if _compass:
 		_compass.set_sun(atm.sun_azimuth_deg, atm.sun_elevation_deg)
+	audio.wind_strength = clampf(atm.wind_kmh / 40.0, 0.2, 1.4)
 	ui.set_objective(GameRules.next_objective(_objective_ctx(), tuning))
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = atm.snowfall
@@ -409,7 +410,7 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 		var pp := player.global_position
 		audio.exposure = 1.0 - float(w["windbreak"])
 		if spindrift:
-			spindrift.intensity = audio.exposure
+			spindrift.intensity = audio.exposure * clampf(weather.atmosphere.wind_kmh / 32.0, 0.5, 1.6)
 		audio.shelter_level = int(w["level"])
 		audio.fire = float(w["fire"])
 		audio.speed = player.current_speed
@@ -756,5 +757,6 @@ func night_input() -> Dictionary:
 			input["fire_exposure"] = GameRules.fire_exposure(lee, site.near_windbreak, _tree_cover(sp))
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
-	input["wind_speed_kmh"] = wind.speed_kmh
+	input["wind_speed_kmh"] = weather.current_wind_kmh()
+	input["night_temp_c"] = weather.night_temp_c()
 	return input

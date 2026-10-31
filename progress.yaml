@@ -98,6 +98,6 @@ phases:
       - {id: V4, text: "Blender 角色 + 动画", status: written-unverified, note: "tools/blender/build_hiker.py → assets/models/char_survivor.glb（~900 三角面）；Idle/Walk/Probe/Dig；snapshots/v4_hiker_poses.png"}
       - {id: V5, text: "枯立木 / 岩石可读性", status: written-unverified, note: "snow_cover RIM 边缘光 + 更亮树皮色"}
       - {id: V6, text: "远景冰湖 / 河谷", status: written-unverified, note: "远景谷底冰湖；出生点视角被迎风脊挡住，需走到西侧才看得到"}
-      - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: written-unverified, note: "WeatherController 唯一写入；天空 / 雪面 / 罗盘 / 降雪 / 头灯订阅；云量与暴风雪未做"}
+      - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: written-unverified, note: "WeatherController 唯一写入；天空 / 雪面 / 罗盘 / 降雪 / 头灯订阅；每局天气：晴 / 阴（云量）/ 暴风雪将至（风 +20 km/h、早雪、夜 -5 °C），简报预报"}
       - {id: V8, text: "脚印与拖痕", status: written-unverified, note: "Footprints 环形 MultiMesh；拖痕未做"}
       - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: written-unverified, note: "Tuning Camera 组 tilt_*；热键对比未做"}

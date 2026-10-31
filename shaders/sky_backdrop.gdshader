@@ -15,6 +15,8 @@ uniform float sun_size = 0.00028;
 uniform float sun_glow = 0.75;
 uniform vec3 sun_dir = vec3(0.70, 0.14, -0.70);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.80, 0.56);
+// 云量 0..1：天空趋向灰白、太阳变成模糊的亮斑。
+uniform float cloud = 0.0;
 
 // 移轴镜头修正：Godot 画天空背景时按对称视锥重建 EYEDIR，会忽略 Camera3D.frustum_offset，
 // 导致天际线 / 太阳画在错误高度。相机 rig 推送真实镜头参数，这里按屏幕像素重建视线。
@@ -53,5 +55,7 @@ void sky() {
 	if (dir.y < 0.0) {
 		col = mix(mix(night, horizon, day), ground_color * mix(0.15, 1.0, day), clamp(-dir.y * 3.0, 0.0, 1.0));
 	}
+	vec3 overcast = mix(vec3(0.62, 0.66, 0.74), vec3(0.42, 0.46, 0.56), clamp(dir.y * 2.0, 0.0, 1.0)) * mix(0.25, 1.0, day);
+	col = mix(col, overcast + sun_color * pow(max(dot(dir, sun), 0.0), 8.0) * 0.25 * day, cloud * 0.85);
 	COLOR = col;
 }

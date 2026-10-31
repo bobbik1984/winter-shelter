@@ -169,14 +169,14 @@ func show_build(visible_: bool, title: String = "", reason: String = "", ok: boo
 func set_fade(a: float) -> void:
 	_fade.color.a = a
 
-func show_briefing(on: bool) -> void:
+func show_briefing(on: bool, forecast: String = "") -> void:
 	if on and _briefing == null:
-		_briefing = _make_briefing()
+		_briefing = _make_briefing(forecast)
 		get_child(0).add_child(_briefing)
 	if _briefing:
 		_briefing.visible = on
 
-func _make_briefing() -> Control:
+func _make_briefing(forecast: String = "") -> Control:
 	var shade := ColorRect.new()
 	shade.color = Color(0.02, 0.035, 0.06, 0.82)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -203,6 +203,10 @@ func _make_briefing() -> Control:
 		"and the shadows tell you how much daylight is left.", 15, MUTED)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
+	if forecast != "":
+		var fl := _label(forecast, 15, AMBER)
+		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(fl)
 	var keys := _label("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n" +
 		"[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom", 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
