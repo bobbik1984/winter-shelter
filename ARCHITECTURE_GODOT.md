@@ -136,19 +136,33 @@ static func evaluate_shelter(
     # }
 ```
 
-### 3.5 微地形避风、生火仪式与融雪回暖系统 (Tactile Survival Systems)
+### 3.5 核心体温管理 (0–100 Body Warmth)、微地形避风与生火回暖系统 (Tactile Survival Systems)
 
-1. **微地形避风采样与声学滤波 (`WindExposureSensor` + `AudioBus` LowPass)**
-   - **空间采样**：`SnowField.lee_factor(pos)` 结合角色朝向风源方向的短距离射线 `WindBlockRay`（检测巨石、翻倒树根 `RootBall`、雪墙或雪洞腔体碰撞盒），实时计算角色当前暴露度 `exposure ∈ [0.0, 1.0]`。
+1. **实时核心体温控制器 (`WarmthController` — `0.0 .. 100.0`)**
+   - **唯一生存数值**：`body_warmth: float = 100.0`（`100` 为状态最佳，`0` 为冻僵失温）。
+   - **每帧更新公式**：
+     $$\Delta W = \left( R_{\text{fire}} + R_{\text{shelter}} - R_{\text{cold\_env}} \times (1.0 - \text{windbreak\_factor}) \times (1.0 - \text{clothing\_mitigation}) \right) \times \Delta t$$
+     - **寒冷下降 (`R_cold_env`)**：随时间接近黄昏/入夜及风速升高而加剧（迎风暴露区约 `-1.2/s`）；
+     - **微地形避风减免 (`windbreak_factor`)**：躲在倒木树根凹窝、巨石背风面或初挖雪坑内可减免 `65%–75%` 风寒流失（降至约 `-0.35/s`）；
+     - **额外衣物减缓 (`clothing_mitigation`)**：穿戴备用防风保暖层或在篝火旁烘干内衬后，额外减缓 `25%–50%` 下降速率；
+     - **庇护所保温/自发热回升 (`R_shelter`)**：进入已成形的雪庇护所内部时，阻断外界风寒，依庇护所完备度（雪沟/基础雪洞/高床+松针垫层+冷气槽）实现**体温保持（`0.0/s`）或缓慢回升（`+0.3 ~ +0.6/s`）**；
+     - **火源与热饮回升 (`R_fire`)**：处于燃烧的篝火暖光半径内时体温快速回升（`+2.5/s`）；用 `CampPot` 融雪烧水饮用立即恢复 `+15.0` 体温并赋予短时抗寒 Buff。
+   - **区间联动**：
+     - `70..100`：作业效率 `1.0`；
+     - `35..69`：轻度受寒，作业效率 `0.75`，呼吸白气加密；
+     - `1..34`：失温警告，作业效率 `0.5`，角色发抖、屏幕边缘结霜；
+     - `0`：触发白天失温结算；入夜时的 `body_warmth` 直接作为 `NightSimulator` 过夜模拟的初始体温起点。
+2. **微地形避风采样与声学滤波 (`WindExposureSensor` + `AudioBus` LowPass)**
+   - **空间采样**：`SnowField.lee_factor(pos)` 结合角色朝向风源方向的短距离射线 `WindBlockRay`（检测巨石、翻倒树根 `RootBall`、雪墙或雪洞腔体碰撞盒），实时计算角色当前暴露度 `exposure ∈ [0.0, 1.0]`（即 `windbreak_factor = 1.0 - exposure`）。
    - **总线联动**：
      - `AudioServer` 的 `WindBus` 挂载 `AudioEffectLowPassFilter`，截止频率 `cutoff_hz` 由 `exposure` 驱动（暴露时 `8000 Hz` 呼啸尖锐 $\rightarrow$ 树根后/进洞后平滑降至 `450–800 Hz` 沉闷包裹感）。
-     - 角色控制器与动画状态机读取 `exposure`：暴露时触发缩肩发抖 Blend、急促呼吸白气粒子；避风时切换为放松姿态并减缓寒冷累积速率。
-2. **三步生火与树冠落雪判定 (`CampfireController`)**
-   - **状态机**：`UNLIT` $\rightarrow$ `TINDER_SPARK`（打火石刮擦，检测当前 `exposure` 是否超标）$\rightarrow$ `KINDLING_GUARD`（火苗初起，若遇 `WeatherController.is_gusting` 需按住交互键挡风，否则火苗值衰减归零）$\rightarrow$ `BURNING`（投入干柴，点亮 `OmniLight3D` 2700K 暖光与火焰粒子）$\rightarrow$ `BOILING_WATER`（架上 `CampPot` 融雪烧水，完成后重置角色 `chill_lock` 并赋予 `pre_warmed = true`）。
+     - 角色控制器与动画状态机读取 `exposure` 与 `body_warmth`：暴露或低体温时触发缩肩发抖 Blend、急促呼吸白气粒子；避风或回暖时切换为放松姿态。
+3. **三步生火与树冠落雪判定 (`CampfireController`)**
+   - **状态机**：`UNLIT` $\rightarrow$ `TINDER_SPARK`（打火石刮擦，检测当前 `exposure` 是否超标）$\rightarrow$ `KINDLING_GUARD`（火苗初起，若遇 `WeatherController.is_gusting` 需按住交互键挡风，否则火苗值衰减归零）$\rightarrow$ `BURNING`（投入干柴，点亮 `OmniLight3D` 2700K 暖光与火焰粒子，为范围内玩家提供 `+2.5/s` 体温回升与衣物烘干）$\rightarrow$ `BOILING_WATER`（架上 `CampPot` 融雪烧水，完成后立即 `+15.0` 体温并置 `pre_warmed = true`）。
    - **树冠落雪危险（Tree-Snow Hazard）**：篝火点燃进入 `BURNING` 时，向上发射垂直检测射线；若命中挂雪低矮针叶树冠（`has_meta("canopy_snow")`），升温数秒后触发树冠落雪粒子，强制将火势压回微弱或扑灭，并弹出归因提示。
-3. **45° 雪洞剖面视图与 5 阶状态显隐 (`ShelterCutawayRig`)**
+4. **45° 雪洞剖面视图与 5 阶状态显隐 (`ShelterCutawayRig`)**
    - 不使用高风险的实时 CSG 布尔网格挖孔，而是采用**“模块化分阶段网格 + 朝向相机的剖切 Shader（`cutaway.gdshader`）”**：
-   - 雪洞预制件内含 5 个子网格组：`Stage1_Cavity`（主腔体与入口隧道）、`Stage2_ColdPit`（下沉冷气坑 + 冷流线 Decal/Mesh）、`Stage3_Bedding`（松针垫层 + 睡袋）、`Stage4_Vent`（穿顶伸缩管 + 排气粒子）、`Stage5_Lantern`（2700K 暖光烛灯 + 洞壁次表面散射材质参数激活）。施工进度每完成一阶，立即激活对应子节点与音效。
+   - 雪洞预制件内含 5 个子网格组：`Stage1_Cavity`（主腔体与入口隧道，进入即锁住体温不降）、`Stage2_ColdPit`（下沉冷气坑 + 冷流线 Decal/Mesh）、`Stage3_Bedding`（松针垫层 + 睡袋，开启洞内体温缓慢回升）、`Stage4_Vent`（穿顶伸缩管 + 排气粒子）、`Stage5_Lantern`（2700K 暖光烛灯 + 洞壁次表面散射材质参数激活）。施工进度每完成一阶，立即激活对应子节点与音效。
 
 ---
 
@@ -218,18 +232,19 @@ scripts/
 │   └── probe_marker.gd               # 地面持久化探针浮标管理
 ├── player/
 │   ├── player_controller.gd          # 45° ISO 移动、深雪/上坡阻尼、寒颤与背负视觉挂载
+│   ├── warmth_controller.gd          # 0-100 实时核心体温管理（寒冷下降/火源回升/庇护所保持或回升/衣物减缓）
 │   └── wind_exposure_sensor.gd       # 实时检测微地形挡风（树根/岩石/洞内）并驱动音频滤波与体感
 ├── components/
 │   └── interactable.gd               # 统一上下文交互组件（探雪/砍树/剥皮/护火/烧水/挖掘）
 ├── systems/
 │   ├── atmosphere_state.gd           # 时间、太阳高度角、光色、雾色唯一实时状态
 │   ├── weather_controller.gd         # 连续日落推进、阵风脉冲、作业效率衰减计算
-│   ├── inventory.gd                  # 极简背包（干柴/树皮/垫层）与角色背包挂件同步
-│   ├── campfire_controller.gd        # 三步护火引燃、树冠落雪判定、小铝锅融雪烧水回暖
+│   ├── inventory.gd                  # 极简背包（干柴/树皮/垫层/额外保暖层）与角色背包挂件同步
+│   ├── campfire_controller.gd        # 三步护火引燃、树冠落雪判定、小铝锅融雪烧水回升体温
 │   ├── shelter_builder.gd            # 45° 剖面 Ghost 选址校验（D5）、旋转、5 阶挖掘推进
-│   └── night_simulator.gd            # 6 维可解释结算模型（含雪庇护所与倒棚反射火双分支）
+│   └── night_simulator.gd            # 6 维可解释结算模型（结合入夜初始体温与庇护所双分支）
 └── ui/
-    ├── hud_controller.gd             # 右上气象卡、右下风向罗盘、物资托盘、寒冷/体力条
+    ├── hud_controller.gd             # 右上气象卡、右下风向罗盘、物资托盘、0-100 体温条与速率箭头 (▼/▲)
     ├── world_label.gd                # 说明书风格引线标签（探针读数、Deeper snow、剖面 5 标注）
     └── report_view.gd                # 6 维复盘报告卡与一键重开
 ```

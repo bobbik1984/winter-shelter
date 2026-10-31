@@ -129,12 +129,12 @@
 | ID | 任务 | 涉及文件 | 完成标准 | 估时 |
 | :--- | :--- | :--- | :--- | :--- |
 | T2.1 | 交互框架：`Interactable` 组件（提示文字、按住时长、消耗游戏分钟）；玩家选最近目标；淡橙圈高亮 | `scripts/components/interactable.gd` | 任何可交互物都通过它接入 | 1 d |
-| T2.2 | 资源、背包与背负反馈：`wood / bark / bedding`。立枯木 → wood；倒木 → "湿木"提示；桦树 → bark；干草 / 云杉枝 → bedding。采集后直接在角色红背包外侧挂上木柴捆与干草束 | `scripts/systems/inventory.gd`, `player.tscn` | HUD 显示数量，且角色背包外观随采集实时变化 | 1 d |
-| T2.3 | 时间与寒冷锁定：时钟实时流动；动作耗时 = 按住时长 × 效率；暴露在寒风中累积 `chill_lock` 降低作业效率并灰化部分体力条 | `weather_controller.gd` | 16:00 后或冻僵时挖掘明显变慢 | 0.75 d |
+| T2.2 | 资源、背包、额外衣物与背负反馈：`wood / bark / bedding / extra_clothing`。立枯木 → wood；倒木 → "湿木"提示；桦树 → bark；干草 / 云杉枝 → bedding。采集后直接在角色红背包外侧挂上木柴捆与干草束；穿戴/烘干保暖层减缓体温流失 | `scripts/systems/inventory.gd`, `player.tscn` | HUD 显示数量，且角色背包外观随采集实时变化 | 1 d |
+| T2.3 | 时间与 `0–100` 核心体温系统 (`WarmthController`)：时钟实时流动；`body_warmth (0..100)` 在寒冷暴露中持续下降（`▼▼▼`），躲入树根/岩石背风区减缓（`▼`），穿戴/烘干额外衣物减缓 `25%–50%`，进入已成形庇护所保持或缓慢回升（`—`/`▲`），靠近火源快速回升（`▲▲▲`）；低温降低作业效率，入夜体温传入 `NightSimulator` | `scripts/player/warmth_controller.gd`, `weather_controller.gd` | HUD 实时显示 `0–100` 体温与速率箭头；躲风/烤火/进洞数值变化秒级可见 | 0.75 d |
 | T2.4 | 建造模式（B）：4 种预设的 ghost；按 D5 的雪深区间校验（雪沟在 0.3–0.9 m 自动进入"砌墙"变体），并校验坡度 / 树干 / 木材，不合格时显示**第一条原因**（移植 `validate()`） | `scripts/systems/shelter_builder.gd` | 不合格时总能看到原因 | 1.75 d |
 | T2.5 | 预设参数：入口（或棚背）旋转、通风管数量、顶厚、垫层厚度（消耗 bedding）、高床消耗木材 | 同上，`shelter_preset.gd` | 参数全部传进 `NightSimulator` | 1 d |
-| T2.6 | 5 阶逐步改善建造：按住推进 5 个阶段（掏主腔降风噪 50% → 挖冷气坑现沉降流线 → 铺松针睡袋 → 插通风管排白气 → 点亮 2700K 暖光烛灯） | `scenes/shelter/*.tscn`, `scripts/systems/shelter_builder.gd` | 每完成一阶都有即时的视觉与风声变化；中途停下完工度正确传进报告 | 1.25 d |
-| T2.7 | 三步生火仪式与融雪烧水（F，按 D2 / D3）：① 背风寻址 → 打火石引燃桦树皮（遇阵风需按住护火）→ 添柴起火；挂雪树冠正下方生大火触发落雪压火；② 架小铝锅融雪煮水，喝下解锁 `chill_lock` 并获 `pre_warmed` 入夜加分；③ 倒棚反射火按备柴量结算能否烧到天亮 | `scripts/systems/campfire_controller.gd` | 迎风点火被吹灭；树冠下生火触发落雪提示；喝热水立刻恢复效率；备柴不足报告写出熄火时刻 | 1.75 d |
+| T2.6 | 5 阶逐步改善建造：按住推进 5 个阶段（掏主腔降风噪 50% 并锁住体温不降 → 挖冷气坑现沉降流线 → 铺松针睡袋开启洞内体温缓慢回升 → 插通风管排白气 → 点亮 2700K 暖光烛灯） | `scenes/shelter/*.tscn`, `scripts/systems/shelter_builder.gd` | 每完成一阶都有即时的视觉、风声与体温速率变化；中途停下完工度正确传进报告 | 1.25 d |
+| T2.7 | 三步生火仪式与融雪烧水（F，按 D2 / D3）：① 背风寻址 → 打火石引燃桦树皮（遇阵风需按住护火）→ 添柴起火（范围内体温 `▲▲▲` 快速回升并可烘干衣物）；挂雪树冠正下方生大火触发落雪压火；② 架小铝锅融雪煮水，喝下立即 `+15 Warmth` 并获 `pre_warmed` 入夜加分；③ 倒棚反射火按备柴量结算能否烧到天亮 | `scripts/systems/campfire_controller.gd` | 迎风点火被吹灭；树冠下生火触发落雪提示；烤火与喝热水立刻拉升 `0–100` 体温；备柴不足报告写出熄火时刻 | 1.75 d |
 | T2.7b | 倒棚预设：骨架 + 覆盖 + 反射墙 3 个阶段；`NightSimulator` 增加倒棚分支（见 CORE_GAMEPLAY §6 表） | `scenes/shelter/lean_to.tscn`, `night_simulator.gd` | 浅雪密林可完成一局倒棚过夜 | 1 d |
 | T2.8 | 过夜：按 N，或时间到点强制进入 → 黑屏约 3 秒 → 纯文字报告（6 项分数 + 归因 + 结论）→ 重开 | `scenes/ui/report.tscn` | 一局能从头玩到尾，再重开 | 0.75 d |
 | T2.9 | 开场简报（纯文字，参照 Web 原型 `Briefing`） | `scenes/ui/briefing.tscn` | — | 0.25 d |
