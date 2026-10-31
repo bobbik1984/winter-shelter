@@ -61,6 +61,9 @@ const DIM_COLOR := Color(0.12, 0.20, 0.34, 0.95)
 var _cards: Array[PanelContainer] = []
 var _lines: Array[Line2D] = []
 var _roof_sub: Label
+var _frame := 0
+## 剖面是光线步进 SDF，较贵：每 N 帧重绘一次（烛光闪烁仍足够流畅）。
+const REDRAW_EVERY := 4
 
 func _ready() -> void:
 	# 正前偏右 15°、俯角 18° 的 45° 等距剖面机位：预留顶部排湿箭头与后景冷杉空间。
@@ -68,6 +71,7 @@ func _ready() -> void:
 	camera.look_at(Vector3(-0.15, 0.96, -0.55), Vector3.UP)
 	_build_overlay()
 	overlay.draw.connect(_draw_overlay)
+	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 func _build_overlay() -> void:
 	for i in range(LABELS.size()):
@@ -150,6 +154,9 @@ func _process(_delta: float) -> void:
 		)
 		_lines[i].points = PackedVector2Array([screen, anchor])
 	overlay.queue_redraw()
+	_frame += 1
+	if _frame % REDRAW_EVERY == 0:
+		sub_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 func _draw_overlay() -> void:
 	# 顶厚双向尺寸线（两端点来自 rig：穹顶内侧 → 内侧 + built 顶厚）

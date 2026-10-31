@@ -3,7 +3,25 @@ extends WorldEnvironment
 ## M1->M2 大气与夕阳光照（主创定标版）：
 ## 对齐 VISUAL_LANGUAGE.md：低角度暖金夕阳（俯角 -24°）+ 钴蓝高空环境光 + 远景暖雾。
 
+const SUN_YAW_DEG := 135.0
 const SKY_SHADER := preload("res://shaders/sky_backdrop.gdshader")
+
+var _sky_mat: ShaderMaterial
+
+## "sun_receivers" 组回调：天空 shader 的太阳方向。
+func set_sun_dir(dir: Vector3) -> void:
+	if _sky_mat:
+		_sky_mat.set_shader_parameter("sun_dir", dir)
+
+## "lens_receivers" 组回调：移轴镜头参数（见 sky_backdrop.gdshader 的说明）。
+func set_lens(enabled: bool, half_t: float, aspect: float, shift_t: float, basis: Basis) -> void:
+	if _sky_mat == null:
+		return
+	_sky_mat.set_shader_parameter("lens_fix", 1.0 if enabled else 0.0)
+	_sky_mat.set_shader_parameter("lens_half_t", half_t)
+	_sky_mat.set_shader_parameter("lens_aspect", aspect)
+	_sky_mat.set_shader_parameter("lens_shift_t", shift_t)
+	_sky_mat.set_shader_parameter("lens_basis", basis)
 
 func _ready() -> void:
 	var env := Environment.new()
@@ -13,32 +31,54 @@ func _ready() -> void:
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = SKY_SHADER
 	sky.sky_material = sky_mat
+	_sky_mat = sky_mat
+	add_to_group("sun_receivers")
+	add_to_group("lens_receivers")
 	env.sky = sky
 
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 0.62
-	env.ambient_light_color = Color(0.38, 0.52, 0.78)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_sky_contribution = 0.55
+	env.ambient_light_energy = 0.75
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 0.58
-	env.tonemap_white = 4.5
+	env.tonemap_exposure = 0.72
+	env.tonemap_white = 5.0
+
+	# 逆光雪景：太阳在画面里，需要柔和泛光与朝阳侧的暖色雾散射
+	env.glow_enabled = true
+	env.glow_intensity = 0.45
+	env.glow_strength = 0.85
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.3
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+
+	env.ssao_enabled = true
+	env.ssao_radius = 1.4
+	env.ssao_intensity = 1.6
 
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.72, 0.76, 0.86)
-	env.fog_light_energy = 0.65
-	env.fog_density = 0.0017
-	env.fog_aerial_perspective = 0.70
-	env.fog_sky_affect = 0.40
+	env.fog_light_color = Color(0.62, 0.70, 0.86)
+	env.fog_light_energy = 0.75
+	env.fog_sun_scatter = 0.25
+	env.fog_density = 0.0011
+	env.fog_aerial_perspective = 0.55
+	env.fog_sky_affect = 0.12
+
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.08
+	env.adjustment_contrast = 1.06
 
 	environment = env
 
 	var sun := get_parent().get_node_or_null("SunLight") as DirectionalLight3D
 	if sun:
-		# 低角度西北偏西落日：拉出斜向长树影，同时避免脊线正顶面垂直过曝
-		sun.rotation_degrees = Vector3(-24.0, -42.0, 0.0)
-		sun.light_color = Color(1.0, 0.78, 0.54)
-		sun.light_energy = 0.90
+		# [GAME] 构图：太阳摆在相机正前方（相机偏航 -45° → 太阳方位 135°），
+		# 低角度逆光，拉出朝向镜头的长树影（north star）。高度由 WeatherController 随时间推进。
+		sun.rotation_degrees = Vector3(-8.0, SUN_YAW_DEG, 0.0)
+		sun.light_color = Color(1.0, 0.80, 0.56)
+		sun.light_energy = 1.35
 		sun.shadow_enabled = true
-		sun.directional_shadow_max_distance = 110.0
-		sun.shadow_blur = 1.35
+		sun.directional_shadow_max_distance = 90.0
+		sun.shadow_blur = 1.2
+		# 等兄弟节点（地形）_ready 完再推送
+		get_tree().call_group.call_deferred("sun_receivers", "set_sun_dir", sun.global_transform.basis.z.normalized())

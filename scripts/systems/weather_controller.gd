@@ -36,10 +36,11 @@ func _process(delta: float) -> void:
 	# 更新落日光线
 	if sun_light:
 		var progress = clamp((current_time_minutes - 860.0) / (SUNSET_MINUTES - 860.0), 0.0, 1.0)
-		# 俯角从 25° 降到 4°
-		sun_light.rotation_degrees.x = lerp(-25.0, -4.0, progress)
+		# [GAME] 低角度逆光：俯角从 8° 降到 0.5°（太阳要留在移轴镜头的画面上沿内）
+		sun_light.rotation_degrees.x = lerp(-8.0, -0.5, progress)
 		# 颜色从微冷白渐变到低角度落日金黄
-		sun_light.light_color = Color(1.0, 0.95, 0.9).lerp(Color(1.0, 0.48, 0.15), progress)
+		sun_light.light_color = Color(1.0, 0.82, 0.60).lerp(Color(1.0, 0.48, 0.15), progress)
+		get_tree().call_group("sun_receivers", "set_sun_dir", sun_light.global_transform.basis.z.normalized())
 
 func _update_weather_signals() -> void:
 	var wind_str = "W %d km/h" % [int(wind_data.speed_kmh)]

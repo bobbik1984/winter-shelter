@@ -5,13 +5,14 @@ extends RefCounted
 ## 形态规则（玩家可由此读风向）：
 ##   * 迎风侧枝条更短（风蚀），背风侧更长；
 ##   * 树冠整体向背风侧偏（lean）。
-## wind_dir 为「风吹向」的水平单位向量（WindData.get_wind_direction_3d()）。
+## wind_dir 为「风吹向」（下风）的水平单位向量（WindData.get_blow_direction_3d()）。
 ## 纯几何，不含任何玩法数值；比例常量是艺术参数，保留在此。
 
 const TIERS := 6
 const SPIKES := 11
 
-static func build(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38) -> ArrayMesh:
+## spikes：每层枝尖数（远景可降到 6 省面数）。
+static func build(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38, spikes: int = SPIKES) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var wd := Vector2(wind_dir.x, wind_dir.z)
@@ -27,7 +28,7 @@ static func build(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38) -> 
 		var droop := lerpf(0.62, 0.30, f)
 		var lean := wind_bias * 0.18 * (0.4 + f)        # 越高越偏
 		var rot := TerrainHeight.hash2(seed_idx * 13 + t, t + 5, 307) * TAU
-		_tier(st, seed_idx * 31 + t, Vector3(wd.x * lean, y, wd.y * lean), radius, height, droop, rot, wd, wind_bias)
+		_tier(st, seed_idx * 31 + t, Vector3(wd.x * lean, y, wd.y * lean), radius, height, droop, rot, wd, wind_bias, spikes)
 		y += height * 0.56
 	st.generate_normals()
 	return st.commit()
@@ -48,8 +49,8 @@ static func _trunk(st: SurfaceTool, h: float, r_bot: float, r_top: float) -> voi
 
 ## 一层枝：顶点 → 内环（略抬起）→ 外环锯齿（长枝尖下垂、凹口收进）。
 static func _tier(st: SurfaceTool, s: int, center: Vector3, radius: float, height: float,
-		droop: float, rot: float, wd: Vector2, wind_bias: float) -> void:
-	var n := SPIKES * 2
+		droop: float, rot: float, wd: Vector2, wind_bias: float, spikes: int) -> void:
+	var n := spikes * 2
 	var apex := center + Vector3(0.0, height, 0.0)
 	var inner: Array[Vector3] = []
 	var outer: Array[Vector3] = []

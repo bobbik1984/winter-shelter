@@ -9,8 +9,16 @@ const TERRAIN_SHADER := preload("res://shaders/snow_terrain.gdshader")
 @export var resolution: int = 100
 @export var world_size: float = 100.0
 
+var _material: ShaderMaterial
+
 func _ready() -> void:
+	add_to_group("sun_receivers")
 	_build_terrain()
+
+## "sun_receivers" 组回调：更新雪面 shader 的太阳方向。
+func set_sun_dir(dir: Vector3) -> void:
+	if _material:
+		_material.set_shader_parameter("sun_dir_world", dir)
 
 func _build_terrain() -> void:
 	var half := world_size * 0.5
@@ -49,6 +57,7 @@ func _build_terrain() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = TERRAIN_SHADER
 	mesh_instance.material_override = mat
+	_material = mat
 	add_child(mesh_instance)
 
 	var body := StaticBody3D.new()

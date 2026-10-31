@@ -14,7 +14,9 @@ func _ready() -> void:
 	var process := ParticleProcessMaterial.new()
 	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 	process.emission_box_extents = Vector3(38.0, 12.0, 38.0)
-	process.direction = Vector3(-1.0, -0.08, 0.18)
+	var wind := load("res://resources/default_wind.tres") as WindData
+	var blow := wind.get_blow_direction_3d() if wind else Vector3.RIGHT
+	process.direction = Vector3(blow.x, -0.08, blow.z + 0.18)
 	process.spread = 9.0
 	process.initial_velocity_min = 8.0
 	process.initial_velocity_max = 14.0

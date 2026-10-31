@@ -61,7 +61,7 @@ func _build_sdf_quad() -> void:
 ## 后景覆雪云杉（共用 SpruceMesh + snow_cover），站在雪丘外轮廓上。
 func _build_diorama_trees() -> void:
 	var wind := load("res://resources/default_wind.tres") as WindData
-	var wind_dir := wind.get_wind_direction_3d() if wind else Vector3.RIGHT
+	var wind_dir := wind.get_blow_direction_3d() if wind else Vector3.RIGHT
 	var mat := ShaderMaterial.new()
 	mat.shader = SNOW_COVER_SHADER
 	mat.set_shader_parameter("base_color", Color(0.07, 0.17, 0.20))

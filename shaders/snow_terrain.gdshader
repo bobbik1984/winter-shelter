@@ -6,6 +6,9 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 // 2. 加入程序化风蚀雪纹 (Sastrugi) 法线微扰动与冰晶闪点 (Sparkle)；
 // 3. 陡坡自然裸露深灰层状山岩，且岩壁朝上微台地自动覆雪。
 
+// 指向太阳的世界方向，由 AtmosphereSetup / WeatherController 通过 "sun_receivers" 组推送。
+uniform vec3 sun_dir_world = vec3(-0.7, 0.16, -0.7);
+
 varying float snow_depth;
 varying vec3 world_normal;
 varying vec3 world_pos;
@@ -59,12 +62,15 @@ void fragment() {
 	float eps = 0.25;
 	float nx = fbm(wind_uv + vec2(eps, 0.0)) - drift_n;
 	float nz = fbm(wind_uv + vec2(0.0, eps)) - drift_n;
-	vec3 bumped_world_n = normalize(world_normal + vec3(-nx * 0.38, 0.0, -nz * 0.38));
+	vec3 bumped_world_n = normalize(world_normal + vec3(-nx * 0.75, 0.0, -nz * 0.75));
 	NORMAL = normalize((VIEW_MATRIX * vec4(bumped_world_n, 0.0)).xyz);
 
 	float up = clamp(bumped_world_n.y, 0.0, 1.0);
-	vec3 sun_dir = normalize(vec3(-0.62, 0.38, -0.45));
-	float sun_face = clamp(dot(bumped_world_n, sun_dir), 0.0, 1.0);
+	vec3 sun_dir = normalize(sun_dir_world);
+	// 逆光：太阳很低，用"朝太阳的水平分量 + 坡面朝上"判断受光，避免整片雪面发黑
+	float sun_face = clamp(dot(bumped_world_n, normalize(sun_dir + vec3(0.0, 0.55, 0.0))), 0.0, 1.0);
+	vec3 view_w = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
+	float forward_scatter = pow(clamp(dot(-view_w, sun_dir), 0.0, 1.0), 6.0);
 
 	// 3. 参考图冷暖色盘：受光面暖金奶油白，背风坡冰钴蓝，凹坑深群青
 	vec3 snow_sunlit = vec3(0.95, 0.90, 0.82);
@@ -84,8 +90,10 @@ void fragment() {
 
 	// 5. 高频雪晶闪点 (Sparkle)
 	float sparkle_grid = hash21(floor(world_pos.xz * 14.0));
-	float sparkle = step(0.965, sparkle_grid) * sun_face * (1.0 - rock_mask) * 0.14;
+	float sparkle = step(0.965, sparkle_grid) * (sun_face * 0.5 + forward_scatter * 1.5) * (1.0 - rock_mask) * 0.22;
 	base += vec3(sparkle);
+	// 朝太阳方向看去的雪面：暖金逆光辉
+	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask));
 
 	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
 	ROUGHNESS = mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12;

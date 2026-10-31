@@ -10,7 +10,7 @@
 
 **Snow Shelter Challenge**（代号 `wild`，标语 `FIND · GATHER · BUILD · SURVIVE`）：冬季荒野中阅读环境 → 选址 → 收集材料 → 建庇护所 → 熬过一夜 → 复盘。
 设计支柱：*Read the Land / Make a Plan / Survive the Night*；情绪基调：*Brutal Outside, Cozy Inside*；原则：**Hard ≠ Obscure**（可以失败，但必须知道为什么）。
-技术栈：Godot 4.3+ / GDScript / 正交 ISO 相机 / 6 维可解释 `NightSimulator`。
+技术栈：Godot 4.3+ / GDScript / 移轴透视相机（可切正交）/ 6 维可解释 `NightSimulator`。
 
 ---
 
@@ -46,7 +46,7 @@
 
 ## 4. 工程红线
 
-1. **正交相机**：rig 绕 Y 轴 **偏航 45°**；俯仰 **35.264°（真等距）～38°**，最终值由 T1.3 定稿入 `tuning`；`Camera3D` 在 rig 内沿**本地 +Z 后移约 40 m**；`far ≥ 200`；不得裁切角色与雪坡。
+1. **相机**（2026-11-01 用户拍板修订：以 `snapshots/snapshot_00_visual_north_star.png` 的表现力为准）：默认 **移轴透视（TILT_SHIFT）**——光轴接近水平（竖线不汇聚）、镜头下移看地面、天际线与落日在画面上沿；偏航 **-45°**（从迎风脊线俯看背风坡与远景山谷）。正交等距保留为备用模式（**V** 键切换）。玩家输入与罗盘一律从相机朝向推导，**不得再写死偏航角**。不得裁切角色与雪坡。Godot 天空背景不认 `frustum_offset`，移轴参数需推给 `sky_backdrop.gdshader`（见 `IsometricCameraRig._push_lens`）。
 2. **UTF-8**：所有 `.gd` / `.tscn` / `.tres` / `.md` / `.yaml` 用 UTF-8（无 BOM）。中文文件只用编辑工具或 Python/Node 修改，**禁止** PowerShell `Get-Content`/`Set-Content`/`-replace`。
 3. **场景文件串行**：同一时刻只有一个 Agent 写某个 `.tscn`；`scenes/main.tscn` 只由主控 Agent 合并。新增功能优先做成独立子场景，再由主控接入。
 4. **不手写 uid**：新建 `.tscn`/`.tres` 时 `ext_resource` 用 `path=` 引用，不编造 `uid://`；由 Godot 导入时生成。

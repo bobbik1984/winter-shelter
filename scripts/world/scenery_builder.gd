@@ -98,7 +98,7 @@ func _spruce(pos: Vector3, scale_factor: float, tilt_deg: float, seed_idx: int) 
 func _wind_dir() -> Vector3:
 	if wind_data == null:
 		wind_data = load("res://resources/default_wind.tres") as WindData
-	return wind_data.get_wind_direction_3d() if wind_data else Vector3.RIGHT
+	return wind_data.get_blow_direction_3d() if wind_data else Vector3.RIGHT
 
 # -----------------------------------------------------------------------------
 # B. 顶面覆雪巨石 + 背风侧雪枕
