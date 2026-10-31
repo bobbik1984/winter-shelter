@@ -47,6 +47,7 @@ var _attrs: CameraAttributesPractical
 @onready var camera_3d: Camera3D = $Camera3D
 
 func _ready() -> void:
+	_load_tuning()
 	# 固定 ISO 机位角度：Yaw 45°、Pitch -38°（真等距 -35.264° 的视感微调区间）
 	rotation_degrees = Vector3(camera_pitch_degrees, camera_yaw_degrees, 0.0)
 	add_to_group("camera_rig")
@@ -55,6 +56,20 @@ func _ready() -> void:
 	if camera_3d:
 		camera_3d.near = 0.05
 		_apply_view_mode()
+
+## V9：移轴参数唯一来源 = Tuning（@export 值仅作 Tuning 缺失时的回退）。
+func _load_tuning() -> void:
+	var t := load("res://resources/tuning.tres") as Tuning
+	if t == null:
+		return
+	camera_yaw_degrees = t.tilt_yaw_deg
+	tilt_shift_fov_deg = t.tilt_fov_deg
+	tilt_shift_pitch_degrees = t.tilt_pitch_deg
+	lens_shift = t.tilt_lens_shift
+	player_screen_y = t.tilt_player_screen_y
+	tilt_shift_distance = t.tilt_distance_m
+	zoom_min = t.tilt_zoom_min
+	zoom_max = t.tilt_zoom_max
 
 func _apply_view_mode() -> void:
 	rotation_degrees.x = camera_pitch_degrees if view_mode == ViewMode.ORTHO else tilt_shift_pitch_degrees

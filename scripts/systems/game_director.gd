@@ -40,6 +40,7 @@ var _cutaway_panel: Control
 var _forced := false
 var _probe_count := 0
 var _best_depth := 0.0
+var _zero_t := 0.0
 
 const MAX_MARKERS := 24
 const MAX_DEEPER_LABELS := 3
@@ -288,6 +289,13 @@ func _tick_playing(delta: float) -> void:
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = clampf((now - 960.0) / 70.0, 0.0, 1.0) * 0.9
 	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - weather.sun_elevation_deg) / 4.0, 0.0, 1.0))
+
+	# 体温归零持续 → 失温倒下（有后果，且报告能解释：Heat 轴 + 入夜体温 0）
+	_zero_t = _zero_t + delta if warmth.body_warmth <= 0.01 else 0.0
+	if _zero_t >= tuning.collapse_seconds_at_zero:
+		ui.toast("Too cold to go on — you curl up where you are.", 4.0)
+		_sleep(true)
+		return
 
 	# 天黑后宽限期结束 → 强制入夜
 	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:

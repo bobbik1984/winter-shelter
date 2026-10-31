@@ -103,6 +103,21 @@ extends Resource
 @export var zoom_min: float = 0.3
 ## [TUNE] 最大缩放 1.25（Web 原型 maxZoom）。
 @export var zoom_max: float = 1.25
+## 以下为移轴透视默认相机（D8，V9 定稿；IsometricCameraRig 从这里读取）。
+## [GAME] 偏航 135° = 镜头朝西南（1 月午后太阳方位）。
+@export var tilt_yaw_deg: float = 135.0
+## [TUNE] 垂直视场角。
+@export var tilt_fov_deg: float = 48.0
+## [TUNE] 光轴俯仰（0 = 竖线不汇聚）。
+@export var tilt_pitch_deg: float = 0.0
+## [TUNE] 镜头下移量（占半高，负 = 看地面）。
+@export var tilt_lens_shift: float = -0.38
+## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
+@export var tilt_player_screen_y: float = 0.58
+## [TUNE] 默认相机距离 28 m；滚轮缩放范围 0.45–2.6。
+@export var tilt_distance_m: float = 28.0
+@export var tilt_zoom_min: float = 0.45
+@export var tilt_zoom_max: float = 2.6
 
 # -----------------------------------------------------------------------------
 # 资源
@@ -505,6 +520,9 @@ extends Resource
 @export var forced_sleep_grace_minutes: float = 40.0
 ## [GAME] 入夜黑屏时长（现实秒）。
 @export var night_fade_seconds: float = 3.0
+
+## [GAME] 体温归零持续这么多现实秒 → 失温倒下，强制入夜（结算按体温 0）。
+@export var collapse_seconds_at_zero: float = 8.0
 
 @export_group("Tips")
 ## [GAME] 提示文案切换阈值：距日落剩余分钟。
