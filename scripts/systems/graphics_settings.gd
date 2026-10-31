@@ -67,6 +67,9 @@ func apply() -> void:
 	if sun:
 		sun.directional_shadow_max_distance = float(p[4])
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(p[7]) == 2 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	var terrain := get_tree().get_first_node_in_group("terrain")
+	if terrain:
+		terrain.set_low_quality(level == 0)
 	for n in get_tree().get_nodes_in_group("near_forest"):
 		(n as GeometryInstance3D).visibility_range_end = float(p[8])
 		(n as GeometryInstance3D).visibility_range_end_margin = 8.0 if float(p[8]) > 0.0 else 0.0

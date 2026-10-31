@@ -14,6 +14,7 @@ var _material: ShaderMaterial
 func _ready() -> void:
 	# V7：订阅 AtmosphereState（WeatherController 可能稍后才 ready，延迟连接）
 	_connect_atmosphere.call_deferred()
+	add_to_group("terrain")
 	_build_terrain()
 
 func _connect_atmosphere() -> void:
@@ -23,6 +24,10 @@ func _connect_atmosphere() -> void:
 		set_sun_dir(a.sun_dir)
 
 ## 雪面 shader 的太阳方向（来自 AtmosphereState）。
+func set_low_quality(on: bool) -> void:
+	if _material:
+		_material.set_shader_parameter("low_quality", on)
+
 func set_sun_dir(dir: Vector3) -> void:
 	if _material:
 		_material.set_shader_parameter("sun_dir_world", dir)

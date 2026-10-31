@@ -8,6 +8,8 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 
 // 指向太阳的世界方向，由 AtmosphereSetup / WeatherController 通过 "sun_receivers" 组推送。
 uniform vec3 sun_dir_world = vec3(-0.7, 0.16, -0.7);
+// 低画质：跳过法线扰动的两次额外 fbm、detail 用一次 vnoise（GraphicsSettings 设置）。
+uniform bool low_quality = false;
 
 varying float snow_depth;
 varying vec3 world_normal;
@@ -56,14 +58,17 @@ void fragment() {
 	// 1. 风蚀雪波纹 (沿西北->东南风向拉长的 Sastrugi 纹理)
 	vec2 wind_uv = vec2(world_pos.x * 0.28 + world_pos.z * 0.14, world_pos.z * 0.52 - world_pos.x * 0.12);
 	float drift_n = fbm(wind_uv);
-	float detail_n = fbm(world_pos.xz * 1.35);
+	float detail_n = low_quality ? vnoise(world_pos.xz * 1.35) : fbm(world_pos.xz * 1.35);
 
 	// 2. 微法线扰动：让雪面呈现真实的风积凹凸起伏，告别塑料平滑感
-	float eps = 0.25;
-	float nx = fbm(wind_uv + vec2(eps, 0.0)) - drift_n;
-	float nz = fbm(wind_uv + vec2(0.0, eps)) - drift_n;
-	vec3 bumped_world_n = normalize(world_normal + vec3(-nx * 0.75, 0.0, -nz * 0.75));
-	NORMAL = normalize((VIEW_MATRIX * vec4(bumped_world_n, 0.0)).xyz);
+	vec3 bumped_world_n = world_normal;
+	if (!low_quality) {
+		float eps = 0.25;
+		float nx = fbm(wind_uv + vec2(eps, 0.0)) - drift_n;
+		float nz = fbm(wind_uv + vec2(0.0, eps)) - drift_n;
+		bumped_world_n = normalize(world_normal + vec3(-nx * 0.75, 0.0, -nz * 0.75));
+		NORMAL = normalize((VIEW_MATRIX * vec4(bumped_world_n, 0.0)).xyz);
+	}
 
 	float up = clamp(bumped_world_n.y, 0.0, 1.0);
 	vec3 sun_dir = normalize(sun_dir_world);
