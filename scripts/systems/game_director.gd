@@ -190,6 +190,35 @@ func _show_report() -> void:
 	if site:
 		name_ = "%s (%d/5 stages)" % [site.builder.active_preset().display_name, site.stage()]
 	ui.show_report(data, name_)
+	_save_record(String(input.get("shelter_type", "None")), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+
+const RECORDS := "user://records.cfg"
+const OUTCOME_RANK := {"DANGEROUS": 0, "COLD": 1, "SAFE": 2}
+
+## 每种庇护所的最好一夜（结局优先，其次加权均分），简报页显示。
+func _save_record(preset: String, outcome: String, score: int) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(RECORDS)
+	var best_o := String(cfg.get_value(preset, "outcome", ""))
+	var best_s := int(cfg.get_value(preset, "score", -1))
+	var better: bool = best_o == "" or OUTCOME_RANK.get(outcome, 0) > OUTCOME_RANK.get(best_o, 0) \
+		or (outcome == best_o and score > best_s)
+	cfg.set_value(preset, "nights", int(cfg.get_value(preset, "nights", 0)) + 1)
+	if better:
+		cfg.set_value(preset, "outcome", outcome)
+		cfg.set_value(preset, "score", score)
+	cfg.save(RECORDS)
+
+static func records_text() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(RECORDS) != OK:
+		return ""
+	var names := {"RaisedCave": "Raised cave", "BasicCave": "Snow cave", "SnowTrench": "Trench", "LeanTo": "Lean-to", "None": "No shelter"}
+	var parts: Array[String] = []
+	for k in names:
+		if cfg.has_section(k):
+			parts.append("%s: %s" % [names[k], cfg.get_value(k, "outcome", "—")])
+	return "Your best nights — " + "   ·   ".join(parts) if not parts.is_empty() else ""
 
 # ------------------------------------------------------------------ 输入
 

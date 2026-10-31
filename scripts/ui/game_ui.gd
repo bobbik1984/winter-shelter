@@ -207,6 +207,11 @@ func _make_briefing() -> Control:
 		"[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom", 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(keys)
+	var rec := GameDirector.records_text()
+	if rec != "":
+		var rl := _label(rec, 13, MUTED)
+		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(rl)
 	var go := _label("Press  ENTER  to begin", 18, AMBER)
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
