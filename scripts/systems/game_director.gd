@@ -25,6 +25,7 @@ var site: ShelterSite
 var graphics: GraphicsSettings
 var audio: AmbientAudio
 var snowfall: Snowfall
+var spindrift: Spindrift
 var headlamp: SpotLight3D
 var state: State = State.BRIEFING
 
@@ -105,6 +106,11 @@ func _ready() -> void:
 	headlamp.position = Vector3(0, 1.6, 0.2)
 	headlamp.rotation = Vector3(deg_to_rad(-28.0), PI, 0)
 	player.visual_node.add_child(headlamp)
+
+	spindrift = Spindrift.new()
+	spindrift.name = "Spindrift"
+	spindrift.follow = player
+	main.add_child(spindrift)
 
 	snowfall = Snowfall.new()
 	snowfall.name = "Snowfall"
@@ -400,6 +406,8 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 	if audio and min_level == 0:
 		var pp := player.global_position
 		audio.exposure = 1.0 - float(w["windbreak"])
+		if spindrift:
+			spindrift.intensity = audio.exposure
 		audio.shelter_level = int(w["level"])
 		audio.fire = float(w["fire"])
 		audio.speed = player.current_speed
