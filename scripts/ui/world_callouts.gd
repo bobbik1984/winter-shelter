@@ -1,26 +1,28 @@
 extends Control
 
-## 主场景大地图的 3 个探索级世界引线标注（保持主画面清爽，不与右上角独立剖面特写窗重叠）：
-## Deeper snow / Good depth / Deadwood。
+## 主场景大地图的 3 个探索级世界引线标注（与参考图左/中/右位置严格对应，互不重叠）：
+## 1. DEEPER SNOW (左下背风深雪带)
+## 2. GOOD DEPTH ~ 2.1 m (中央探针探测点)
+## 3. DEADWOOD (右上枯立木燃料点)
 
 const CALLOUTS := [
 	{
-		"world": Vector3(20.0, 0.0, 10.0),
-		"title": "DEEPER SNOW",
+		"world": Vector3(27.5, 0.0, 14.2),
+		"title": "Deeper snow",
 		"sub": "Ideal for shelter",
-		"offset": Vector2(28.0, -54.0),
+		"offset": Vector2(-215.0, -56.0),
 		"accent": Color(0.52, 0.72, 1.0),
 	},
 	{
 		"world": Vector3(18.47, 0.0, 8.04),
-		"title": "GOOD DEPTH",
+		"title": "Good depth",
 		"sub": "~ 2.1 m",
-		"offset": Vector2(-238.0, -34.0),
+		"offset": Vector2(18.0, -58.0),
 		"accent": Color(0.95, 0.78, 0.40),
 	},
 	{
 		"world": Vector3(5.5, 0.0, 3.5),
-		"title": "DEADWOOD",
+		"title": "Deadwood",
 		"sub": "Harvest for fuel",
 		"offset": Vector2(28.0, 18.0),
 		"accent": Color(1.0, 0.55, 0.12),
@@ -76,24 +78,25 @@ func _draw() -> void:
 			clampf(screen.y, card.position.y, card.position.y + card.size.y)
 		)
 		var color: Color = CALLOUTS[i]["accent"]
-		draw_line(screen, anchor, Color(color.r, color.g, color.b, 0.80), 1.5, true)
-		draw_circle(screen, 3.0, Color(color.r, color.g, color.b, 0.95))
+		draw_line(screen, anchor, Color(color.r, color.g, color.b, 0.82), 1.5, true)
+		draw_circle(screen, 3.5, Color(color.r, color.g, color.b, 0.95))
+		draw_arc(screen, 8.5, 0.0, TAU, 24, Color(color.r, color.g, color.b, 0.55), 1.2, true)
 
 func _make_card(title: String, subtitle: String, accent: Color) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size = Vector2(190.0, 0.0)
+	panel.custom_minimum_size = Vector2(180.0, 0.0)
 
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.035, 0.05, 0.075, 0.84)
+	style.bg_color = Color(0.035, 0.05, 0.075, 0.86)
 	style.border_width_left = 2
 	style.border_color = accent
 	style.corner_radius_top_right = 3
 	style.corner_radius_bottom_right = 3
 	style.content_margin_left = 10.0
-	style.content_margin_top = 7.0
+	style.content_margin_top = 6.0
 	style.content_margin_right = 10.0
-	style.content_margin_bottom = 7.0
+	style.content_margin_bottom = 6.0
 	panel.add_theme_stylebox_override("panel", style)
 
 	var box := VBoxContainer.new()

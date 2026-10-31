@@ -50,6 +50,7 @@ script = ExtResource("8_wind")
 [node name="BlockoutTerrain" parent="." instance=ExtResource("2_terrain")]
 
 [node name="ShelterCutaway" type="Node3D" parent="."]
+visible = false
 position = Vector3(20.5, 0, 11.2)
 rotation_degrees = Vector3(0, 25, 0)
 scale = Vector3(0.45, 0.45, 0.45)
