@@ -25,6 +25,7 @@ var _fade: ColorRect
 var _report: Control
 var _pause: Control
 var _guide: Control
+var _build_keys: Label
 var _vignette: Control
 var _vignette_tex: TextureRect
 
@@ -98,7 +99,8 @@ func _ready() -> void:
 	bv.add_child(_build_title)
 	bv.add_child(_build_reason)
 	bv.add_child(_build_info)
-	bv.add_child(_label("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel", 12, MUTED))
+	_build_keys = _label(Loc.t("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel"), 12, MUTED)
+	bv.add_child(_build_keys)
 	_build_card.visible = false
 
 	_fade = ColorRect.new()
@@ -145,7 +147,7 @@ func set_prompt(text: String, progress: float) -> void:
 	_progress.visible = progress > 0.0
 
 func set_inventory(wood: int, bark: int, bedding: int) -> void:
-	_tray.text = "Dry wood  %d     Birch bark  %d     Bedding  %d" % [wood, bark, bedding]
+	_tray.text = Loc.t("Dry wood  %d     Birch bark  %d     Bedding  %d") % [wood, bark, bedding]
 
 func set_objective(text: String) -> void:
 	_objective.text = "▸ " + text
@@ -187,28 +189,28 @@ func _make_briefing(forecast: String = "") -> Control:
 	v.custom_minimum_size = Vector2(760, 0)
 	v.add_theme_constant_override("separation", 10)
 	center.add_child(v)
-	var title := _label("SNOW SHELTER", 64, CREAM)
+	var title := _label(Loc.t("SNOW SHELTER"), 64, CREAM)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
-	var sub := _label("C H A L L E N G E", 22, CREAM)
+	var sub := _label(Loc.t("C H A L L E N G E"), 22, CREAM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(sub)
-	var tag := _label("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE", 15, AMBER)
+	var tag := _label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 15, AMBER)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(tag)
 	v.add_child(HSeparator.new())
-	var body := _label("January 14, 14:20. −17 °C, a strong west wind, and the sun sets at 16:18.\n" +
-		"You have about two hours of light to find deep snow, gather what you need and build a shelter for the night.\n\n" +
-		"Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — " +
-		"and the shadows tell you how much daylight is left.", 15, MUTED)
+	var body := _label(Loc.t("January 14, 14:20. −17 °C, a strong west wind, and the sun sets at 16:18.\n") +
+		Loc.t("You have about two hours of light to find deep snow, gather what you need and build a shelter for the night.\n\n") +
+		Loc.t("Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ") +
+		Loc.t("and the shadows tell you how much daylight is left."), 15, MUTED)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
 	if forecast != "":
 		var fl := _label(forecast, 15, AMBER)
 		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(fl)
-	var keys := _label("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n" +
-		"[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom", 13, CREAM)
+	var keys := _label(Loc.t("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n") +
+		Loc.t("[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom"), 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(keys)
 	var rec := GameDirector.records_text()
@@ -216,7 +218,7 @@ func _make_briefing(forecast: String = "") -> Control:
 		var rl := _label(rec, 13, MUTED)
 		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(rl)
-	var go := _label("Press  ENTER  to begin", 18, AMBER)
+	var go := _label(Loc.t("Press  ENTER  to begin"), 18, AMBER)
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
 	return shade
@@ -231,27 +233,38 @@ func toggle_guide() -> void:
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 6)
 		card.add_child(v)
-		v.add_child(_label("READ THE LAND", 16, CREAM))
+		v.add_child(_label(Loc.t("READ THE LAND"), 16, CREAM))
 		for line in [
-				"Trees show wind direction — branches are short on the windward side, crowns lean downwind.",
-				"Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure.",
-				"Standing dead trees mean fuel — fallen logs are wet and won't burn.",
-				"Rootballs and thick forest break the wind — shelter there, and light fires there.",
-				"Shadows tell time — the longer they get, the less daylight you have left.",
+				Loc.t("Trees show wind direction — branches are short on the windward side, crowns lean downwind."),
+				Loc.t("Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure."),
+				Loc.t("Standing dead trees mean fuel — fallen logs are wet and won't burn."),
+				Loc.t("Rootballs and thick forest break the wind — shelter there, and light fires there."),
+				Loc.t("Shadows tell time — the longer they get, the less daylight you have left."),
 			]:
 			var l := _label("•  " + line, 13, MUTED)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			v.add_child(l)
 		v.add_child(HSeparator.new())
-		v.add_child(_label("KEY RESOURCES", 16, CREAM))
-		for line in ["Birch bark — tinder (white trunk, black bands)", "Dry grass / spruce boughs — bedding",
-				"Dry wood — standing dead trees", "Snow — melt it over a fire for a hot drink"]:
+		v.add_child(_label(Loc.t("KEY RESOURCES"), 16, CREAM))
+		for line in [Loc.t("Birch bark — tinder (white trunk, black bands)"), Loc.t("Dry grass / spruce boughs — bedding"),
+				Loc.t("Dry wood — standing dead trees"), Loc.t("Snow — melt it over a fire for a hot drink")]:
 			v.add_child(_label("•  " + line, 13, MUTED))
-		v.add_child(_label("[H] close", 12, AMBER))
+		v.add_child(_label(Loc.t("[H] close"), 12, AMBER))
 		_guide = card
 		get_child(0).add_child(card)
 	else:
 		_guide.visible = not _guide.visible
+
+## 切换语言后重建缓存的面板（简报 / 手册 / 暂停 / 建造面板操作行）。
+func relocalize() -> void:
+	for n in [_briefing, _guide, _pause]:
+		if n:
+			n.queue_free()
+	_briefing = null
+	_guide = null
+	_pause = null
+	if _build_keys:
+		_build_keys.text = Loc.t("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel")
 
 func show_pause(on: bool) -> void:
 	if on and _pause == null:
@@ -264,13 +277,13 @@ func show_pause(on: bool) -> void:
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 10)
 		center.add_child(v)
-		var t := _label("PAUSED", 40, CREAM)
+		var t := _label(Loc.t("PAUSED"), 40, CREAM)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t)
-		for line in ["[Esc] resume      [R] restart      [Q] quit",
-				"", "[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink",
-				"[B] build mode — [Tab] type, [R] rotate entrance, [E] place",
-				"[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics"]:
+		for line in [Loc.t("[Esc] resume      [R] restart      [Q] quit"),
+				"", Loc.t("[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink"),
+				Loc.t("[B] build mode — [Tab] type, [R] rotate entrance, [E] place"),
+				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics")]:
 			var l := _label(line, 15 if line.begins_with("[Esc]") else 13, AMBER if line.begins_with("[Esc]") else MUTED)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			v.add_child(l)
@@ -324,9 +337,9 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	center.add_child(v)
 	var outcome := String(data["outcome"])
 	var oc := {"SAFE": Color(0.55, 0.95, 0.6), "COLD": Color(1.0, 0.78, 0.4)}.get(outcome, Color(1.0, 0.45, 0.38)) as Color
-	v.add_child(_label("NIGHT REPORT  ·  JAN 14 → 15", 14, MUTED))
+	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 14, MUTED))
 	v.add_child(_label(String(data["title"]), 36, oc))
-	v.add_child(_label("Shelter: %s" % shelter_name, 14, MUTED))
+	v.add_child(_label(Loc.t("Shelter: %s") % shelter_name, 14, MUTED))
 	v.add_child(HSeparator.new())
 	for r in data["rows"]:
 		var row := HBoxContainer.new()
@@ -360,10 +373,10 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	var c := _label(String(data["conclusion"]), 16, CREAM)
 	c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(c)
-	var lesson := _label("What to remember: " + String(data["lesson"]), 14, AMBER)
+	var lesson := _label(Loc.t("What to remember: ") + String(data["lesson"]), 14, AMBER)
 	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(lesson)
-	var foot := _label("Survival starts with understanding.          [R] try again", 13, MUTED)
+	var foot := _label(Loc.t("Survival starts with understanding.          [R] try again"), 13, MUTED)
 	v.add_child(foot)
 	_report = shade
 	get_child(0).add_child(shade)

@@ -27,12 +27,12 @@ func _process(delta: float) -> void:
 
 func update_time(time_str: String, sunset_str: String) -> void:
 	if time_label:
-		time_label.text = "Jan 14  " + time_str
+		time_label.text = Loc.t("Jan 14  ") + time_str
 	if sunset_label:
 		if sunset_str == "0h 00m":
-			sunset_label.text = "Sun set at %s — dusk" % _sunset_clock
+			sunset_label.text = Loc.t("Sun set at %s — dusk") % _sunset_clock
 		else:
-			sunset_label.text = "Sunset %s (%s left)" % [_sunset_clock, sunset_str]
+			sunset_label.text = Loc.t("Sunset %s (%s left)") % [_sunset_clock, sunset_str]
 
 func update_weather(temp: float, wind_str: String) -> void:
 	if temp_label:
@@ -42,7 +42,7 @@ func update_weather(temp: float, wind_str: String) -> void:
 
 func show_probe_depth(screen_pos: Vector2, depth: float) -> void:
 	if probe_popup and probe_text:
-		var quality = "Good depth" if depth >= 1.5 else "Shallow snow"
+		var quality = Loc.t("Good depth") if depth >= 1.5 else Loc.t("Shallow snow")
 		probe_text.text = "%s\n↓ %.2fm" % [quality, depth]
 		probe_popup.position = screen_pos + Vector2(20, -40)
 		probe_popup.visible = true

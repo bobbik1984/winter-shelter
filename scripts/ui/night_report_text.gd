@@ -21,37 +21,44 @@ const LESSONS := {
 static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionary:
 	var scores: Dictionary = report.get("scores", {})
 	var d: Dictionary = report.get("details", {})
+	var zh_notes: Array = report.get("notes", [])
 	var preset := String(input.get("shelter_type", "None"))
 	var rows: Array = []
+	var idx := 0
 	for a in AXES:
 		var key: String = a[0]
-		rows.append({"key": key, "label": a[1], "score": int(round(float(scores.get(key, 0.0)))),
-			"note": _note(key, preset, input, d, t, scores)})
+		# 中文模式：直接使用 NightSimulator 自带的中文归因（同一批事实）
+		var note := String(zh_notes[idx]) if Loc.is_zh() and idx < zh_notes.size() else _note(key, preset, input, d, t, scores)
+		rows.append({"key": key, "label": Loc.t(a[1]), "score": int(round(float(scores.get(key, 0.0)))), "note": note})
+		idx += 1
 	var outcome := String(report.get("outcome", "DANGEROUS"))
-	var title := String(report.get("outcome_title", outcome)).split(" (")[0]
+	var raw_title := String(report.get("outcome_title", outcome))
+	var title := raw_title.split(" (")[0]
+	if Loc.is_zh() and raw_title.contains("(") :
+		title = raw_title.get_slice("(", 1).trim_suffix(")")
 	var min_axis := String(d.get("min_axis", "heat"))
 	var conclusion := ""
 	match outcome:
-		"SAFE": conclusion = "You slept through the night and walked out at dawn. Weakest point: %s." % _label(min_axis)
-		"COLD": conclusion = "You made it to dawn, shivering. Weakest point: %s." % _label(min_axis)
-		_: conclusion = "You would not have survived this night. Main cause: %s." % _label(min_axis)
-	var lesson: String = LESSONS.get(min_axis, "")
+		"SAFE": conclusion = Loc.t("You slept through the night and walked out at dawn. Weakest point: %s.") % _label(min_axis)
+		"COLD": conclusion = Loc.t("You made it to dawn, shivering. Weakest point: %s.") % _label(min_axis)
+		_: conclusion = Loc.t("You would not have survived this night. Main cause: %s.") % _label(min_axis)
+	var lesson: String = Loc.t(LESSONS.get(min_axis, ""))
 	if preset == "LeanTo":
 		if min_axis == "isolation":
-			lesson = "An open lean-to can't trap cold air. Pile bedding thick and keep the reflector fire fed — or find deeper snow for a cave."
+			lesson = Loc.t("An open lean-to can't trap cold air. Pile bedding thick and keep the reflector fire fed — or find deeper snow for a cave.")
 		elif min_axis == "heat":
-			lesson = "The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled." % [
+			lesson = Loc.t("The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.") % [
 				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
 	elif min_axis == "air" and bool(input.get("vent_snow_clogged", false)):
-		lesson = "When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent."
+		lesson = Loc.t("When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent.")
 	elif preset == "None":
-		lesson = "Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing."
+		lesson = Loc.t("Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing.")
 	return {"title": title, "outcome": outcome, "rows": rows, "conclusion": conclusion, "lesson": lesson}
 
 static func _label(key: String) -> String:
 	for a in AXES:
 		if a[0] == key:
-			return String(a[1])
+			return Loc.t(String(a[1]))
 	return key
 
 static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning, report_scores: Dictionary = {}) -> String:

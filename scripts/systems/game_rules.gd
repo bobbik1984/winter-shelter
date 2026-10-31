@@ -16,14 +16,14 @@ static func move_speed(base: float, uphill_slope_deg: float, snow_depth: float, 
 ## 探针读数分类（D5 雪深区间）：返回 {key, title, sub, color}。
 static func classify_depth(depth: float, t: Tuning) -> Dictionary:
 	if depth < t.snow_depth_non_snow_max_m:
-		return {"key": "shallow", "title": "Shallow snow", "sub": "~ %.1f m · lean-to only" % depth, "color": Color(0.70, 0.72, 0.78)}
+		return {"key": "shallow", "title": Loc.t("Shallow snow"), "sub": Loc.t("~ %.1f m · lean-to only") % depth, "color": Color(0.70, 0.72, 0.78)}
 	if depth < t.snow_depth_trench_wall_max_m:
-		return {"key": "trench_wall", "title": "Thin snow", "sub": "~ %.1f m · walled trench" % depth, "color": Color(0.62, 0.78, 0.95)}
+		return {"key": "trench_wall", "title": Loc.t("Thin snow"), "sub": Loc.t("~ %.1f m · walled trench") % depth, "color": Color(0.62, 0.78, 0.95)}
 	if depth < t.snow_depth_cave_min_m:
-		return {"key": "trench", "title": "Trench depth", "sub": "~ %.1f m · snow trench" % depth, "color": Color(0.52, 0.72, 1.0)}
+		return {"key": "trench", "title": Loc.t("Trench depth"), "sub": Loc.t("~ %.1f m · snow trench") % depth, "color": Color(0.52, 0.72, 1.0)}
 	if depth < t.snow_depth_raised_cave_min_m:
-		return {"key": "cave", "title": "Good depth", "sub": "~ %.1f m · snow cave" % depth, "color": Color(0.95, 0.78, 0.40)}
-	return {"key": "raised_cave", "title": "Deep snow", "sub": "~ %.1f m · raised cave" % depth, "color": Color(1.0, 0.66, 0.24)}
+		return {"key": "cave", "title": Loc.t("Good depth"), "sub": Loc.t("~ %.1f m · snow cave") % depth, "color": Color(0.95, 0.78, 0.40)}
+	return {"key": "raised_cave", "title": Loc.t("Deep snow"), "sub": Loc.t("~ %.1f m · raised cave") % depth, "color": Color(1.0, 0.66, 0.24)}
 
 
 ## 入口朝向与风的来向夹角（°）：0 = 入口正对上风（最糟），180 = 完全背风。
@@ -54,35 +54,35 @@ static func tree_cover(points: PackedVector2Array, p: Vector2, r: float) -> floa
 static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool,
 		inside_snow_shelter: bool, t: Tuning) -> Dictionary:
 	if inside_snow_shelter:
-		return {"ok": false, "reason": "No open fire inside a snow shelter — it melts the roof and fills it with CO."}
+		return {"ok": false, "reason": Loc.t("No open fire inside a snow shelter — it melts the roof and fills it with CO.")}
 	if bark < t.fire_tinder_cost:
-		return {"ok": false, "reason": "Need birch bark as tinder (%d)." % t.fire_tinder_cost}
+		return {"ok": false, "reason": Loc.t("Need birch bark as tinder (%d).") % t.fire_tinder_cost}
 	if wood < t.fire_wood_cost:
-		return {"ok": false, "reason": "Need %d dry wood. Standing dead trees burn; fallen logs are wet." % t.fire_wood_cost}
+		return {"ok": false, "reason": Loc.t("Need %d dry wood. Standing dead trees burn; fallen logs are wet.") % t.fire_wood_cost}
 	if under_canopy:
-		return {"ok": false, "reason": "Fire put out by snow falling from the branches above. Move out from under the tree."}
+		return {"ok": false, "reason": Loc.t("Fire put out by snow falling from the branches above. Move out from under the tree.")}
 	# 与 NightSimulator 同一条规则：暴露度超过 fire_blowout_dot 火就会被吹灭（白天 / 夜里一致）
 	if exposure > t.fire_blowout_dot:
-		return {"ok": false, "reason": "The wind blew the flame out. Find a leeward spot or a rootball to shelter it."}
-	return {"ok": true, "reason": "Fire lit."}
+		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Find a leeward spot or a rootball to shelter it.")}
+	return {"ok": true, "reason": Loc.t("Fire lit.")}
 
 
 ## 上下文提示行（V3：影子就是时钟）。返回英文玩家文案。
 static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_warmth: float,
 		has_shelter: bool, shelter_complete: bool, t: Tuning) -> String:
 	if body_warmth < t.tip_cold_warmth:
-		return "Getting cold — get out of the wind or light a fire."
+		return Loc.t("Getting cold — get out of the wind or light a fire.")
 	if minutes_to_sunset <= 0.0:
-		return "Sun is down. Finish up, or sleep now [N]."
+		return Loc.t("Sun is down. Finish up, or sleep now [N].")
 	if minutes_to_sunset < t.tip_hurry_minutes:
 		if shelter_complete:
-			return "Long shadows — night is close. Rest when ready [N]."
-		return "Very long shadows: <%d min of light. Finish now!" % int(ceil(minutes_to_sunset))
+			return Loc.t("Long shadows — night is close. Rest when ready [N].")
+		return Loc.t("Very long shadows: <%d min of light. Finish now!") % int(ceil(minutes_to_sunset))
 	if minutes_to_sunset < t.tip_plenty_minutes:
-		return "Shadows lengthening — ~%d min of light left." % int(round(minutes_to_sunset / 5.0) * 5.0)
+		return Loc.t("Shadows lengthening — ~%d min of light left.") % int(round(minutes_to_sunset / 5.0) * 5.0)
 	if not has_shelter:
-		return "Strong west wind. Probe [Space] leeward slopes."
-	return "Sun %d° — shadows grow toward evening." % int(round(sun_elevation_deg))
+		return Loc.t("Strong west wind. Probe [Space] leeward slopes.")
+	return Loc.t("Sun %d° — shadows grow toward evening.") % int(round(sun_elevation_deg))
 
 
 ## 作业效率：体温档 × 暮色衰减（非硬切换）。
@@ -99,17 +99,17 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 	if bool(ctx.get("complete", false)):
 		if bool(ctx.get("needs_vent_stick", false)):
-			return "Snow is falling — hold [E] at your shelter: stick in the vent (1 wood)."
+			return Loc.t("Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).")
 		if String(ctx.get("preset", "")) == "LeanTo":
-			return "Shelter done. Stockpile dry wood for the fire, then rest [N]."
-		return "Shelter done. Warm up by a fire [F] + hot drink, then rest [N]."
+			return Loc.t("Shelter done. Stockpile dry wood for the fire, then rest [N].")
+		return Loc.t("Shelter done. Warm up by a fire [F] + hot drink, then rest [N].")
 	if not bool(ctx.get("has_site", false)):
 		if not bool(ctx.get("probed", false)):
-			return "Hold [Space] to probe the snow. Look for >= %.1f m on leeward slopes." % t.snow_depth_cave_min_m
+			return Loc.t("Hold [Space] to probe the snow. Look for >= %.1f m on leeward slopes.") % t.snow_depth_cave_min_m
 		if float(ctx.get("best_depth", 0.0)) < t.snow_depth_cave_min_m:
-			return "Keep probing — deeper snow collects east of the ridge, out of the wind."
-		return "Deep snow found. Stand next to it and press [B] to plan a shelter."
+			return Loc.t("Keep probing — deeper snow collects east of the ridge, out of the wind.")
+		return Loc.t("Deep snow found. Stand next to it and press [B] to plan a shelter.")
 	var missing := String(ctx.get("missing", ""))
 	if missing != "":
-		return "Gather %s — then hold [E] at your site." % missing
-	return "Hold [E] at your site: %s" % String(ctx.get("next_stage", ""))
+		return Loc.t("Gather %s — then hold [E] at your site.") % missing
+	return Loc.t("Hold [E] at your site: %s") % String(ctx.get("next_stage", ""))

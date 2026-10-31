@@ -92,7 +92,7 @@ func next_stage_cost() -> Dictionary:
 func next_stage_title() -> String:
 	var p := builder.active_preset()
 	var s := builder.current_stage
-	return p.stage_titles[s] if s < p.stage_titles.size() else ""
+	return Loc.t(p.stage_titles[s]) if s < p.stage_titles.size() else ""
 
 func stage_minutes() -> float:
 	return builder.active_preset().build_minutes_total / float(ShelterBuilder.STAGES_MAX) * time_factor

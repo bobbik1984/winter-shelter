@@ -130,9 +130,9 @@ func night_temp_c() -> float:
 
 func forecast_text() -> String:
 	match weather_kind:
-		"overcast": return "Forecast: overcast — a weak, hazy sun. Shadows will be faint; keep an eye on the clock."
-		"storm": return "Forecast: a storm is coming in this afternoon — stronger wind, early snow, a colder night."
-	return "Forecast: clear and cold — long, sharp shadows to read the time by."
+		"overcast": return Loc.t("Forecast: overcast — a weak, hazy sun. Shadows will be faint; keep an eye on the clock.")
+		"storm": return Loc.t("Forecast: a storm is coming in this afternoon — stronger wind, early snow, a colder night.")
+	return Loc.t("Forecast: clear and cold — long, sharp shadows to read the time by.")
 
 func _update_weather_signals() -> void:
 	var wind_str = "W %d km/h" % [int(current_wind_kmh() if tuning else wind_data.speed_kmh)]

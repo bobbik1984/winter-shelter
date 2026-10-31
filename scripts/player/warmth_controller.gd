@@ -101,14 +101,14 @@ func get_action_efficiency() -> float:
 
 func get_context_label() -> String:
 	if near_fire_intensity > 0.0:
-		return "Campfire Warmth"
+		return Loc.t("Campfire Warmth")
 	if in_shelter_level >= 2:
-		return "Sheltered / Cozy"
+		return Loc.t("Sheltered / Cozy")
 	if in_shelter_level >= 1:
-		return "Shelter Hold"
+		return Loc.t("Shelter Hold")
 	if windbreak_factor >= 0.5:
-		return "Leeward Shelter"
-	return "Exposed Ridge"
+		return Loc.t("Leeward Shelter")
+	return Loc.t("Exposed Ridge")
 
 ## 热饮瞬间 +warmth_hot_drink_instant_boost，并钳制到上限。
 func apply_hot_drink() -> float:

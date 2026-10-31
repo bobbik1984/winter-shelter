@@ -124,7 +124,7 @@ func _spawn_deadwood(p: Vector2, i: int) -> void:
 	var root := _root("Deadwood", p)
 	root.position.y -= 0.2
 	_mesh(root, PropMeshes.snag(70 + i), _mat_snag, TerrainHeight.hash2(i, 5, 9) * TAU, 1.0)
-	_interactable(root, "deadwood", "Harvest standing deadwood (dry fuel)", tuning.deadwood_uses, 1.0)
+	_interactable(root, "deadwood", Loc.t("Harvest standing deadwood (dry fuel)"), tuning.deadwood_uses, 1.0)
 
 ## 森林 / 场景里已有的立枯木（MultiMesh 或拼装体）同样是燃料：只挂采集点，不另建网格。
 func _attach_existing_snags() -> void:
@@ -139,32 +139,32 @@ func _attach_existing_snags() -> void:
 		root.name = "SnagHarvest"
 		root.position = _ground(p)
 		add_child(root)
-		_interactable(root, "deadwood", "Harvest standing deadwood (dry fuel)", tuning.deadwood_uses, 1.0)
+		_interactable(root, "deadwood", Loc.t("Harvest standing deadwood (dry fuel)"), tuning.deadwood_uses, 1.0)
 
 
 func _spawn_birch(p: Vector2, i: int) -> void:
 	var root := _root("Birch", p)
 	_mesh(root, PropMeshes.birch(80 + i), _mat_birch, TerrainHeight.hash2(i, 7, 9) * TAU)
-	_interactable(root, "birch", "Peel birch bark (tinder)", 3, 0.8)
+	_interactable(root, "birch", Loc.t("Peel birch bark (tinder)"), 3, 0.8)
 
 func _spawn_grass(p: Vector2, i: int) -> void:
 	var root := _root("DryGrass", p)
 	for k in range(3):
 		var m := _mesh(root, PropMeshes.grass_tuft(90 + i * 3 + k), _mat_grass, k * 1.7)
 		m.position = Vector3(cos(k * 2.1) * 0.4, 0, sin(k * 2.1) * 0.4)
-	_interactable(root, "grass", "Gather dry grass (bedding)", 1, 0.8)
+	_interactable(root, "grass", Loc.t("Gather dry grass (bedding)"), 1, 0.8)
 
 func _spawn_bough(p: Vector2, i: int) -> void:
 	var root := _root("SpruceBoughs", p)
 	var m := _mesh(root, SpruceMesh.build(100 + i, Vector3.RIGHT, 0.2, 7), _mat_bough, 0.0, 0.32)
 	m.scale.y = 0.22
-	_interactable(root, "bough", "Cut low spruce boughs (bedding)", 2, 1.0)
+	_interactable(root, "bough", Loc.t("Cut low spruce boughs (bedding)"), 2, 1.0)
 
 func _spawn_wet_log(p: Vector2, i: int) -> void:
 	var root := _root("WetLog", p)
 	root.position.y -= 0.08
 	_mesh(root, PropMeshes.wet_log(110 + i), _mat_log, TerrainHeight.hash2(i, 3, 9) * TAU)
-	_interactable(root, "wet_log", "Chop fallen log", 1, 1.2)
+	_interactable(root, "wet_log", Loc.t("Chop fallen log"), 1, 1.2)
 
 func _spawn_rootball(p: Vector2, i: int) -> void:
 	var root := _root("Rootball", p)

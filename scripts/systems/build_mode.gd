@@ -88,16 +88,16 @@ func is_snow_preset() -> bool:
 
 func interior_text() -> String:
 	if not is_snow_preset():
-		return "Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log)." % tuning.fire_fuel_hours_per_log
-	var roof := "Quick roof %.2f m (−%d%% time, weaker)" % [tuning.roof_thickness_min_m, int(round((1.0 - tuning.quick_roof_time_factor) * 100.0))] if quick_roof else "Solid roof %.2f m" % tuning.roof_thickness_good_m
-	var vents := "2 vents (more air, a little colder)" if vent_count == 2 else "1 vent"
-	return "%s · %s   [T] roof  [2] vents" % [roof, vents]
+		return Loc.t("Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log).") % tuning.fire_fuel_hours_per_log
+	var roof := Loc.t("Quick roof %.2f m (−%d%% time, weaker)") % [tuning.roof_thickness_min_m, int(round((1.0 - tuning.quick_roof_time_factor) * 100.0))] if quick_roof else Loc.t("Solid roof %.2f m") % tuning.roof_thickness_good_m
+	var vents := Loc.t("2 vents (more air, a little colder)") if vent_count == 2 else Loc.t("1 vent")
+	return Loc.t("%s · %s   [T] roof  [2] vents") % [roof, vents]
 
 func rotate_entrance() -> void:
 	entrance_dir = entrance_dir.rotated(Vector3.UP, deg_to_rad(-45.0)).normalized()
 
 func display_name() -> String:
-	return (_builder.presets[preset_id] as ShelterPreset).display_name
+	return Loc.t((_builder.presets[preset_id] as ShelterPreset).display_name)
 
 func _process(_delta: float) -> void:
 	if not active or player == null:
@@ -123,14 +123,14 @@ func _update_site() -> void:
 	reason = String(v.get("reason", ""))
 	if valid and (absf(p.x) > 47.0 or absf(p.z) > 47.0):
 		valid = false
-		reason = "Too close to the edge of the valley."
+		reason = Loc.t("Too close to the edge of the valley.")
 	if valid and preset_id == "LeanTo" and not near_windbreak and depth >= tuning.snow_depth_non_snow_max_m:
-		reason = "Allowed, but a lean-to without a rootball windbreak is cold. Snow here is deep enough for a snow shelter."
+		reason = Loc.t("Allowed, but a lean-to without a rootball windbreak is cold. Snow here is deep enough for a snow shelter.")
 
 ## 入口与风向的玩家可读描述。
 func wind_text() -> String:
 	if wind_angle < 60.0:
-		return "Entrance faces INTO the wind (%d°) — expect drafts. [R] rotate" % int(wind_angle)
+		return Loc.t("Entrance faces INTO the wind (%d°) — expect drafts. [R] rotate") % int(wind_angle)
 	if wind_angle < 120.0:
-		return "Entrance is side-on to the wind (%d°)" % int(wind_angle)
-	return "Entrance is leeward (%d°) — good" % int(wind_angle)
+		return Loc.t("Entrance is side-on to the wind (%d°)") % int(wind_angle)
+	return Loc.t("Entrance is leeward (%d°) — good") % int(wind_angle)

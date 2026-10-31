@@ -87,7 +87,7 @@ func _ready() -> void:
 
 	graphics = GraphicsSettings.new()
 	add_child(graphics)
-	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast("Graphics: %s  [F10]" % graphics.level_name(), 2.5))
+	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast(Loc.t("Graphics: %s  [F10]") % graphics.level_name(), 2.5))
 
 	var prints := Footprints.new()
 	prints.name = "Footprints"
@@ -134,8 +134,9 @@ func _ready() -> void:
 		_cutaway_panel.visible = false
 	var instr := hud.get_node_or_null("Instructions") as Label
 	if instr:
-		instr.text = "[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide"
+		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
 
+	_apply_static_labels()
 	warmth.auto_update = false
 	warmth.has_extra_clothing = true
 	warmth.set_body_warmth(tuning.warmth_max * 0.92)
@@ -159,7 +160,7 @@ func start_game() -> void:
 	player.controls_enabled = true
 	interaction.enabled = true
 	weather.time_scale = _saved_time_scale
-	ui.toast("Probe the snow [Space]. Deep, leeward snow is where a snow cave works.", 6.0)
+	ui.toast(Loc.t("Probe the snow [Space]. Deep, leeward snow is where a snow cave works."), 6.0)
 
 func _sleep(forced: bool) -> void:
 	if state != State.PLAYING:
@@ -173,7 +174,7 @@ func _sleep(forced: bool) -> void:
 	interaction.enabled = false
 	weather.time_scale = 0.0
 	ui.set_prompt("", 0.0)
-	ui.toast("Night falls..." if forced else "You crawl in and try to sleep...", tuning.night_fade_seconds)
+	ui.toast(Loc.t("Night falls...") if forced else Loc.t("You crawl in and try to sleep..."), tuning.night_fade_seconds)
 
 ## 完工雪洞的剖面贴图（独立 SubViewport），其余情况返回 null。
 func _vignette_texture() -> Texture2D:
@@ -192,9 +193,9 @@ func _show_report() -> void:
 	var input := night_input()
 	var report := NightSimulator.evaluate(input, tuning)
 	var data := NightReportText.build(report, input, tuning)
-	var name_ := "None — slept in the open"
+	var name_ := Loc.t("None — slept in the open")
 	if site:
-		name_ = "%s (%d/5 stages)" % [site.builder.active_preset().display_name, site.stage()]
+		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	ui.show_report(data, name_)
 	_save_record(String(input.get("shelter_type", "None")), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 
@@ -219,12 +220,12 @@ static func records_text() -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load(RECORDS) != OK:
 		return ""
-	var names := {"RaisedCave": "Raised cave", "BasicCave": "Snow cave", "SnowTrench": "Trench", "LeanTo": "Lean-to", "None": "No shelter"}
+	var names := {"RaisedCave": Loc.t("Raised cave"), "BasicCave": Loc.t("Snow cave"), "SnowTrench": Loc.t("Trench"), "LeanTo": Loc.t("Lean-to"), "None": Loc.t("No shelter")}
 	var parts: Array[String] = []
 	for k in names:
 		if cfg.has_section(k):
 			parts.append("%s: %s" % [names[k], cfg.get_value(k, "outcome", "—")])
-	return "Your best nights — " + "   ·   ".join(parts) if not parts.is_empty() else ""
+	return Loc.t("Your best nights — ") + "   ·   ".join(parts) if not parts.is_empty() else ""
 
 # ------------------------------------------------------------------ 输入
 
@@ -239,6 +240,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		State.BRIEFING:
 			if k == KEY_ENTER or k == KEY_KP_ENTER:
 				start_game()
+			elif k == KEY_L:
+				_toggle_lang()
+				ui.show_briefing(true, weather.forecast_text())
 		State.REPORT:
 			if k == KEY_R:
 				get_tree().reload_current_scene()
@@ -260,6 +264,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					KEY_B, KEY_ESCAPE: _exit_build()
 				return
 			match k:
+				KEY_L: _toggle_lang()
 				KEY_H: ui.toggle_guide()
 				KEY_B: _enter_build()
 				KEY_F: _try_fire()
@@ -272,14 +277,37 @@ func _set_paused(on: bool) -> void:
 	weather.time_scale = 0.0 if on else _saved_time_scale
 	ui.show_pause(on)
 
+## [L]：English ⇄ 中文（保存到 user://settings.cfg），重建缓存的面板与静态标签。
+func _toggle_lang() -> void:
+	Loc.set_lang("en" if Loc.is_zh() else "zh")
+	ui.relocalize()
+	_apply_static_labels()
+	_on_inventory_changed()
+	ui.toast("中文" if Loc.is_zh() else "English", 1.5)
+
+func _apply_static_labels() -> void:
+	var instr := hud.get_node_or_null("Instructions") as Label
+	if instr:
+		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
+	var warm := hud.get_parent().get_node_or_null("HUDWarmth")
+	if warm:
+		var title := warm.find_child("TitleLabel", true, false) as Label
+		if title:
+			title.text = Loc.t("BODY WARMTH")
+		var cloth := warm.find_child("ClothingLabel", true, false) as Label
+		if cloth:
+			cloth.text = Loc.t("▣ CLOTHING · DRY LAYER")
+	if callouts and callouts.has_callout("deadwood"):
+		callouts.remove_callout("deadwood")
+
 func _request_sleep() -> void:
 	var done := site != null and site.is_complete()
 	if done or _sleep_confirm_t > 0.0:
 		_sleep(false)
 		return
 	_sleep_confirm_t = 4.0
-	var have := "no shelter" if site == null else "a shelter only %d/5 done" % site.stage()
-	ui.toast("Sleep now, with %s? Press N again to confirm." % have, 4.0)
+	var have := Loc.t("no shelter") if site == null else Loc.t("a shelter only %d/5 done") % site.stage()
+	ui.toast(Loc.t("Sleep now, with %s? Press N again to confirm.") % have, 4.0)
 
 # ------------------------------------------------------------------ 每帧
 
@@ -295,7 +323,7 @@ func _process(delta: float) -> void:
 			var total := tuning.night_fade_seconds + (3.5 if vignette else 0.0)
 			if vignette:
 				var a := clampf((_fade_t - 1.4) / 0.8, 0.0, 1.0) * clampf((total - _fade_t) / 0.6, 0.0, 1.0)
-				ui.show_vignette(vignette, "Outside, the wind howls. Inside, the candle glows and the air stays still.", a)
+				ui.show_vignette(vignette, Loc.t("Outside, the wind howls. Inside, the candle glows and the air stays still."), a)
 				audio.shelter_level = 2
 			if _fade_t >= total:
 				_show_report()
@@ -316,16 +344,16 @@ func _tick_playing(delta: float) -> void:
 
 	# 建造模式
 	if build.active:
-		var info := "Snow %.1f m · slope %d° · %s\n%s" % [build.depth, int(build.slope), build.wind_text(), build.interior_text()]
+		var info := Loc.t("Snow %.1f m · slope %d° · %s\n%s") % [build.depth, int(build.slope), build.wind_text(), build.interior_text()]
 		if build.near_windbreak:
-			info += " · rootball windbreak nearby"
-		ui.show_build(true, "BUILD — " + build.display_name(), build.reason, build.valid, info)
+			info += Loc.t(" · rootball windbreak nearby")
+		ui.show_build(true, Loc.t("BUILD — ") + build.display_name(), build.reason, build.valid, info)
 		if Input.is_action_just_pressed("interact"):
 			_place_site()
 	else:
 		var p := interaction.prompt_text()
 		if player.is_probing:
-			ui.set_prompt("Probing snow depth…", player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
+			ui.set_prompt(Loc.t("Probing snow depth…"), player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
 		elif p != "":
 			ui.set_prompt("[E]  " + p, interaction.progress)
 		else:
@@ -360,7 +388,7 @@ func _tick_playing(delta: float) -> void:
 	# 体温归零持续 → 失温倒下（有后果，且报告能解释：Heat 轴 + 入夜体温 0）
 	_zero_t = _zero_t + delta if warmth.body_warmth <= 0.01 else 0.0
 	if _zero_t >= tuning.collapse_seconds_at_zero:
-		ui.toast("Too cold to go on — you curl up where you are.", 4.0)
+		ui.toast(Loc.t("Too cold to go on — you curl up where you are."), 4.0)
 		_sleep(true)
 		return
 
@@ -466,8 +494,8 @@ func _on_probe(pos: Vector3, depth: float) -> void:
 					far_enough = false
 			if far_enough:
 				_deeper_points.append(pos)
-				callouts.set_callout("deeper_%d" % _deeper_count, pos + Vector3(0, 0.4, 0), "Deeper snow",
-					"Ideal for shelter", Color(0.52, 0.72, 1.0), Vector2(-200.0, 20.0))
+				callouts.set_callout("deeper_%d" % _deeper_count, pos + Vector3(0, 0.4, 0), Loc.t("Deeper snow"),
+					Loc.t("Ideal for shelter"), Color(0.52, 0.72, 1.0), Vector2(-200.0, 20.0))
 				_deeper_count += 1
 	_skip(1.0)
 
@@ -520,20 +548,20 @@ func _on_harvest(it: Interactable) -> Dictionary:
 		"deadwood":
 			var got := inventory.add("wood", tuning.wood_per_harvest)
 			if got <= 0:
-				return {"ok": false, "msg": "Your pack can't carry more wood."}
-			return {"ok": true, "minutes": tuning.gather_minutes, "msg": "+%d dry wood — standing dead trees burn well." % got}
+				return {"ok": false, "msg": Loc.t("Your pack can't carry more wood.")}
+			return {"ok": true, "minutes": tuning.gather_minutes, "msg": Loc.t("+%d dry wood — standing dead trees burn well.") % got}
 		"birch":
 			inventory.add("bark", tuning.bark_per_harvest)
-			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d birch bark — the best tinder there is." % tuning.bark_per_harvest}
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d birch bark — the best tinder there is.") % tuning.bark_per_harvest}
 		"grass":
 			inventory.add("bedding", tuning.bedding_per_harvest)
-			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d bedding (dry grass)." % tuning.bedding_per_harvest}
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d bedding (dry grass).") % tuning.bedding_per_harvest}
 		"bough":
 			inventory.add("bedding", tuning.bedding_per_harvest)
-			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d bedding (spruce boughs)." % tuning.bedding_per_harvest}
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d bedding (spruce boughs).") % tuning.bedding_per_harvest}
 		"wet_log":
 			return {"ok": true, "minutes": tuning.gather_minutes * 0.5,
-				"msg": "This fallen log is soaked through — it won't burn. Look for STANDING dead trees."}
+				"msg": Loc.t("This fallen log is soaked through — it won't burn. Look for STANDING dead trees.")}
 	return {"ok": false, "msg": ""}
 
 func _on_interaction_completed(target: Interactable, result: Dictionary) -> void:
@@ -555,7 +583,7 @@ func _on_inventory_changed() -> void:
 
 func _enter_build() -> void:
 	if site != null and site.stage() > 0:
-		ui.toast("You're already building a %s. Hold [E] at the site to continue." % site.builder.active_preset().display_name)
+		ui.toast(Loc.t("You're already building a %s. Hold [E] at the site to continue.") % Loc.t(site.builder.active_preset().display_name))
 		return
 	interaction.enabled = false
 	build.enter()
@@ -584,7 +612,7 @@ func _place_site() -> void:
 	site.interactable.prompt_fn = _site_prompt
 	site.interactable.handler = _on_build_stage
 	_exit_build()
-	ui.toast("Site marked. Hold [E] at the site to work: %s" % site.next_stage_title(), 6.0)
+	ui.toast(Loc.t("Site marked. Hold [E] at the site to work: %s") % site.next_stage_title(), 6.0)
 
 func _needs_vent_stick() -> bool:
 	return site != null and site.is_complete() and site.is_snow_shelter() and site.vent_count == 1 \
@@ -592,7 +620,7 @@ func _needs_vent_stick() -> bool:
 
 func _site_prompt() -> String:
 	if _needs_vent_stick():
-		return "Push a stick through the vent (1 wood) — keeps it clear in falling snow"
+		return Loc.t("Push a stick through the vent (1 wood) — keeps it clear in falling snow")
 	if site == null or site.is_complete():
 		return ""
 	var cost := site.next_stage_cost()
@@ -601,8 +629,8 @@ func _site_prompt() -> String:
 		var parts: Array[String] = []
 		for k in cost:
 			parts.append("%d %s" % [cost[k], k])
-		need = "  (needs " + ", ".join(parts) + ")"
-	return "%s%s  ·  ~%d min" % [site.next_stage_title(), need, int(site.stage_minutes() / _efficiency())]
+		need = Loc.t("  (needs ") + ", ".join(parts) + ")"
+	return Loc.t("%s%s  ·  ~%d min") % [site.next_stage_title(), need, int(site.stage_minutes() / _efficiency())]
 
 func _efficiency() -> float:
 	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)
@@ -610,12 +638,12 @@ func _efficiency() -> float:
 func _on_build_stage() -> Dictionary:
 	if _needs_vent_stick():
 		if not inventory.spend({"wood": 1}):
-			return {"ok": false, "msg": "You need 1 dry wood for a vent stick."}
+			return {"ok": false, "msg": Loc.t("You need 1 dry wood for a vent stick.")}
 		site.vent_stick = true
-		return {"ok": true, "minutes": 3.0, "msg": "Stick in the vent: you can poke it clear during the night."}
+		return {"ok": true, "minutes": 3.0, "msg": Loc.t("Stick in the vent: you can poke it clear during the night.")}
 	var cost := site.next_stage_cost()
 	if not inventory.has_all(cost):
-		return {"ok": false, "msg": "Not enough materials — still need %s." % inventory.missing_text(cost)}
+		return {"ok": false, "msg": Loc.t("Not enough materials — still need %s.") % inventory.missing_text(cost)}
 	inventory.spend(cost)
 	var minutes := site.stage_minutes() / _efficiency()
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
@@ -626,11 +654,11 @@ func _on_build_stage() -> Dictionary:
 		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
 		_attach_fire_interactable(site.fire)
 	minutes = 0.0
-	var msg := "Stage %d/5 done — %s" % [int(r["stage"]), String(r["stage_title"])]
+	var msg := Loc.t("Stage %d/5 done — %s") % [int(r["stage"]), Loc.t(String(r["stage_title"]))]
 	if site.is_complete():
-		msg = "Shelter complete. Bring in what you need — rest when ready [N]."
+		msg = Loc.t("Shelter complete. Bring in what you need — rest when ready [N].")
 		if site.preset_id == "LeanTo":
-			msg += " Stockpile dry wood: the reflector fire burns %.0f h per log." % tuning.fire_fuel_hours_per_log
+			msg += Loc.t(" Stockpile dry wood: the reflector fire burns %.0f h per log.") % tuning.fire_fuel_hours_per_log
 	return {"ok": true, "minutes": minutes, "msg": msg}
 
 # ------------------------------------------------------------------ 生火（T2.7）
@@ -659,11 +687,11 @@ func _try_fire() -> void:
 	var near := _nearest_fire(2.6)
 	if near:
 		if inventory.wood <= 0:
-			ui.toast("No dry wood left to add.")
+			ui.toast(Loc.t("No dry wood left to add."))
 			return
 		inventory.spend({"wood": 1})
 		near.add_fuel(tuning.campfire_minutes_per_wood)
-		ui.toast("Added a log (+%d min of fire)." % int(tuning.campfire_minutes_per_wood))
+		ui.toast(Loc.t("Added a log (+%d min of fire).") % int(tuning.campfire_minutes_per_wood))
 		_skip(2.0)
 		return
 	var p := player.global_position + player.facing() * 1.3
@@ -688,18 +716,18 @@ func _try_fire() -> void:
 	fire.ignite(tuning.fire_wood_cost * tuning.campfire_minutes_per_wood)
 	_attach_fire_interactable(fire)
 	_skip(5.0)
-	ui.toast("Fire lit. Warm up, dry off, and melt snow for a hot drink [E].", 5.0)
+	ui.toast(Loc.t("Fire lit. Warm up, dry off, and melt snow for a hot drink [E]."), 5.0)
 
 func _attach_fire_interactable(fire: Campfire) -> void:
 	var it := Interactable.new()
 	it.kind = "fire"
 	it.hold_seconds = 1.8
 	it.ring_radius = 0.9
-	it.prompt_fn = func() -> String: return "Melt snow & drink hot water" if fire.lit else ""
+	it.prompt_fn = func() -> String: return Loc.t("Melt snow & drink hot water") if fire.lit else ""
 	it.handler = func() -> Dictionary:
 		var gained := warmth.apply_hot_drink()
 		prewarmed = true
-		return {"ok": true, "minutes": tuning.melt_snow_minutes, "msg": "Hot water: +%d warmth." % int(gained)}
+		return {"ok": true, "minutes": tuning.melt_snow_minutes, "msg": Loc.t("Hot water: +%d warmth.") % int(gained)}
 	fire.add_child(it)
 
 # ------------------------------------------------------------------ 世界标签
@@ -720,7 +748,7 @@ func _update_world_callouts() -> void:
 			best_d = d
 			best = it
 	if best:
-		callouts.set_callout("deadwood", best.global_position + Vector3(0, 1.0, 0), "Deadwood", "Harvest for fuel",
+		callouts.set_callout("deadwood", best.global_position + Vector3(0, 1.0, 0), Loc.t("Deadwood"), Loc.t("Harvest for fuel"),
 			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0))
 	elif callouts.has_callout("deadwood"):
 		callouts.remove_callout("deadwood")

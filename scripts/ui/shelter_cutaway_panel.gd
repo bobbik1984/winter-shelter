@@ -90,7 +90,26 @@ func _build_overlay() -> void:
 		_cards.append(card)
 	# 顶厚副标题：从 Tuning 读，不再写死
 	_roof_sub = _cards[ROOF_LABEL_INDEX].get_child(0).get_child(1) as Label
-	_roof_sub.text = "≥ %.2f m · built %.2f m" % [rig.roof_min_m, rig.roof_built_m]
+	_relabel()
+
+## 文字随语言切换（Loc）；_process 里检测语言变化后重刷。
+var _lang := ""
+func _relabel() -> void:
+	_lang = Loc.lang
+	for i in range(LABELS.size()):
+		var box := _cards[i].get_child(0)
+		(box.get_child(0) as Label).text = Loc.t(String(LABELS[i]["title"]))
+		(box.get_child(1) as Label).text = Loc.t(String(LABELS[i]["sub"]))
+	_roof_sub.text = Loc.t("≥ %.2f m · built %.2f m") % [rig.roof_min_m, rig.roof_built_m]
+	var title := find_child("TitleLabel", true, false) as Label
+	if title:
+		title.text = Loc.t("SHELTER DESIGN (SNOW CAVE)")
+	var sub := find_child("SubtitleLabel", true, false) as Label
+	if sub:
+		sub.text = Loc.t("CUTAWAY VIEW (45° ISOMETRIC)")
+	var foot := find_child("FooterLabel", true, false) as Label
+	if foot:
+		foot.text = Loc.t("WARMER   ·   SAFER   ·   LONGER NIGHTS")
 
 func _make_card(title: String, subtitle: String, accent: Color) -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -133,6 +152,8 @@ func _proj(local: Vector3) -> Vector2:
 func _process(_delta: float) -> void:
 	if camera == null or rig == null or not is_visible_in_tree():
 		return
+	if _lang != Loc.lang:
+		_relabel()
 
 	overlay.position = Vector2.ZERO
 	overlay.size = viewport_container.size

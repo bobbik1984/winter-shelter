@@ -110,18 +110,18 @@ func validate_site(snow_depth: float, slope_deg: float, near_windbreak: bool = f
 	if snow_depth < min_snow_depth:
 		return {
 			"ok": false,
-			"reason": "Snow too shallow (%.2f m < %.2f m required for %s)" % [
-				snow_depth, min_snow_depth, display_name
+			"reason": Loc.t("Snow too shallow (%.2f m < %.2f m required for %s)") % [
+				snow_depth, min_snow_depth, Loc.t(display_name)
 			]
 		}
 	if (preset_id == "RaisedCave" or preset_id == "BasicCave") and slope_deg < 8.0:
 		return {
 			"ok": false,
-			"reason": "Slope too flat (%.1f° < 8.0° needed to excavate cave horizontally)" % slope_deg
+			"reason": Loc.t("Slope too flat (%.1f° < 8.0° needed to excavate cave horizontally)") % slope_deg
 		}
 	if requires_natural_windbreak and not near_windbreak and slope_deg > 28.0:
 		return {
 			"ok": false,
-			"reason": "Too steep for Lean-To; build near fallen rootball or flatter lee ground"
+			"reason": Loc.t("Too steep for Lean-To; build near fallen rootball or flatter lee ground")
 		}
-	return {"ok": true, "reason": "Site suitable for %s" % display_name}
+	return {"ok": true, "reason": Loc.t("Site suitable for %s") % Loc.t(display_name)}
