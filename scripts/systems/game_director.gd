@@ -137,6 +137,7 @@ func _ready() -> void:
 		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
 
 	_apply_static_labels()
+	_ensure_joypad_inputs()
 	warmth.auto_update = false
 	warmth.has_extra_clothing = true
 	warmth.set_body_warmth(tuning.warmth_max * 0.92)
@@ -229,10 +230,50 @@ static func records_text() -> String:
 
 # ------------------------------------------------------------------ 输入
 
+## 手柄：左摇杆移动、A 交互、X 探针（写进 InputMap）；其余按键转成等价键盘键处理。
+func _ensure_joypad_inputs() -> void:
+	var axes := {"move_left": [JOY_AXIS_LEFT_X, -1.0], "move_right": [JOY_AXIS_LEFT_X, 1.0],
+		"move_up": [JOY_AXIS_LEFT_Y, -1.0], "move_down": [JOY_AXIS_LEFT_Y, 1.0]}
+	for action in axes:
+		if InputMap.has_action(action):
+			var e := InputEventJoypadMotion.new()
+			e.axis = axes[action][0]
+			e.axis_value = axes[action][1]
+			InputMap.action_add_event(action, e)
+	for pair in [["interact", JOY_BUTTON_A], ["probe", JOY_BUTTON_X]]:
+		if InputMap.has_action(pair[0]):
+			var b := InputEventJoypadButton.new()
+			b.button_index = pair[1]
+			InputMap.action_add_event(pair[0], b)
+
+func _joy_to_key(btn: JoyButton) -> Key:
+	match btn:
+		JOY_BUTTON_START:
+			match state:
+				State.BRIEFING: return KEY_ENTER
+				State.REPORT: return KEY_R
+				_: return KEY_ESCAPE
+		JOY_BUTTON_BACK: return KEY_H
+		JOY_BUTTON_Y: return KEY_R if state == State.PAUSED else KEY_B
+		JOY_BUTTON_B: return KEY_B if build.active else (KEY_ESCAPE if state == State.PAUSED else KEY_F)
+		JOY_BUTTON_LEFT_SHOULDER: return KEY_R if build.active else KEY_NONE
+		JOY_BUTTON_RIGHT_SHOULDER: return KEY_TAB if build.active else KEY_NONE
+		JOY_BUTTON_DPAD_UP: return KEY_T
+		JOY_BUTTON_DPAD_DOWN: return KEY_2
+		JOY_BUTTON_DPAD_RIGHT: return KEY_N
+		JOY_BUTTON_DPAD_LEFT: return KEY_L
+	return KEY_NONE
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
+	var k: Key = KEY_NONE
+	if event is InputEventJoypadButton and event.pressed:
+		k = _joy_to_key((event as InputEventJoypadButton).button_index)
+		if k == KEY_NONE:
+			return
+	elif event is InputEventKey and event.pressed and not event.echo:
+		k = (event as InputEventKey).keycode
+	else:
 		return
-	var k := (event as InputEventKey).keycode
 	if k == KEY_F10:
 		graphics.cycle()
 		return

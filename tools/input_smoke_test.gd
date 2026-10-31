@@ -1,6 +1,6 @@
 extends SceneTree
 ## 真实输入冒烟测试：用 Input 动作 / 按键事件驱动（而不是直接调内部函数），覆盖
-## 开始、移动、按住探针、按住采集、B 建造 + Tab + E 放置、按住施工、F 生火、H 手册、Esc 暂停、N 睡觉 → 报告。
+## 开始、移动、按住探针、按住采集、B 建造 + Tab + E 放置、按住施工、H 手册、手柄 Start / Esc 暂停、N 睡觉 → 报告、手柄映射。
 ## 运行：godot --path . -s res://tools/input_smoke_test.gd   （需要窗口 / 显示；退出码非 0 = 失败）
 
 var fails: Array[String] = []
@@ -27,6 +27,11 @@ func hold(action: String, seconds: float) -> void:
 		await process_frame
 	Input.action_release(action)
 	await process_frame
+
+func _joy_btn(b: JoyButton) -> InputEventJoypadButton:
+	var e := InputEventJoypadButton.new()
+	e.button_index = b
+	return e
 
 func check(c: bool, msg: String) -> void:
 	if not c:
@@ -90,6 +95,13 @@ func _run() -> void:
 	await key(KEY_H)
 	check(d.ui._guide != null and d.ui._guide.visible, "H opens the field guide")
 	await key(KEY_H)
+	var jb := InputEventJoypadButton.new()
+	jb.button_index = JOY_BUTTON_START
+	jb.pressed = true
+	root.push_input(jb)
+	await process_frame
+	check(d.state == d.State.PAUSED, "gamepad Start pauses")
+	await key(KEY_ESCAPE)
 	await key(KEY_ESCAPE)
 	check(d.state == d.State.PAUSED, "Esc pauses")
 	await key(KEY_ESCAPE)
@@ -102,5 +114,8 @@ func _run() -> void:
 	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 12000:
 		await process_frame
 	check(d.state == d.State.REPORT, "night ends in the report")
+	# 手柄：报告页按 Start = 重开（这里只验证映射，不真的重开）
+	check(d._joy_to_key(JOY_BUTTON_START) == KEY_R, "gamepad Start maps to retry on the report")
+	check(InputMap.action_has_event("interact", _joy_btn(JOY_BUTTON_A)), "gamepad A is bound to interact")
 	printerr("RESULT ", "PASS" if fails.is_empty() else "FAIL %d" % fails.size())
 	quit(0 if fails.is_empty() else 1)
