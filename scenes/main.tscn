@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://mainlevel001"]
+[gd_scene load_steps=14 format=3 uid="uid://mainlevel001"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://df7k4m5y6n123" path="res://scenes/world/blockout_terrain.tscn" id="2_terrain"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/world/atmosphere_setup.gd" id="7_atmosphere"]
 [ext_resource type="Script" path="res://scripts/world/wind_particles.gd" id="8_wind"]
 [ext_resource type="Script" path="res://scripts/player/warmth_controller.gd" id="9_warmth"]
+[ext_resource type="Script" path="res://scripts/world/shelter_cutaway_rig.gd" id="10_shelter"]
+[ext_resource type="Script" path="res://scripts/world/campfire_pot_rig.gd" id="11_campfire"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_cold"]
 sky_top_color = Color(0.25, 0.45, 0.72, 1)
@@ -47,6 +49,13 @@ script = ExtResource("8_wind")
 
 [node name="BlockoutTerrain" parent="." instance=ExtResource("2_terrain")]
 
+[node name="ShelterCutaway" type="Node3D" parent="."]
+script = ExtResource("10_shelter")
+
+[node name="CampfirePot" type="Node3D" parent="."]
+position = Vector3(8.5, 0, 12.5)
+script = ExtResource("11_campfire")
+
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
@@ -54,7 +63,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 script = ExtResource("9_warmth")
 
 [node name="CameraRig" parent="." instance=ExtResource("4_cam")]
-camera_size = 36.0
+camera_size = 30.0
 
 [node name="WeatherController" type="Node" parent="." node_paths=PackedStringArray("sun_light")]
 script = ExtResource("5_weather")

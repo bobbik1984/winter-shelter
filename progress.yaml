@@ -49,7 +49,7 @@ phases:
     tasks:
       - {id: T2.1-T2.2, text: "交互框架 / 资源背包", status: todo}
       - {id: T2.3, text: "时间与 0–100 核心体温（WarmthController + HUD）", status: written-unverified, note: "WarmthController / Tuning / NightSim starting_warmth / 奶油色体温 HUD 已实机截图（snapshots/m1_warmth_hud.png）；真实风源/庇护所/火源采样与 F5 待接"}
-      - {id: T2.4-T2.6, text: "建造模式（D5 校验）/ 预设参数 / 挖掘进度", status: todo}
+      - {id: T2.4-T2.6, text: "建造模式（D5 校验）/ 预设参数 / 挖掘进度", status: written-unverified, note: "ShelterBuilder 4 策略 + 5 阶推进 + 37 assertions 通过；45° 剖面雪洞/树根篝火锅实机截图（snapshots/m2_shelter_cutaway.png）；F5 真实按键建造与庇护所区域采样未接"}
       - {id: T2.7-T2.7b, text: "火（D2/D3）与倒棚预设", status: todo}
       - {id: T2.8-T2.11, text: "过夜纯文字报告 / 简报 / 基础美术 / PT02", status: todo}
 

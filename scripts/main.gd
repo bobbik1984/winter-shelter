@@ -1,7 +1,7 @@
 class_name MainLevel
 extends Node3D
 
-const SPAWN_POSITION := Vector3(2.0, 0.0, 5.5)
+const SPAWN_POSITION := Vector3(18.0, 0.0, 8.0)
 
 @onready var player: PlayerController = $Player
 @onready var camera_rig: IsometricCameraRig = $CameraRig

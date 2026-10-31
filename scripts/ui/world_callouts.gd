@@ -12,7 +12,7 @@ const CALLOUTS := [
 		"accent": Color(0.52, 0.72, 1.0),
 	},
 	{
-		"world": Vector3(2.47, 0.0, 5.54),
+		"world": Vector3(18.47, 0.0, 8.04),
 		"title": "GOOD DEPTH",
 		"sub": "~ 2.1 m",
 		"offset": Vector2(-238.0, -34.0),
@@ -22,8 +22,40 @@ const CALLOUTS := [
 		"world": Vector3(5.5, 0.0, 3.5),
 		"title": "DEADWOOD",
 		"sub": "Harvest for fuel",
-		"offset": Vector2(34.0, 24.0),
+		"offset": Vector2(-235.0, 18.0),
 		"accent": Color(1.0, 0.55, 0.12),
+	},
+	{
+		"world": Vector3(10.1, 0.0, 12.5),
+		"title": "ENTRANCE TUNNEL",
+		"sub": "Slopes slightly down",
+		"offset": Vector2(-210.0, 40.0),
+		"accent": Color(0.62, 0.82, 1.0),
+		"y_offset": 0.8,
+	},
+	{
+		"world": Vector3(9.7, 0.0, 11.3),
+		"title": "COLD-AIR PIT",
+		"sub": "Traps cold air lower",
+		"offset": Vector2(-220.0, 118.0),
+		"accent": Color(0.42, 0.68, 1.0),
+		"y_offset": 0.5,
+	},
+	{
+		"world": Vector3(11.1, 0.0, 8.4),
+		"title": "RAISED PLATFORM",
+		"sub": "Stay above cold air",
+		"offset": Vector2(28.0, -6.0),
+		"accent": Color(0.96, 0.78, 0.42),
+		"y_offset": 1.0,
+	},
+	{
+		"world": Vector3(11.4, 0.0, 7.8),
+		"title": "VENT / CHIMNEY",
+		"sub": "Expel moisture",
+		"offset": Vector2(30.0, -96.0),
+		"accent": Color(0.72, 0.88, 1.0),
+		"y_offset": 3.2,
 	},
 ]
 
@@ -49,7 +81,7 @@ func _process(_delta: float) -> void:
 	for i in range(CALLOUTS.size()):
 		var entry: Dictionary = CALLOUTS[i]
 		var world: Vector3 = entry["world"]
-		world.y = TerrainHeight.height_at(world.x, world.z) + 0.65
+		world.y = TerrainHeight.height_at(world.x, world.z) + float(entry.get("y_offset", 0.65))
 		if camera.is_position_behind(world):
 			_cards[i].visible = false
 			_active[i] = false
