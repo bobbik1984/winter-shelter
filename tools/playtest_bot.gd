@@ -1,0 +1,87 @@
+extends SceneTree
+## 策略机器人（QA）：godot --path . -s res://tools/playtest_bot.gd -- --s=<good|deep|wind|late|trench|leanto_short|leanto_full|none>
+## 直接调用 GameDirector API 走完一局，打印结局与 6 维分数；用于平衡回归（见 PRODUCTION_PLAN §4.V / T3.9）。
+## 策略机器人：直接调用 GameDirector API 走完一局，打印结局与 6 维分数。
+func _initialize() -> void:
+	_run()
+func _run() -> void:
+	var strat := "good"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--s="): strat = a.substr(4)
+	var m = load("res://scenes/main.tscn").instantiate()
+	root.add_child(m)
+	for i in 15: await process_frame
+	var d = m.get_node("GameDirector")
+	d.start_game()
+	var p = m.player
+	# 寻找合法高床雪洞点（出生点附近）
+	var spot := Vector3(22, 0, 8)
+	var want := 2.05
+	if strat == "deep": want = 2.4
+	for r in range(2, 40):
+		var hit := false
+		for k in range(16):
+			var q := Vector2(18, 8) + Vector2(cos(TAU * k / 16.0), sin(TAU * k / 16.0)) * r
+			if SnowField.snow_at(q.x, q.y) >= want and SnowField.slope_at(q.x, q.y) >= 9.0:
+				spot = Vector3(q.x, 0, q.y); hit = true; break
+		if hit: break
+	d._skip(3.0)   # 走路 + 探测
+	p._finish_probe()
+	var preset := "RaisedCave"
+	var wood_need := 1
+	var bedding_need := 2
+	match strat:
+		"late": d._skip(120.0); preset = "BasicCave"
+		"leanto_short": preset = "LeanTo"; wood_need = 8; spot = Vector3(-1.2, 0, 10.5)
+		"leanto_full": preset = "LeanTo"; wood_need = 12; spot = Vector3(-1.2, 0, 10.5)
+		"trench": preset = "SnowTrench"; wood_need = 2; bedding_need = 1
+	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
+	while d.inventory.bedding < bedding_need:
+		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
+	while d.inventory.wood < wood_need + (2 if strat in ["good", "deep", "wind", "late"] else 0):
+		var r = d._on_harvest(_fake("deadwood"))
+		d._on_interaction_completed(_fake("deadwood"), r)
+	d.inventory.add("bark", 2)
+	d._skip(2.0 * 12.0 / 12.0)
+	if strat == "none":
+		d._sleep(false)
+	else:
+		p.global_position = Vector3(spot.x - 3.0, TerrainHeight.height_at(spot.x - 3.0, spot.z) + 0.5, spot.z)
+		p.visual_node.rotation.y = atan2(1.0, 0.0)
+		await physics_frame
+		d._enter_build()
+		d.build.preset_id = preset
+		if strat == "wind":
+			d.build.entrance_dir = d.wind.get_wind_direction_3d()
+		await process_frame
+		await process_frame
+		d._place_site()
+		if d.site == null:
+			printerr("PLACE FAILED ", d.build.reason); quit(1); return
+		var stages := 5
+		for s in stages:
+			if strat == "late" and d.weather.current_time_minutes > 1060.0:
+				break
+			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
+		if strat in ["good", "deep", "leanto_full"]:
+			# 篝火 + 热饮（站到背风开阔处）
+			p.global_position = d.site.global_position + Vector3(3.5, 0.5, -3.5)
+			await physics_frame
+			d._try_fire()
+			for n in get_nodes_in_group("interactables"):
+				if n.kind == "fire" and n.current_prompt() != "":
+					d._on_interaction_completed(n, n.trigger())
+					if strat == "deep":
+						d._on_interaction_completed(n, n.trigger())
+					break
+		d._sleep(false)
+	var inp = d.night_input()
+	var rep = NightSimulator.evaluate(inp, d.tuning)
+	var sc = rep["scores"]
+	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s" % [strat, rep["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"]])
+	printerr("  fire_lit=", inp.get("fire_lit"), " exposure=", inp.get("fire_exposure"), " fuel_h=", inp.get("fuel_hours"), " held=", rep["details"]["fire_reaches_dawn"], " prewarmed=", inp.get("prewarmed"), " site_fire=", d.site.fire.lit if d.site and d.site.fire else null)
+	quit(0)
+func _fake(kind: String) -> Interactable:
+	var it := Interactable.new()
+	it.kind = kind
+	return it

@@ -285,7 +285,7 @@ extends Resource
 ## [TUNE] 基础雪洞的冷空气隔离基础分 0.38。
 @export var isolation_basic_cave_base: float = 0.38
 ## [TUNE] 雪沟的冷空气隔离基础分 0.38（平底，无冷热分层）。
-@export var isolation_snow_trench_base: float = 0.38
+@export var isolation_snow_trench_base: float = 0.45
 ## [TUNE] 倒棚的隔离基础分 0.45（开放结构，无冷气池）。
 @export var isolation_lean_to_base: float = 0.45
 ## [TUNE] 无庇护所的隔离基础分 0.0。
@@ -407,7 +407,7 @@ extends Resource
 ## [TUNE] 雪沟消耗木材 0。
 @export var snow_trench_wood_cost: int = 0
 ## [TUNE] 雪沟基础保暖 0.50（Web 原型 baseThermal）。
-@export var snow_trench_base_thermal: float = 0.5
+@export var snow_trench_base_thermal: float = 0.56
 ## [TUNE] 雪沟基础结构 0.52（Web 原型 baseStructure）；浅雪砌墙版更弱。
 @export var snow_trench_base_structure: float = 0.52
 ## [TUNE] 雪沟内部容积 1.35 m³（Web 原型 volume）。

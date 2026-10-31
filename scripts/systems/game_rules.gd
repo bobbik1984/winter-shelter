@@ -61,7 +61,8 @@ static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool
 		return {"ok": false, "reason": "Need %d dry wood. Standing dead trees burn; fallen logs are wet." % t.fire_wood_cost}
 	if under_canopy:
 		return {"ok": false, "reason": "Fire put out by snow falling from the branches above. Move out from under the tree."}
-	if 1.0 - exposure < t.fire_blowout_dot:
+	# 与 NightSimulator 同一条规则：暴露度超过 fire_blowout_dot 火就会被吹灭（白天 / 夜里一致）
+	if exposure > t.fire_blowout_dot:
 		return {"ok": false, "reason": "The wind blew the flame out. Find a leeward spot or a rootball to shelter it."}
 	return {"ok": true, "reason": "Fire lit."}
 

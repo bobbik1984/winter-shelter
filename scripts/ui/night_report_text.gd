@@ -15,7 +15,7 @@ const LESSONS := {
 	"insulation": "Gather bedding: dry grass and low spruce boughs keep the snow from stealing your heat.",
 	"isolation": "Cold air sinks. In a snow cave, dig a cold-air pit and sleep on a raised platform.",
 	"air": "Always pierce a vent in a snow shelter. Stale air kills quietly.",
-	"heat": "Snow shelters hold body heat. A lean-to needs a reflector fire and enough dry wood for the whole night.",
+	"heat": "Probe several spots — deeper snow means thicker walls. Warm up by a fire and drink something hot before you crawl in.",
 }
 
 static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionary:
@@ -26,7 +26,7 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 	for a in AXES:
 		var key: String = a[0]
 		rows.append({"key": key, "label": a[1], "score": int(round(float(scores.get(key, 0.0)))),
-			"note": _note(key, preset, input, d, t)})
+			"note": _note(key, preset, input, d, t, scores)})
 	var outcome := String(report.get("outcome", "DANGEROUS"))
 	var title := String(report.get("outcome_title", outcome)).split(" (")[0]
 	var min_axis := String(d.get("min_axis", "heat"))
@@ -52,7 +52,7 @@ static func _label(key: String) -> String:
 			return String(a[1])
 	return key
 
-static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning) -> String:
+static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning, report_scores: Dictionary = {}) -> String:
 	var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench"]
 	var lean := preset == "LeanTo"
 	var none := not (is_snow or lean)
@@ -107,9 +107,15 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 		"heat":
 			var s := ""
 			if is_snow:
-				s = "Body heat and %.1f m of snow kept you warm; no fire inside — correct." % float(i.get("snow_depth_meters", 0.0))
+				var depth := float(i.get("snow_depth_meters", 0.0))
+				var heat_score := float(report_scores.get("heat", 100.0))
+				s = "Body heat and %.1f m of snow kept you warm; no fire inside — correct." % depth
+				if heat_score < t.safe_min_axis and depth < t.snow_depth_raised_cave_min_m + 0.4:
+					s = "Only %.1f m of snow: thin walls let the heat leak out. Deeper snow (2.4 m+) means a warmer night." % depth
 				if bool(i.get("prewarmed", false)):
 					s += " A fire and hot water before bed helped."
+				elif heat_score < t.safe_min_axis:
+					s += " A fire and a hot drink before bed would have helped."
 			elif lean:
 				if not bool(i.get("fire_lit", false)):
 					s = "No fire in an open lean-to: a long, bitter night."

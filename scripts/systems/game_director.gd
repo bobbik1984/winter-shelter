@@ -364,9 +364,21 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 func _skip(minutes: float, min_level: int = 0) -> void:
 	if minutes <= 0.0:
 		return
+	_sync_fires()
 	weather.advance_minutes(minutes)
+	for f in get_tree().get_nodes_in_group("campfires"):
+		(f as Campfire).burn(minutes)
+	_last_minutes = weather.current_time_minutes
 	var real_equiv := minutes * 60.0 / maxf(_saved_time_scale, 1.0)
 	_update_warmth(real_equiv, tuning.work_exposure_factor, min_level)
+
+## 把上次结算后的流逝时间先烧掉，再开始新的跳时（火堆燃烧只按实际经过的时间）。
+func _sync_fires() -> void:
+	var dm := weather.current_time_minutes - _last_minutes
+	if dm > 0.0:
+		for f in get_tree().get_nodes_in_group("campfires"):
+			(f as Campfire).burn(dm)
+	_last_minutes = weather.current_time_minutes
 
 # ------------------------------------------------------------------ 探针（T1.6 / D4）
 
@@ -522,12 +534,13 @@ func _on_build_stage() -> Dictionary:
 		return {"ok": false, "msg": "Not enough materials — still need %s." % inventory.missing_text(cost)}
 	inventory.spend(cost)
 	var minutes := site.stage_minutes() / _efficiency()
-	var r := site.advance()
-	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
-		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
-		_attach_fire_interactable(site.fire)
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
 	_skip(minutes, 1 if site.is_snow_shelter() else 0)
+	var r := site.advance()
+	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
+		# 阶段完成时才点燃（工时已流逝）；之后由玩家 [F] 添柴维持
+		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
+		_attach_fire_interactable(site.fire)
 	minutes = 0.0
 	var msg := "Stage %d/5 done — %s" % [int(r["stage"]), String(r["stage_title"])]
 	if site.is_complete():
@@ -647,7 +660,8 @@ func night_input() -> Dictionary:
 		input["wind_angle_diff"] = GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d())
 		input["terrain_shelter"] = clampf(lee + (0.4 if site.near_windbreak else 0.0), -1.0, 1.0)
 		if site.preset_id == "LeanTo":
-			var lit := site.fire != null and site.fire.lit
+			# 倒棚反射火在入夜时用备柴重新点燃：只要火塘完工且有干柴即可（白天火是否还在烧不影响夜里）
+			var lit := site.is_complete() and inventory.wood > 0
 			input["fire_lit"] = lit
 			input["fire_held"] = lit
 			input["firewood_logs"] = float(inventory.wood)

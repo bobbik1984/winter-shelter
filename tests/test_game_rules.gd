@@ -38,6 +38,7 @@ func run() -> Dictionary:
 	_check(not GameRules.fire_check(4, 2, 0.1, true, false, t)["ok"], "树冠下落雪压火")
 	_check(not GameRules.fire_check(4, 2, 0.95, false, false, t)["ok"], "迎风被吹灭")
 	_check(GameRules.fire_check(4, 2, 0.2, false, false, t)["ok"], "背风、材料齐全应能点燃")
+	_check(not GameRules.fire_check(4, 2, t.fire_blowout_dot + 0.05, false, false, t)["ok"], "白天吹灭阈值须与 NightSimulator 一致")
 	_check(GameRules.fire_exposure(0.2, true) < GameRules.fire_exposure(0.2, false), "挡风物降低暴露")
 
 	# 提示（V3）
