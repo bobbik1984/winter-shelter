@@ -17,7 +17,7 @@ func _run() -> void:
 	# 寻找合法高床雪洞点（出生点附近）
 	var spot := Vector3(22, 0, 8)
 	var want := 2.05
-	if strat == "deep": want = 2.4
+	if strat in ["deep", "quick", "twovent"]: want = 2.4
 	for r in range(2, 40):
 		var hit := false
 		for k in range(16):
@@ -38,7 +38,7 @@ func _run() -> void:
 	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
 	while d.inventory.bedding < bedding_need:
 		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
-	while d.inventory.wood < wood_need + (2 if strat in ["good", "deep", "wind", "late"] else 0):
+	while d.inventory.wood < wood_need + (2 if strat in ["good", "deep", "wind", "late", "quick", "twovent"] else 0):
 		var r = d._on_harvest(_fake("deadwood"))
 		d._on_interaction_completed(_fake("deadwood"), r)
 	d.inventory.add("bark", 2)
@@ -51,6 +51,10 @@ func _run() -> void:
 		await physics_frame
 		d._enter_build()
 		d.build.preset_id = preset
+		if strat == "quick":
+			d.build.quick_roof = true
+		if strat == "twovent":
+			d.build.vent_count = 2
 		if strat == "wind":
 			d.build.entrance_dir = d.wind.get_wind_direction_3d()
 		await process_frame
@@ -63,7 +67,7 @@ func _run() -> void:
 			if strat == "late" and d.weather.current_time_minutes > 1060.0:
 				break
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
-		if strat in ["good", "deep", "leanto_full"]:
+		if strat in ["good", "deep", "leanto_full", "quick", "twovent"]:
 			# 篝火 + 热饮（站到背风开阔处）
 			p.global_position = d.site.global_position + Vector3(3.5, 0.5, -3.5)
 			await physics_frame

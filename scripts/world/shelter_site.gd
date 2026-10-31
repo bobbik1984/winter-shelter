@@ -22,6 +22,9 @@ var slope_deg: float = 0.0
 var near_windbreak: bool = false
 var interactable: Interactable
 var fire: Campfire
+var quick_roof: bool = false
+var vent_count: int = 1
+var time_factor: float = 1.0
 
 var _visual: Node3D
 var _snow: ShaderMaterial
@@ -85,7 +88,7 @@ func next_stage_title() -> String:
 	return p.stage_titles[s] if s < p.stage_titles.size() else ""
 
 func stage_minutes() -> float:
-	return builder.active_preset().build_minutes_total / float(ShelterBuilder.STAGES_MAX)
+	return builder.active_preset().build_minutes_total / float(ShelterBuilder.STAGES_MAX) * time_factor
 
 ## 0 露天 / 1 锁温 / 2 回温（来自预设的各阶段保温等级）。
 func shelter_level() -> int:
@@ -177,6 +180,8 @@ func _cave_visual(s: int) -> void:
 		_box(Vector3(0.3, 0.15, 1.35), Vector3(0.7, 0.12, 0.3), _bough)
 	if s >= 4:
 		_cyl(Vector3(0.15, 1.35, -1.2), 0.06, 0.6, _wood)
+		if vent_count >= 2:
+			_cyl(Vector3(-0.45, 1.25, -1.5), 0.06, 0.6, _wood)
 	if s >= 5:
 		hole.material_override = _glow
 		var l := OmniLight3D.new()

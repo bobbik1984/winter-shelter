@@ -96,7 +96,7 @@ func _ready() -> void:
 	bv.add_child(_build_title)
 	bv.add_child(_build_reason)
 	bv.add_child(_build_info)
-	bv.add_child(_label("[Tab] shelter type   [R] rotate entrance   [E] place   [B] cancel", 12, MUTED))
+	bv.add_child(_label("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel", 12, MUTED))
 	_build_card.visible = false
 
 	_fade = ColorRect.new()

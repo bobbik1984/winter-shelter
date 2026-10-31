@@ -206,6 +206,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			if build.active:
 				match k:
+					KEY_T: build.toggle_roof()
+					KEY_2: build.toggle_vents()
 					KEY_TAB: build.cycle_preset()
 					KEY_R: build.rotate_entrance()
 					KEY_B, KEY_ESCAPE: _exit_build()
@@ -261,7 +263,7 @@ func _tick_playing(delta: float) -> void:
 
 	# 建造模式
 	if build.active:
-		var info := "Snow %.1f m · slope %d° · %s" % [build.depth, int(build.slope), build.wind_text()]
+		var info := "Snow %.1f m · slope %d° · %s\n%s" % [build.depth, int(build.slope), build.wind_text(), build.interior_text()]
 		if build.near_windbreak:
 			info += " · rootball windbreak nearby"
 		ui.show_build(true, "BUILD — " + build.display_name(), build.reason, build.valid, info)
@@ -510,6 +512,10 @@ func _place_site() -> void:
 	site = ShelterSite.new()
 	site.name = "ShelterSite"
 	site.setup(build.preset_id, build.entrance_dir, build.depth, build.slope, build.near_windbreak)
+	if build.is_snow_preset():
+		site.quick_roof = build.quick_roof
+		site.vent_count = build.vent_count
+		site.time_factor = tuning.quick_roof_time_factor if build.quick_roof else 1.0
 	site.position = build.site_pos
 	main.add_child(site)
 	site.interactable.hold_seconds = tuning.stage_hold_seconds
@@ -664,6 +670,11 @@ func night_input() -> Dictionary:
 		var lee := SnowField.lee_factor_at(sp.x, sp.z)
 		input["wind_angle_diff"] = GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d())
 		input["terrain_shelter"] = clampf(lee + (0.4 if site.near_windbreak else 0.0), -1.0, 1.0)
+		if site.is_snow_shelter() and site.stage() >= 1:
+			var roof := tuning.roof_thickness_min_m if site.quick_roof else tuning.roof_thickness_good_m
+			input["roof_thickness_meters"] = minf(roof, float(input.get("snow_depth_meters", 0.0)) * 0.3)
+		if bool(input.get("has_vent", false)):
+			input["vent_count"] = site.vent_count
 		if site.preset_id == "LeanTo":
 			# 倒棚反射火在入夜时用备柴重新点燃：只要火塘完工且有干柴即可（白天火是否还在烧不影响夜里）
 			var lit := site.is_complete() and inventory.wood > 0

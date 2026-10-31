@@ -14,6 +14,9 @@ var wind_from: Vector3 = Vector3.LEFT
 var active: bool = false
 var preset_id: String = "RaisedCave"
 var entrance_dir: Vector3 = Vector3.RIGHT
+## 内部细节（MVP 清单第 9 项，仅雪庇护所）：快速薄顶 / 结实顶；通风管 1 或 2 根。
+var quick_roof: bool = false
+var vent_count: int = 1
 
 ## 当前预览点的校验结果（供 HUD 读取）
 var site_pos: Vector3
@@ -73,6 +76,22 @@ func exit() -> void:
 
 func cycle_preset() -> void:
 	preset_id = PRESETS[(PRESETS.find(preset_id) + 1) % PRESETS.size()]
+
+func toggle_roof() -> void:
+	quick_roof = not quick_roof
+
+func toggle_vents() -> void:
+	vent_count = 2 if vent_count == 1 else 1
+
+func is_snow_preset() -> bool:
+	return preset_id != "LeanTo"
+
+func interior_text() -> String:
+	if not is_snow_preset():
+		return "Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log)." % tuning.fire_fuel_hours_per_log
+	var roof := "Quick roof %.2f m (−%d%% time, weaker)" % [tuning.roof_thickness_min_m, int(round((1.0 - tuning.quick_roof_time_factor) * 100.0))] if quick_roof else "Solid roof %.2f m" % tuning.roof_thickness_good_m
+	var vents := "2 vents (more air, a little colder)" if vent_count == 2 else "1 vent"
+	return "%s · %s   [T] roof  [2] vents" % [roof, vents]
 
 func rotate_entrance() -> void:
 	entrance_dir = entrance_dir.rotated(Vector3.UP, deg_to_rad(-45.0)).normalized()

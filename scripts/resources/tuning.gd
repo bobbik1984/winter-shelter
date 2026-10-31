@@ -503,6 +503,9 @@ extends Resource
 ## [GAME] 跳进游戏时间时，劳作的体温流失按暴露率的比例计（干活发热）。
 @export var work_exposure_factor: float = 0.35
 
+## [GAME] 快速顶（顶厚 = roof_thickness_min_m）节省的施工时间比例。
+@export var quick_roof_time_factor: float = 0.8
+
 @export_group("Campfire")
 ## [GAME] 生火按住秒数。
 @export var fire_hold_seconds: float = 2.0

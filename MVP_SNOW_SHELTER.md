@@ -66,31 +66,31 @@
 
 ## 3. MVP 01 十二项功能检查清单 (The 12 Checklist Items)
 
-每一项完成后均需可实机跑通验证：
+每一项完成后均需可实机跑通验证。状态（2026-11-01）：12 项均已实现并经 scripted / 截图验证，**尚未人工 F5 试玩**——人工确认后把 `[~]` 改成 `[x]`。
 
-- [ ] **1. 玩家基础移动 (Player Navigation)**  
+- [~] **1. 玩家基础移动 (Player Navigation)**  
   支持键盘/鼠标在雪地中流畅移动（方向相对相机，D8）。
-- [ ] **2. 移轴透视摄像机 (Tilt-shift Camera, D8)**  
+- [~] **2. 移轴透视摄像机 (Tilt-shift Camera, D8)**  
   摄像机平滑跟随玩家，竖线不汇聚，天际线与太阳在画面上沿；V 键可切正交等距备用模式。
-- [ ] **3. 肉眼可见的环境线索 (Visible Wind & Snow FX)**  
+- [~] **3. 肉眼可见的环境线索 (Visible Wind & Snow FX)**  
   风雪粒子清晰呈现自西向东吹拂，树梢摇摆方向与风力一致。
-- [ ] **4. 探针探雪交互 (Snow Depth Probing)**  
+- [~] **4. 探针探雪交互 (Snow Depth Probing)**  
   使用雪深探针扎雪，屏幕弹出对应点的数值反馈（如 `Good depth ↓ 2.15m`）。
-- [ ] **5. 枯木识别、砍柴与生火 (Deadwood, Gathering & Fire)**  
+- [~] **5. 枯木识别、砍柴与生火 (Deadwood, Gathering & Fire)**  
   靠近树木可识别立枯木（干燥燃料）或湿倒木，消耗时间收集柴块；用打火棒 + 桦树皮生火，迎风处会被吹灭。
-- [ ] **6. 引火物与垫层收集 (Tinder & Bedding Gathering)**  
+- [~] **6. 引火物与垫层收集 (Tinder & Bedding Gathering)**  
   剥取干燥桦树皮（Birch Bark），收集松针干草作为地面隔热垫。
-- [ ] **7. 庇护所选址与预设选择 (Shelter Placement & Presets)**  
+- [~] **7. 庇护所选址与预设选择 (Shelter Placement & Presets)**  
   激活建造模式，选择 4 种预设之一（倒棚 + 反射火 / 雪沟 / 基础雪洞 / 高床雪洞）；雪深不够时显示原因。
-- [ ] **8. 入口方向调整 (Entrance Orientation)**  
+- [~] **8. 入口方向调整 (Entrance Orientation)**  
   旋转入口朝向（避开西向直接迎风面，防止强风倒灌）；倒棚则调整棚背朝向。
-- [ ] **9. 内部细节调整 (Interior Tuning)**  
-  雪庇护所：高床冷气坑、Telescopic Vent、顶厚；倒棚：反射墙、火与棚的距离、通宵备柴量。
-- [ ] **10. 连续日照时间推进 (Continuous Daylight Progression)**  
+- [~] **9. 内部细节调整 (Interior Tuning)**  
+  雪庇护所：高床冷气坑、Telescopic Vent（1 / 2 根，[2]）、顶厚（快速 0.30 m / 结实 0.45 m，[T]）；倒棚：反射墙、通宵备柴量（背包剩余木材）。
+- [~] **10. 连续日照时间推进 (Continuous Daylight Progression)**  
   时间推进（14:20 → 16:18），光影拉长、夕阳金黄转为暮色幽蓝；天空背景层同步反映时间和天气。
-- [ ] **11. “Spend the Night” 过夜触发 (Night Transition)**  
-  在庇护所内确认过夜，淡出并播放暴风雪音效切片。
-- [ ] **12. 6 维可解释报告 (Explainable Shelter Report)**  
+- [~] **11. “Spend the Night” 过夜触发 (Night Transition)**  
+  在庇护所内确认过夜（N，二次确认；17:50 强制），淡出；风声随庇护等级变闷。
+- [~] **12. 6 维可解释报告 (Explainable Shelter Report)**  
   展示 6 项评分与自然语言因果复盘（如冷空气槽成效、通气孔状态、入口避风表现）。
 
 ---
