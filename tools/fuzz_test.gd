@@ -28,6 +28,10 @@ func _run() -> void:
 	var frames := 0
 	while Time.get_ticks_msec() - t0 < int(seconds * 1000.0):
 		frames += 1
+		if frames % 120 == 0:
+			var dh = current_scene.get_node_or_null("GameDirector") if current_scene else null
+			if dh:
+				printerr("HB frames=%d state=%d t=%s build=%s" % [frames, dh.state, dh.weather.clock_string(), dh.build.active])
 		var d = current_scene.get_node_or_null("GameDirector") if current_scene else null
 		if d == null:
 			await process_frame

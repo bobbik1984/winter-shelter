@@ -23,7 +23,7 @@
 
 ## 🐞 已知问题（未排期）
 
-- [x] **偶发原生崩溃（已缓解）**：模糊测试 `--seed=2` 约 3/21 次在场景载入后 SIGSEGV，时刻与窗口 swapchain 重建重合（`--verbose` 第二次 "Using present mode"）。修复：GraphicsSettings 启动约 30 帧后才应用 3D 渲染缩放 / 阴影设置、之前忽略 F10。修复后 0/28。根因在引擎层（Godot 4.3 release 无符号，未能取得回溯），升级 Godot 时复测
+- [x] **偶发原生崩溃（已缓解）**：模糊测试 `--seed=2` 约 3/21 次在场景载入后 SIGSEGV，时刻与窗口 swapchain 重建重合（`--verbose` 第二次 "Using present mode"）。修复：GraphicsSettings 启动约 30 帧后才应用 3D 渲染缩放 / 阴影设置、之前忽略 F10。修复后：seed 2 0/28、10 个新种子 1/10、seed 12 复测 0/12（合计约 1/50，修复前约 3/36）。残余约 2%，原生回溯拿不到（release 无符号，gdb / --verbose / 加日志下不复现）；需要带符号的 Godot 或升级引擎后复测。根因在引擎层（Godot 4.3 release 无符号，未能取得回溯），升级 Godot 时复测
 
 - [x] 中文字体：已随包附带 Droid Sans Fallback（Apache-2.0，4 MB，取自本机系统字体）作为默认字体的后备字体
 

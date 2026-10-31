@@ -34,7 +34,6 @@ func _ready() -> void:
 		level = clampi(int(cfg.get_value("graphics", "level", 1)), 0, 2)
 		AudioServer.set_bus_mute(0, bool(cfg.get_value("audio", "muted", false)))
 		ui_scale_idx = clampi(int(cfg.get_value("ui", "scale_idx", 1)), 0, UI_SCALES.size() - 1)
-	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
 	set_process(true)
 
 ## [M] 静音（保存）；[F11] 全屏（不保存，跟随窗口）。
@@ -48,6 +47,8 @@ func toggle_mute() -> bool:
 	return muted
 
 func step_ui_scale(delta_idx: int) -> float:
+	if not _ready_to_apply:
+		return UI_SCALES[ui_scale_idx]
 	ui_scale_idx = clampi(ui_scale_idx + delta_idx, 0, UI_SCALES.size() - 1)
 	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
 	var cfg := ConfigFile.new()
@@ -65,6 +66,7 @@ func _process(_delta: float) -> void:
 	if _ready_frames >= READY_FRAMES:
 		_ready_to_apply = true
 		set_process(false)
+		get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
 		apply()
 
 func cycle() -> void:
