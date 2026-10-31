@@ -24,7 +24,22 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
 		level = clampi(int(cfg.get_value("graphics", "level", 1)), 0, 2)
+		AudioServer.set_bus_mute(0, bool(cfg.get_value("audio", "muted", false)))
 	apply.call_deferred()
+
+## [M] 静音（保存）；[F11] 全屏（不保存，跟随窗口）。
+func toggle_mute() -> bool:
+	var muted := not AudioServer.is_bus_mute(0)
+	AudioServer.set_bus_mute(0, muted)
+	var cfg := ConfigFile.new()
+	cfg.load(PATH)
+	cfg.set_value("audio", "muted", muted)
+	cfg.save(PATH)
+	return muted
+
+func toggle_fullscreen() -> void:
+	var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 func cycle() -> void:
 	level = (level + 1) % PRESETS.size()

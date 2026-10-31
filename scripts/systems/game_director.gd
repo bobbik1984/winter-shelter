@@ -277,6 +277,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if k == KEY_F10:
 		graphics.cycle()
 		return
+	if k == KEY_F11:
+		graphics.toggle_fullscreen()
+		return
+	if k == KEY_M:
+		ui.toast(Loc.t("Sound off  [M]") if graphics.toggle_mute() else Loc.t("Sound on  [M]"), 1.5)
+		return
 	match state:
 		State.BRIEFING:
 			if k == KEY_ENTER or k == KEY_KP_ENTER:

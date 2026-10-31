@@ -283,7 +283,7 @@ func show_pause(on: bool) -> void:
 		for line in [Loc.t("[Esc] resume      [R] restart      [Q] quit"),
 				"", Loc.t("[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink"),
 				Loc.t("[B] build mode — [Tab] type, [R] rotate entrance, [E] place"),
-				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics")]:
+				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics") + "    [M] " + ("声音" if Loc.is_zh() else "sound") + "    [F11] " + ("全屏" if Loc.is_zh() else "fullscreen")]:
 			var l := _label(line, 15 if line.begins_with("[Esc]") else 13, AMBER if line.begins_with("[Esc]") else MUTED)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			v.add_child(l)
