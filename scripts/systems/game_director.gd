@@ -56,6 +56,7 @@ func setup(p_main: Node3D, p_player: PlayerController, p_weather: WeatherControl
 	hud = p_hud
 
 func _ready() -> void:
+	Loc.ensure_cjk_font()
 	tuning = load("res://resources/tuning.tres") as Tuning
 	wind = load("res://resources/default_wind.tres") as WindData
 

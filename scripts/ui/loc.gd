@@ -15,6 +15,23 @@ static func is_zh() -> bool:
 		lang = String(cfg.get_value("ui", "lang", "en")) if cfg.load(PATH) == OK else "en"
 	return lang == "zh"
 
+const CJK_FONT := "res://assets/fonts/DroidSansFallbackFull.ttf"
+static var _font_ready := false
+
+## 给默认字体挂一个随包附带的 CJK 后备字体（Apache-2.0），没装中文字体的机器也能显示中文。
+## 拉丁字符仍用默认字体；只有缺字时才落到后备字体。
+static func ensure_cjk_font() -> void:
+	if _font_ready:
+		return
+	_font_ready = true
+	var base := ThemeDB.fallback_font
+	var cjk := load(CJK_FONT) as Font
+	if base == null or cjk == null:
+		return
+	var fb := base.fallbacks
+	fb.append(cjk)
+	base.fallbacks = fb
+
 static func set_lang(l: String) -> void:
 	lang = l
 	var cfg := ConfigFile.new()
