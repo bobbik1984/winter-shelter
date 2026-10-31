@@ -213,7 +213,7 @@ func _make_briefing(forecast: String = "") -> Control:
 		Loc.t("[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom"), 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(keys)
-	var rec := GameDirector.records_text()
+	var rec := Records.text()
 	if rec != "":
 		var rl := _label(rec, 13, MUTED)
 		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

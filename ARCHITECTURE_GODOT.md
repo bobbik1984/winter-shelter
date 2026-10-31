@@ -166,7 +166,7 @@ static func evaluate_shelter(
 - **设置**：`GraphicsSettings`（F10，`user://settings.cfg`）。
 - **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。
 - **本地化**：`Loc`（`scripts/ui/loc.gd`）按英文源串查中文表；`Loc.t("…%d…") % n`；`[L]` 切换并存 `user://settings.cfg`。新增玩家可见文字必须包 `Loc.t()` 并补表；`const` 里的文字在显示处再包。
-- **输入**：键盘为主；`GameDirector._ensure_joypad_inputs()` 把手柄摇杆 / A / X 写进 InputMap，其余手柄键经 `_joy_to_key()` 转成等价键盘键。
+- **输入**：键盘为主；`GameInput.ensure_joypad()` 把手柄摇杆 / A / X 写进 InputMap，其余手柄键经 `GameInput.joy_to_key()` 转成等价键盘键。最好记录在 `Records`（`user://records.cfg`）。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)

@@ -137,7 +137,7 @@ func _ready() -> void:
 		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
 
 	_apply_static_labels()
-	_ensure_joypad_inputs()
+	GameInput.ensure_joypad()
 	warmth.auto_update = false
 	warmth.has_extra_clothing = true
 	warmth.set_body_warmth(tuning.warmth_max * 0.92)
@@ -198,71 +198,13 @@ func _show_report() -> void:
 	if site:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	ui.show_report(data, name_)
-	_save_record(String(input.get("shelter_type", "None")), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	Records.save(String(input.get("shelter_type", "None")), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 
-const RECORDS := "user://records.cfg"
-const OUTCOME_RANK := {"DANGEROUS": 0, "COLD": 1, "SAFE": 2}
-
-## 每种庇护所的最好一夜（结局优先，其次加权均分），简报页显示。
-func _save_record(preset: String, outcome: String, score: int) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load(RECORDS)
-	var best_o := String(cfg.get_value(preset, "outcome", ""))
-	var best_s := int(cfg.get_value(preset, "score", -1))
-	var better: bool = best_o == "" or OUTCOME_RANK.get(outcome, 0) > OUTCOME_RANK.get(best_o, 0) \
-		or (outcome == best_o and score > best_s)
-	cfg.set_value(preset, "nights", int(cfg.get_value(preset, "nights", 0)) + 1)
-	if better:
-		cfg.set_value(preset, "outcome", outcome)
-		cfg.set_value(preset, "score", score)
-	cfg.save(RECORDS)
-
-static func records_text() -> String:
-	var cfg := ConfigFile.new()
-	if cfg.load(RECORDS) != OK:
-		return ""
-	var names := {"RaisedCave": Loc.t("Raised cave"), "BasicCave": Loc.t("Snow cave"), "SnowTrench": Loc.t("Trench"), "LeanTo": Loc.t("Lean-to"), "None": Loc.t("No shelter")}
-	var parts: Array[String] = []
-	for k in names:
-		if cfg.has_section(k):
-			parts.append("%s: %s" % [names[k], cfg.get_value(k, "outcome", "—")])
-	return Loc.t("Your best nights — ") + "   ·   ".join(parts) if not parts.is_empty() else ""
 
 # ------------------------------------------------------------------ 输入
 
-## 手柄：左摇杆移动、A 交互、X 探针（写进 InputMap）；其余按键转成等价键盘键处理。
-func _ensure_joypad_inputs() -> void:
-	var axes := {"move_left": [JOY_AXIS_LEFT_X, -1.0], "move_right": [JOY_AXIS_LEFT_X, 1.0],
-		"move_up": [JOY_AXIS_LEFT_Y, -1.0], "move_down": [JOY_AXIS_LEFT_Y, 1.0]}
-	for action in axes:
-		if InputMap.has_action(action):
-			var e := InputEventJoypadMotion.new()
-			e.axis = axes[action][0]
-			e.axis_value = axes[action][1]
-			InputMap.action_add_event(action, e)
-	for pair in [["interact", JOY_BUTTON_A], ["probe", JOY_BUTTON_X]]:
-		if InputMap.has_action(pair[0]):
-			var b := InputEventJoypadButton.new()
-			b.button_index = pair[1]
-			InputMap.action_add_event(pair[0], b)
-
 func _joy_to_key(btn: JoyButton) -> Key:
-	match btn:
-		JOY_BUTTON_START:
-			match state:
-				State.BRIEFING: return KEY_ENTER
-				State.REPORT: return KEY_R
-				_: return KEY_ESCAPE
-		JOY_BUTTON_BACK: return KEY_H
-		JOY_BUTTON_Y: return KEY_R if state == State.PAUSED else KEY_B
-		JOY_BUTTON_B: return KEY_B if build.active else (KEY_ESCAPE if state == State.PAUSED else KEY_F)
-		JOY_BUTTON_LEFT_SHOULDER: return KEY_R if build.active else KEY_NONE
-		JOY_BUTTON_RIGHT_SHOULDER: return KEY_TAB if build.active else KEY_NONE
-		JOY_BUTTON_DPAD_UP: return KEY_T
-		JOY_BUTTON_DPAD_DOWN: return KEY_2
-		JOY_BUTTON_DPAD_RIGHT: return KEY_N
-		JOY_BUTTON_DPAD_LEFT: return KEY_L
-	return KEY_NONE
+	return GameInput.joy_to_key(btn, state, build.active)
 
 func _unhandled_input(event: InputEvent) -> void:
 	var k: Key = KEY_NONE
