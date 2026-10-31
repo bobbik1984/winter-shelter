@@ -11,7 +11,7 @@ project:
   branch: "claude/visual-pass-1（未合并、未推送）"
   blocker: "人工 F5 试玩（V1 / T0.3）与 PT01/PT02 试玩；分支未合并"
   updated: "2026-11-01"
-  playable: "简报 → 探测 / 采集 / 建造 / 生火 → 入夜 → 6 维报告 → 重开；目标行；失温倒下；暂停菜单；头灯；降雪；Blender 角色动画"
+  playable: "简报（含最好记录）→ 探测 / 采集 / 建造（4 路线 + 顶厚 / 通风选项）/ 生火融雪 → 入夜（雪洞小场景）→ 6 维报告 → 重开；目标行；野外手册 [H]；罗盘太阳；失温倒下；暂停；头灯；降雪；Blender 角色"
 
 phases:
   - id: PRE
@@ -78,7 +78,7 @@ phases:
     tasks:
       - {id: T4.1, text: "终版资产 + 动画", status: todo, note: "植被/岩石已程序化（D10）；角色 = V4"}
       - {id: T4.2-T4.3, text: "雪材质与脚印 / 光照", status: written-unverified, note: "闪点/蓝影/逆光暖辉/泛光/真实日轨已做；脚印 = V8；体积雾未做"}
-      - {id: T4.4, text: "洞内陈设", status: written-unverified, note: "剖面内 SDF 陈设 + 烛光；世界内分阶段模型未做"}
+      - {id: T4.4, text: "洞内陈设", status: written-unverified, note: "剖面内 SDF 陈设 + 烛光；完工雪洞入夜小场景（剖面 + 烛光）；世界内洞内模型未做"}
       - {id: T4.5-T4.7, text: "标题画面 / 性能 / North Star 对照评审", status: todo}
 
   - id: V
