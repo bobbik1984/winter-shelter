@@ -37,6 +37,7 @@ var _markers: Array[Node3D] = []
 var _deeper_count := 0
 var _deeper_points: Array[Vector3] = []
 var _cutaway_panel: Control
+var _compass: Control
 var _forced := false
 var _probe_count := 0
 var _best_depth := 0.0
@@ -122,11 +123,12 @@ func _ready() -> void:
 
 	callouts = get_tree().get_first_node_in_group("world_callouts") as WorldCallouts
 	_cutaway_panel = hud.get_parent().get_node_or_null("ShelterCutawayPanel") as Control
+	_compass = hud.get_node_or_null("Compass") as Control
 	if _cutaway_panel:
 		_cutaway_panel.visible = false
 	var instr := hud.get_node_or_null("Instructions") as Label
 	if instr:
-		instr.text = "[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build mode   [F] Fire   [N] Sleep"
+		instr.text = "[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide"
 
 	warmth.auto_update = false
 	warmth.has_extra_clothing = true
@@ -209,6 +211,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					KEY_B, KEY_ESCAPE: _exit_build()
 				return
 			match k:
+				KEY_H: ui.toggle_guide()
 				KEY_B: _enter_build()
 				KEY_F: _try_fire()
 				KEY_N: _request_sleep()
@@ -286,6 +289,8 @@ func _tick_playing(delta: float) -> void:
 			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
 
 	_update_world_callouts()
+	if _compass:
+		_compass.set_sun(weather.sun_azimuth_deg, weather.sun_elevation_deg)
 	ui.set_objective(GameRules.next_objective(_objective_ctx(), tuning))
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = clampf((now - 960.0) / 70.0, 0.0, 1.0) * 0.9

@@ -10,6 +10,15 @@ const NEEDLE := Color(1.0, 0.55, 0.12, 1.0)
 
 var _yaw := INF
 var _blow := Vector3.RIGHT
+## 太阳方位（°，自北顺时针）与高度角：罗盘上画一个太阳标记，越低越靠外圈、越红（影子就是时钟）。
+var sun_azimuth_deg: float = 215.0
+var sun_elevation_deg: float = 14.0
+
+func set_sun(az: float, el: float) -> void:
+	if absf(az - sun_azimuth_deg) > 0.2 or absf(el - sun_elevation_deg) > 0.2:
+		sun_azimuth_deg = az
+		sun_elevation_deg = el
+		queue_redraw()
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -62,3 +71,16 @@ func _draw() -> void:
 	var side := Vector2(-d.y, d.x)
 	draw_colored_polygon(PackedVector2Array([tip + d * 4.0, tip - d * 12.0 + side * 7.0, tip - d * 12.0 - side * 7.0]), NEEDLE)
 	draw_circle(center, 4.0, Color(0.95, 0.86, 0.64, 1.0))
+
+	# 太阳标记：方位 = 真实太阳方位；离中心的距离 = 越低越靠外（地平线 = 外圈）
+	if sun_elevation_deg > -2.0:
+		var az := deg_to_rad(sun_azimuth_deg)
+		var sun_world := Vector3(sin(az), 0, -cos(az))
+		var k := clampf(1.0 - sun_elevation_deg / 30.0, 0.25, 1.0)
+		var sp := center + _screen_dir(sun_world) * (radius - 8.0) * k
+		var warm := clampf(1.0 - sun_elevation_deg / 20.0, 0.0, 1.0)
+		var sc := Color(1.0, lerpf(0.92, 0.55, warm), lerpf(0.55, 0.2, warm))
+		draw_circle(sp, 7.0, sc)
+		for r in range(8):
+			var a := TAU * r / 8.0
+			draw_line(sp + Vector2(cos(a), sin(a)) * 9.0, sp + Vector2(cos(a), sin(a)) * 12.0, sc, 1.5, true)

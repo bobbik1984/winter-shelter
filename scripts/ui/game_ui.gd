@@ -24,6 +24,7 @@ var _briefing: Control
 var _fade: ColorRect
 var _report: Control
 var _pause: Control
+var _guide: Control
 
 func _ready() -> void:
 	layer = 5
@@ -208,6 +209,38 @@ func _make_briefing() -> Control:
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
 	return shade
+
+## 野外手册（参考图右侧 KEY RESOURCES / READ THE LAND 两块）：[H] 开关。
+func toggle_guide() -> void:
+	if _guide == null:
+		var card := _card(Color(0.62, 0.78, 0.95))
+		card.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		card.position = Vector2(-470, -230)
+		card.custom_minimum_size = Vector2(440, 0)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 6)
+		card.add_child(v)
+		v.add_child(_label("READ THE LAND", 16, CREAM))
+		for line in [
+				"Trees show wind direction — branches are short on the windward side, crowns lean downwind.",
+				"Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure.",
+				"Standing dead trees mean fuel — fallen logs are wet and won't burn.",
+				"Rootballs and thick forest break the wind — shelter there, and light fires there.",
+				"Shadows tell time — the longer they get, the less daylight you have left.",
+			]:
+			var l := _label("•  " + line, 13, MUTED)
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			v.add_child(l)
+		v.add_child(HSeparator.new())
+		v.add_child(_label("KEY RESOURCES", 16, CREAM))
+		for line in ["Birch bark — tinder (white trunk, black bands)", "Dry grass / spruce boughs — bedding",
+				"Dry wood — standing dead trees", "Snow — melt it over a fire for a hot drink"]:
+			v.add_child(_label("•  " + line, 13, MUTED))
+		v.add_child(_label("[H] close", 12, AMBER))
+		_guide = card
+		get_child(0).add_child(card)
+	else:
+		_guide.visible = not _guide.visible
 
 func show_pause(on: bool) -> void:
 	if on and _pause == null:
