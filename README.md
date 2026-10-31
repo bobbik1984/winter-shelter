@@ -46,6 +46,8 @@
 godot --headless --path . --import                       # 新增 class_name 后必须先跑
 godot --headless --path . -s res://tests/run_all.gd      # 全部逻辑测试，非 0 退出即失败
 godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png   # 实机截图（需窗口 / 显示）
+godot --path . -s res://tools/input_smoke_test.gd          # 真实输入冒烟测试（15 项，开始 → 报告）
+godot --path . -s res://tools/playtest_bot.gd -- --s=deep  # 策略机器人（good/deep/quick/twovent/wind/late/trench/leanto_short/leanto_full/none）
 ```
 
 运行时按键：**Enter** 开始 · WASD 移动 · 按住 Space 探针 · 按住 **E** 采集 / 建造 / 喝热水 · **B** 建造模式（Tab 换类型、R 转入口、T 顶厚、2 通风管、E 放置）· **F** 生火 / 添柴 · **N** 睡觉 · **H** 野外手册 · **Esc** 暂停 · **V** 移轴 / 正交 · 滚轮 推拉 · **F10** 画质。
