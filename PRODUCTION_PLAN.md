@@ -20,8 +20,8 @@
 | 设计文档 v0.2 | ✅ 冻结约 80% | VISION / CORE_GAMEPLAY / MVP / VISUAL / ARCHITECTURE；相机与天空规则已按 D1 修订 / D8 / D9 更新 |
 | Godot 工程 | ✅ Godot 4.3 stable 可导入、可运行、可实机截图（Vulkan Forward+） | 6 套 headless 测试 164 assertions 全绿；**尚未人工 F5 完整试玩** |
 | 画面 | ⚠️ 已接近 North Star 的构图与氛围 | 移轴透视 + 真实日轨落日、密林 / 枯立木 / 岩石、远景山谷、SDF 雪洞剖面（visual-pass 1–3，分支 `claude/visual-pass-1`，未合并） |
-| 玩法循环 | ⚠️ 逻辑层完成、交互层未接 | NightSimulator / ShelterBuilder / WarmthController 有测试；交互框架、背包、建造按键、过夜报告 UI 未做 |
-| 性能 | ⚠️ Intel UHD 620 @1080p 约 13 FPS（改动前基线同为 13） | 见 D11 与 V2 |
+| 玩法循环 | ✅ M2 循环可玩（written-unverified） | 简报 → 探测 / 采集 / 建造（4 种路线）/ 生火融雪 → 入夜 → 6 维英文报告 → 重开；scripted 打通 3 条路线；待人工试玩 PT02 |
+| 性能 | ⚠️ 画质档位（F10）：UHD 620 @1080p 低 ~25 / 中 ~15 / 高 ~10 FPS | 本机空场景上限 69 FPS；见 D11 |
 | Web 原型 `fable5_mvp` | ⚠️ 未能验证构建 | `npm ci` 网络失败；已冻结为参考（D6） |
 
 **路线**：M0 对齐 → M1 Blockout → M2 Playable → M3 Systems+UI → M4 Target Look，合计约 **46.5–47.5 个专注工作日**。

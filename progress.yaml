@@ -7,10 +7,11 @@ project:
   version: "0.2-alpha"
   status: dev
   tech: [Godot 4.3 stable, GDScript, Tilt-shift perspective (ortho fallback), SunModel real solar arc, NightSimulator 6-axis]
-  current_milestone: "V 轨道收尾（V1–V4）→ M1 剩余"
+  current_milestone: "M2 Playable：完整循环已可玩（scripted 验证）→ 等 PT02 试玩与 M3"
   branch: "claude/visual-pass-1（未合并、未推送）"
-  blocker: "V1 人工 F5 验证与合并；T0.3 F5 冒烟；T1.4–T1.8 未完成"
+  blocker: "人工 F5 试玩（V1 / T0.3）与 PT01/PT02 试玩；分支未合并"
   updated: "2026-11-01"
+  playable: "简报 → 探测 / 采集 / 建造 / 生火 → 入夜 → 6 维报告 → 重开；暂停菜单；头灯；降雪"
 
 phases:
   - id: PRE
@@ -39,31 +40,37 @@ phases:
       - {id: T1.1b, text: "地形网格 + 碰撞", status: written-unverified, depends: [T1.1a], note: "terrain_builder.gd：SurfaceTool ArrayMesh + trimesh 碰撞，100×100 m；snapshots/m1_blockout_diorama.png 实机渲染；F5 走遍全图待人工"}
       - {id: T1.2, text: "SnowField 雪深场 + 测试", status: written-unverified, depends: [T1.1a], note: "scripts/world/snow_field.gd + 8 assertions 通过（背风更深、范围、连续性）；探针仍读碰撞体 meta，T1.6 接入"}
       - {id: T1.3, text: "相机调参热键并定稿", status: superseded, note: "D8 改为移轴透视，由 V9 替代"}
-      - {id: T1.4, text: "移动阻尼", status: todo, depends: [T1.2]}
-      - {id: T1.5, text: "最小风粒子 + 避风传感器", status: written-unverified, depends: [T0.5], note: "WindParticles 方向改读 WindData 下风；云杉迎风枝短/背风偏冠可读风向；风声低通/避风传感器未做"}
-      - {id: T1.6, text: "探针手感 + 地面标记", status: todo, depends: [T1.2]}
+      - {id: T1.4, text: "移动阻尼", status: written-unverified, note: "GameRules.move_speed：上坡 + 深雪衰减，Tuning Movement 组；test_game_rules 覆盖"}
+      - {id: T1.5, text: "最小风粒子 + 避风传感器", status: written-unverified, depends: [T0.5], note: "风粒子读 WindData；暴露度 = 背风坡 + 树根 + 林木挡风（GameRules.fire_exposure）驱动体温与 AmbientAudio 风声低通（录音验证）"}
+      - {id: T1.6, text: "探针手感 + 地面标记", status: written-unverified, note: "按住 0.85 s、下蹲代理、读 SnowField；D5 分类旗标 + Label3D 读数持久标记；Deeper snow 只在探测处出现（D4 默认采纳）"}
       - {id: T1.7, text: "三种灰模树", status: written-unverified, depends: [T1.1b], note: "活云杉/枯立木已由程序化低模（SpruceMesh/PropMeshes + ForestScatter）替代；翻倒根盘避风碰撞与灰度可辨验收未做"}
       - {id: T1.8, text: "试玩 PT01", status: todo, note: "人工"}
 
   - id: M2
-    name: "M2 Playable（过 M1 闸门后细化）"
+    name: "M2 Playable"
+    gate: "一局 10–20 分钟能完整打完；≥2/3 测试者自愿再玩；能复述结果原因"
     tasks:
-      - {id: T2.1-T2.2, text: "交互框架 / 资源背包", status: todo}
-      - {id: T2.3, text: "时间与 0–100 核心体温（WarmthController + HUD）", status: written-unverified, note: "WarmthController / Tuning / NightSim starting_warmth / 奶油色体温 HUD 已实机截图（snapshots/m1_warmth_hud.png）；真实风源/庇护所/火源采样与 F5 待接"}
-      - {id: T2.4-T2.6, text: "建造模式（D5 校验）/ 预设参数 / 挖掘进度", status: written-unverified, note: "ShelterBuilder 4 策略 + 5 阶推进 + 37 assertions 通过；45° 剖面雪洞/树根篝火锅实机截图（snapshots/m2_shelter_cutaway.png）；F5 真实按键建造与庇护所区域采样未接"}
-      - {id: T2.7-T2.7b, text: "火（D2/D3）与倒棚预设", status: todo}
-      - {id: T2.8-T2.11, text: "过夜纯文字报告 / 简报 / 基础美术 / PT02", status: todo}
-
+      - {id: T2.1, text: "交互框架 Interactable + 淡橙圈", status: written-unverified, note: "Interactable / InteractionController；按住 E；完成回调消耗游戏分钟"}
+      - {id: T2.2, text: "资源与背包", status: written-unverified, note: "Inventory（木 / 桦皮 / 垫层）+ HUD 托盘；ResourceSpawner：立枯木（含森林全部枯木）/ 白桦 / 干草 / 云杉枝 / 湿倒木教学 / 树根挡风；背包挂件外观随数量变化未做"}
+      - {id: T2.3, text: "时间与 0–100 核心体温", status: written-unverified, note: "暴露度驱动；动作跳时按劳作系数结算；日落后寒冷系数上升；掉温速率改为 0.25/s（旧值 80 s 掉光）"}
+      - {id: T2.4-T2.6, text: "建造模式 / 预设参数 / 5 阶推进", status: written-unverified, note: "B 键预览 + 第一条原因 + 入口风向读数；ShelterSite 5 阶可见外观与材料消耗；剖面面板在建雪洞/进洞时显示；三种路线 scripted 打通"}
+      - {id: T2.7, text: "生火与融雪", status: written-unverified, note: "F 生火 / 添柴：雪庇护所内禁火、缺引火物、树冠落雪、迎风吹灭（消耗桦皮）；E 融雪热饮 +15；睡前暖身 prewarmed"}
+      - {id: T2.7b, text: "倒棚预设", status: written-unverified, note: "树根旁倒棚 + 反射墙 + 反射火；夜间燃料 = 背包剩余木材 × 2 h"}
+      - {id: T2.8, text: "过夜与报告", status: written-unverified, note: "N 二次确认 / 17:50 强制入夜 → 黑屏 → 6 维英文报告（NightReportText）+ 教训 → R 重开"}
+      - {id: T2.9, text: "开场简报", status: written-unverified, note: "标题 + 情境 + Read the Land + 按键；Enter 开始"}
+      - {id: T2.10, text: "基础美术", status: written-unverified, note: "程序化云杉 / 枯木 / 白桦 / 岩石 / 树根 / 干草（D10）"}
+      - {id: T2.11, text: "试玩 PT02", status: todo, note: "人工"}
   - id: M3
     name: "M3 Systems + UI"
     tasks:
-      - {id: T3.1, text: "天气：树摆 / 贴地吹雪 / 阵风 / 夜雪堵通风", status: todo}
+      - {id: T3.1, text: "天气：树摆 / 贴地吹雪 / 阵风 / 夜雪堵通风", status: written-unverified, note: "云杉风摆 + 阵风；傍晚降雪；贴地吹雪与夜雪堵通风未做"}
       - {id: T3.2, text: "连续日落 AtmosphereState", status: written-unverified, note: "太阳与光色已由 SunModel 连续驱动；统一数据源 = V7"}
       - {id: T3.3, text: "天空背景层（Canvas 方案）", status: superseded, note: "D1 修订：Sky shader + 远景地形（V0.3）"}
       - {id: T3.4-T3.5, text: "HUD / 世界标签", status: written-unverified, note: "环境卡、体温卡、随相机罗盘、世界引线标签已实机截图；tips.gd 上下文提示未做（V3）"}
       - {id: T3.6, text: "Cutaway 剖面", status: written-unverified, note: "SDF 剖面 + 5 标注 + 顶厚取自 Tuning（V0.1）；建造/进洞时触发显示未做"}
-      - {id: T3.7, text: "报告 UI", status: todo}
-      - {id: T3.8-T3.10, text: "音频灰盒 / 内容一轮 / PT03", status: todo}
+      - {id: T3.7, text: "报告 UI", status: written-unverified, note: "6 条分数条 + 归因 + 结论 + 教训（随庇护所类型）"}
+      - {id: T3.8, text: "音频灰盒", status: written-unverified, note: "AmbientAudio 程序化风声 / 踩雪 / 火噼啪，无音频资源"}
+      - {id: T3.9-T3.10, text: "内容一轮 / PT03", status: todo}
 
   - id: M4
     name: "M4 Target Look"
@@ -85,11 +92,11 @@ phases:
       - {id: V0.7, text: "遮挡镂空 occlusion_fade", status: written-unverified, evidence: "commit 0db34ad；snapshots/visual_pass3_1420.png"}
       - {id: V0.8, text: "WindData 来向/下风语义修正", status: written-unverified, evidence: "commit 016eb52"}
       - {id: V1, text: "人工 F5 验证 + 合并分支", status: todo, note: "人工"}
-      - {id: V2, text: "画质档位（D11）", status: todo, depends: [V1], note: "本机 UHD 620 @1080p 约 13 FPS（基线 13）"}
-      - {id: V3, text: "影子时钟教学文案", status: todo, depends: [V1]}
+      - {id: V2, text: "画质档位（D11）", status: written-unverified, note: "F10 低/中/高并持久化；UHD 620 @1080p：低 ~25 / 中 ~15 / 高 ~10 FPS；空场景上限 69 FPS"}
+      - {id: V3, text: "影子时钟教学文案", status: written-unverified, note: "GameRules.tip_for：按剩余日照 / 体温切换，阈值在 Tuning Tips 组；报告教训引用开工时间"}
       - {id: V4, text: "Blender 角色 + 动画", status: todo, depends: [V1]}
-      - {id: V5, text: "枯立木 / 岩石可读性", status: todo}
+      - {id: V5, text: "枯立木 / 岩石可读性", status: written-unverified, note: "snow_cover RIM 边缘光 + 更亮树皮色"}
       - {id: V6, text: "远景冰湖 / 河谷", status: todo}
       - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: todo}
-      - {id: V8, text: "脚印与拖痕", status: todo}
+      - {id: V8, text: "脚印与拖痕", status: written-unverified, note: "Footprints 环形 MultiMesh；拖痕未做"}
       - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: todo, depends: [V1, V3]}

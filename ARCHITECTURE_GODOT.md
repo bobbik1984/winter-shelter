@@ -156,6 +156,14 @@ static func evaluate_shelter(
 
 ---
 
+### 3.8 游戏循环层（M2，2026-11-01）
+- **`GameDirector`**（`main.gd` 运行时创建）：状态机 BRIEFING → PLAYING ⇄ PAUSED → NIGHT_FADE → REPORT；输入（B / F / N / Esc / F10 / Enter / R）；每帧把暴露度、庇护等级、火源写入 `WarmthController`（`auto_update = false`）与 `AmbientAudio`；动作通过 `_skip(minutes)` 跳进游戏时间并按劳作系数结算体温；入夜时组装 `NightSimulator` 输入并用 `NightReportText` 生成英文报告。
+- **规则**：`GameRules`（纯函数，`tests/test_game_rules.gd`）——移动阻尼、探针分类、入口风向夹角、暴露度（背风坡 + 树根 + 林木）、生火判定、提示文案、作业效率。
+- **交互**：`Interactable`（组 `interactables`，handler / prompt_fn）+ `InteractionController`（最近目标、按住进度、淡橙圈）。
+- **世界对象**：`ResourceSpawner`（资源与树根挡风物，并给森林 / 场景里全部立枯木挂采集点）、`ShelterSite`（持有 `ShelterBuilder`，5 阶外观 + 每阶材料）、`BuildMode`（预览与校验）、`Campfire`、`Footprints`、`Snowfall`、玩家头灯。
+- **UI**：`GameUI`（代码构建：提示、背包、消息、建造面板、简报、暂停、黑屏、报告）；`WorldCallouts` 动态引线标签 API。
+- **设置**：`GraphicsSettings`（F10，`user://settings.cfg`）。
+
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
 > 本清单直接对齐参考图 *North Star v0.1* 的全部视觉、听觉与程序要素，作为建模、美术、Shader、音效与代码的真实生产指导单。
@@ -233,29 +241,38 @@ scripts/
 │   ├── shelter_cutaway_rig.gd        ✅ SDF 剖面四边形 + 几何镜像函数（改 shader 几何须同步）
 │   ├── campfire_pot_rig.gd           ✅ 篝火与锅（视觉）
 │   ├── wind_particles.gd             ✅ 风雪粒子
-│   └── probe_marker.gd                  地面持久化探针标记（T1.6）
+│   ├── resource_spawner.gd           ✅ 资源 / 树根 / 立枯木采集点
+│   ├── shelter_site.gd               ✅ 庇护所工地 5 阶外观
+│   ├── campfire.gd                   ✅ 营火
+│   ├── footprints.gd                 ✅ 脚印
+│   └── snowfall.gd                   ✅ 傍晚降雪（探针标记由 GameDirector 生成）
 ├── player/
 │   ├── player_controller.gd          ✅ 相机相对移动、探针（阻尼 T1.4 待做）
 │   ├── hiker_visual.gd               ✅ 拼装角色（V4 由 Blender .glb 替换）
 │   ├── warmth_controller.gd          ✅ 0–100 核心体温
-│   └── wind_exposure_sensor.gd          微地形挡风检测（T1.5）
+│   └── interaction_controller.gd     ✅ 交互选择与按住进度（挡风检测并入 GameRules 暴露度）
 ├── components/
-│   └── interactable.gd                  统一交互组件（T2.1）
+│   └── interactable.gd               ✅ 统一交互组件
 ├── systems/
 │   ├── sun_model.gd                  ✅ 真实日轨（纯函数，有测试）
 │   ├── weather_controller.gd         ✅ 时钟、太阳驱动、天气信号
 │   ├── shelter_builder.gd            ✅ 选址校验（D5）+ 5 阶推进（逻辑）
 │   ├── night_simulator.gd            ✅ 6 维可解释结算
 │   ├── atmosphere_state.gd              大气唯一数据源（V7）
-│   ├── graphics_settings.gd             画质档位（V2）
-│   ├── inventory.gd                     背包（T2.2）
-│   └── campfire_controller.gd           生火与融雪（T2.7）
+│   ├── graphics_settings.gd          ✅ 画质档位
+│   ├── game_director.gd              ✅ 一局游戏的状态机与编排
+│   ├── game_rules.gd                 ✅ 循环纯规则（有测试）
+│   ├── build_mode.gd                 ✅ 建造预览与校验
+│   ├── ambient_audio.gd              ✅ 程序化音频灰盒
+│   ├── inventory.gd                  ✅ 背包
+│   └── （生火规则在 GameRules / GameDirector）
 └── ui/
     ├── hud_controller.gd             ✅ 环境卡
     ├── hud_warmth.gd                 ✅ 体温卡
     ├── compass_rose.gd               ✅ 随相机旋转的风向罗盘
     ├── world_callouts.gd             ✅ 世界空间引线标签
     ├── shelter_cutaway_panel.gd      ✅ 剖面面板（标注、顶厚尺寸线、气流箭头）
-    ├── tips.gd                          上下文提示行，含影子时钟（V3 / T3.4）
-    └── report_view.gd                   复盘报告（T2.8 / T3.7）
+    ├── game_ui.gd                    ✅ 循环 UI（简报 / 提示 / 报告 / 暂停）
+    ├── night_report_text.gd          ✅ 英文报告文案（展示层）
+    └── （提示文案在 GameRules.tip_for）
 ```
