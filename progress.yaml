@@ -106,4 +106,9 @@ polish:
   - {id: P1, text: "中英双语界面（Loc，[L] 切换并保存）", status: written-unverified, note: "约 190 条；中文报告用 NightSimulator 中文归因；依赖系统 CJK 字体"}
   - {id: P2, text: "手柄支持", status: written-unverified, note: "左摇杆 / A / X 进 InputMap；其余按键映射；smoke test 覆盖映射，未接真实手柄"}
   - {id: P3, text: "静音 [M] / 全屏 [F11]", status: written-unverified}
+  - {id: P5, text: "随包 CJK 后备字体（Droid Sans Fallback, Apache-2.0）", status: done, evidence: "ThemeDB 默认字体 fallbacks 已挂载；中文简报截图正常"}
+  - {id: P6, text: "全天模式（简报按 2，10:00 开局）", status: written-unverified}
+  - {id: P7, text: "树干 / 岩石 / 树根碰撞", status: written-unverified, note: "射线检测 9/9 命中；林间仍可穿行"}
+  - {id: P8, text: "合成动作音效（探针 / 砍 / 采 / 挖 / 生火）", status: written-unverified, note: "录音验证有起音与衰减"}
+  - {id: P9, text: "体感：呼吸白汽随体温加快、低体温寒颤", status: written-unverified}
   - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}
