@@ -27,6 +27,11 @@ var vent_count: int = 1
 var time_factor: float = 1.0
 ## 通风管里插了木棍（夜里可捅开新雪）：防止降雪堵塞。
 var vent_stick: bool = false
+## 世界内洞内视图（T4.4）：玩家进洞时雪丘半透明，露出洞腔、冷气坑、高床、垫层、烛灯。
+var _mound: MeshInstance3D
+var _interior: Node3D
+var _mound_ghost: StandardMaterial3D
+var _inside := false
 
 var _visual: Node3D
 var _snow: ShaderMaterial
@@ -113,6 +118,8 @@ func _snow_mat(base: Color, amount: float) -> ShaderMaterial:
 	return m
 
 func _refresh() -> void:
+	_mound = null
+	_interior = null
 	if _visual:
 		_visual.queue_free()
 	_visual = Node3D.new()
@@ -173,7 +180,8 @@ func _cave_visual(s: int) -> void:
 	if s <= 0:
 		return
 	# 雪丘（挖掘弃雪堆成的穹顶）+ 入口暗洞
-	_sphere(Vector3(0, -0.2, -1.0), 2.0, Vector3(1.3, 0.62 + 0.05 * s, 1.15), _snow)
+	_mound = _sphere(Vector3(0, -0.2, -1.0), 2.0, Vector3(1.3, 0.62 + 0.05 * s, 1.15), _snow)
+	_build_interior(s)
 	var hole := _sphere(Vector3(0, 0.38, 0.95), 0.55, Vector3(1.0, 0.75 + 0.08 * mini(s, 2), 0.35), _dark)
 	# 弃雪堆
 	for i in range(mini(s, 3) + 1):
@@ -192,6 +200,59 @@ func _cave_visual(s: int) -> void:
 		l.light_energy = 1.4
 		l.position = Vector3(0, 0.5, 1.4)
 		_visual.add_child(l)
+
+func _build_interior(s: int) -> void:
+	_interior = Node3D.new()
+	_interior.visible = _inside
+	_visual.add_child(_interior)
+	var cave := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 1.0
+	sm.height = 2.0
+	sm.radial_segments = 20
+	sm.rings = 10
+	cave.mesh = sm
+	var inner := StandardMaterial3D.new()
+	inner.albedo_color = Color(0.55, 0.66, 0.82)
+	inner.cull_mode = BaseMaterial3D.CULL_FRONT   # 从外面看到的是洞腔内壁
+	inner.roughness = 0.95
+	cave.material_override = inner
+	cave.position = Vector3(0, 0.35, -1.0)
+	cave.scale = Vector3(1.05, 0.55 + 0.05 * mini(s, 3), 0.95)
+	_interior.add_child(cave)
+	if s >= 2 and preset_id == "RaisedCave":
+		var pit := _box(Vector3(-0.55, -0.12, -0.7), Vector3(0.6, 0.12, 0.9), _dark)
+		pit.reparent(_interior)
+	if s >= 3:
+		var bed := _box(Vector3(0.35, 0.22 if preset_id == "RaisedCave" else 0.05, -1.15), Vector3(0.9, 0.1, 1.4), _bough)
+		bed.reparent(_interior)
+		var bag := _box(Vector3(0.35, 0.33 if preset_id == "RaisedCave" else 0.16, -1.15), Vector3(0.45, 0.14, 1.1), _wood)
+		bag.reparent(_interior)
+	if s >= 5:
+		var candle := _sphere(Vector3(-0.45, 0.45, -1.55), 0.06, Vector3.ONE, _glow)
+		candle.reparent(_interior)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.62, 0.26)
+		l.omni_range = 2.6
+		l.light_energy = 1.6
+		l.position = Vector3(-0.45, 0.6, -1.5)
+		_interior.add_child(l)
+
+## 进洞 / 出洞：雪丘变半透明并显示洞内。
+func set_inside(on: bool) -> void:
+	if on == _inside:
+		return
+	_inside = on
+	if _interior:
+		_interior.visible = on
+	if _mound:
+		if _mound_ghost == null:
+			_mound_ghost = StandardMaterial3D.new()
+			_mound_ghost.albedo_color = Color(0.88, 0.92, 1.0, 0.22)
+			_mound_ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_mound_ghost.cull_mode = BaseMaterial3D.CULL_BACK
+		_mound.material_override = _mound_ghost if on else _snow
+		_mound.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 func _trench_visual(s: int) -> void:
 	if s <= 0:

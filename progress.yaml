@@ -78,7 +78,7 @@ phases:
     tasks:
       - {id: T4.1, text: "终版资产 + 动画", status: todo, note: "植被/岩石已程序化（D10）；角色 = V4"}
       - {id: T4.2-T4.3, text: "雪材质与脚印 / 光照", status: written-unverified, note: "闪点/蓝影/逆光暖辉/泛光/真实日轨已做；脚印 = V8；体积雾未做"}
-      - {id: T4.4, text: "洞内陈设", status: written-unverified, note: "剖面内 SDF 陈设 + 烛光；完工雪洞入夜小场景（剖面 + 烛光）；世界内洞内模型未做"}
+      - {id: T4.4, text: "洞内陈设", status: written-unverified, note: "剖面内 SDF 陈设 + 烛光；完工雪洞入夜小场景（剖面 + 烛光）；世界内进洞视图：雪丘半透明 + 洞腔 / 冷气坑 / 高床 / 垫层 / 烛光"}
       - {id: T4.5-T4.7, text: "标题画面 / 性能 / North Star 对照评审", status: todo}
 
   - id: V

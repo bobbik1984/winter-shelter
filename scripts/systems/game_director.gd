@@ -331,6 +331,10 @@ func _tick_playing(delta: float) -> void:
 		else:
 			ui.set_prompt("", 0.0)
 
+	# 世界内洞内视图（T4.4）
+	if site:
+		site.set_inside(site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
+
 	# 剖面面板：建造雪洞时或身处雪洞内显示（T3.6 触发）
 	if _cutaway_panel:
 		var show := build.active and build.preset_id in ["RaisedCave", "BasicCave"]
