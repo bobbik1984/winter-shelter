@@ -26,7 +26,7 @@ top_radius = 0.2
 bottom_radius = 0.35
 height = 3.0
 
-[sub_resource type="ConeMesh" id="ConeMesh_pine"]
+[sub_resource type="CylinderMesh" id="CylinderMesh_pine"]
 material = SubResource("StandardMaterial3D_foliage")
 top_radius = 0.0
 bottom_radius = 1.8
@@ -59,7 +59,7 @@ mesh = SubResource("CylinderMesh_trunk")
 
 [node name="Foliage" type="MeshInstance3D" parent="Trees/Spruce1"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
-mesh = SubResource("ConeMesh_pine")
+mesh = SubResource("CylinderMesh_pine")
 
 [node name="Spruce2" type="Node3D" parent="Trees"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 10)
@@ -70,7 +70,7 @@ mesh = SubResource("CylinderMesh_trunk")
 
 [node name="Foliage" type="MeshInstance3D" parent="Trees/Spruce2"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
-mesh = SubResource("ConeMesh_pine")
+mesh = SubResource("CylinderMesh_pine")
 
 [node name="DeadwoodTree" type="Node3D" parent="Trees"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 8)
