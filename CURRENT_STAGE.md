@@ -188,9 +188,9 @@ Needs:      交互部分由你实际按 F5 确认（Agent 无法操作窗口）�
 | T1.2 雪深场 | `scripts/world/snow_field.gd`, `tests/test_snow_field.gd` | `snow_at/slope_at/lee_factor`；同一斜坡读数连续；背风区读数落在 D5 雪洞区间；分布满足"深雪处少木材" |
 | T1.3 相机热键 | `isometric_camera_rig.gd`, `resources/tuning.tres` | size 14/18/24、pitch 35/38/42 切换；你选定后写入 tuning |
 | T1.4 移动阻尼 | `player_controller.gd` | 上坡、深雪减速，系数来自 tuning |
-| T1.5 最小风 | `scenes/world/wind_particles.tscn` | 方向取 `WindData`；静帧可读风向 |
+| T1.5 最小风与避风感官 | `scenes/world/wind_particles.tscn`, `scripts/player/wind_exposure_sensor.gd`, `shaders/snow_terrain.gdshader` | 静帧可读风向；躲在树根/岩石背风侧风声低通滤波变闷、停止寒颤；雪面呈现冷暖色彩对比 |
 | T1.6 探针手感 | `player.tscn`, `player_controller.gd`, `scripts/world/probe_marker.gd` | 按住 ≈0.85 s；查询 `SnowField`；地面持久标记 |
-| T1.7 灰模树 | `scenes/world/tree_{spruce,standing_dead,fallen}.tscn` | 灰度截图可区分 |
+| T1.7 灰模树与树根掩体 | `scenes/world/tree_{spruce,standing_dead,fallen}.tscn` | 灰度截图可区分；翻倒树根（Root Ball）带避风碰撞体 |
 
 ---
 

@@ -136,19 +136,100 @@ static func evaluate_shelter(
     # }
 ```
 
+### 3.5 微地形避风、生火仪式与融雪回暖系统 (Tactile Survival Systems)
+
+1. **微地形避风采样与声学滤波 (`WindExposureSensor` + `AudioBus` LowPass)**
+   - **空间采样**：`SnowField.lee_factor(pos)` 结合角色朝向风源方向的短距离射线 `WindBlockRay`（检测巨石、翻倒树根 `RootBall`、雪墙或雪洞腔体碰撞盒），实时计算角色当前暴露度 `exposure ∈ [0.0, 1.0]`。
+   - **总线联动**：
+     - `AudioServer` 的 `WindBus` 挂载 `AudioEffectLowPassFilter`，截止频率 `cutoff_hz` 由 `exposure` 驱动（暴露时 `8000 Hz` 呼啸尖锐 $\rightarrow$ 树根后/进洞后平滑降至 `450–800 Hz` 沉闷包裹感）。
+     - 角色控制器与动画状态机读取 `exposure`：暴露时触发缩肩发抖 Blend、急促呼吸白气粒子；避风时切换为放松姿态并减缓寒冷累积速率。
+2. **三步生火与树冠落雪判定 (`CampfireController`)**
+   - **状态机**：`UNLIT` $\rightarrow$ `TINDER_SPARK`（打火石刮擦，检测当前 `exposure` 是否超标）$\rightarrow$ `KINDLING_GUARD`（火苗初起，若遇 `WeatherController.is_gusting` 需按住交互键挡风，否则火苗值衰减归零）$\rightarrow$ `BURNING`（投入干柴，点亮 `OmniLight3D` 2700K 暖光与火焰粒子）$\rightarrow$ `BOILING_WATER`（架上 `CampPot` 融雪烧水，完成后重置角色 `chill_lock` 并赋予 `pre_warmed = true`）。
+   - **树冠落雪危险（Tree-Snow Hazard）**：篝火点燃进入 `BURNING` 时，向上发射垂直检测射线；若命中挂雪低矮针叶树冠（`has_meta("canopy_snow")`），升温数秒后触发树冠落雪粒子，强制将火势压回微弱或扑灭，并弹出归因提示。
+3. **45° 雪洞剖面视图与 5 阶状态显隐 (`ShelterCutawayRig`)**
+   - 不使用高风险的实时 CSG 布尔网格挖孔，而是采用**“模块化分阶段网格 + 朝向相机的剖切 Shader（`cutaway.gdshader`）”**：
+   - 雪洞预制件内含 5 个子网格组：`Stage1_Cavity`（主腔体与入口隧道）、`Stage2_ColdPit`（下沉冷气坑 + 冷流线 Decal/Mesh）、`Stage3_Bedding`（松针垫层 + 睡袋）、`Stage4_Vent`（穿顶伸缩管 + 排气粒子）、`Stage5_Lantern`（2700K 暖光烛灯 + 洞壁次表面散射材质参数激活）。施工进度每完成一阶，立即激活对应子节点与音效。
+
 ---
 
-## 4. 四阶段开发执行路径 (Godot Milestones)
+## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
-- [x] **Milestone 1: Blockout 工程骨架搭建就绪**
-  - 已建立 `project.godot`、标准目录、CSG 灰模地形、CharacterBody3D 45° 屏幕坐标平滑移动、45° 正交相机云台与探针测深反馈。
-- [ ] **Milestone 1: Blockout 核心体验验收 (唯三指标)**
-  - 1. 角色在 45° ISO 雪地上移动是否舒服顺手？
-  - 2. 风向和风势能否完全从环境画面（吹雪、树木）中直观读出来？
-  - 3. 玩家进入地图后，是否会出于本能想去某个背风雪坡扎下第一根 probe？
-- [ ] **Milestone 2: Playable (核心交互闭环)**
-  - 立枯木识别与 `E` 键砍柴、树皮与松针垫层收集、在满足 $\ge 1.5\text{m}$ 雪深坡面放置预设雪洞。
-- [ ] **Milestone 3: Systems + UI (气象与剖面切削)**
-  - 西风 GPUParticles3D 粒子、雪洞 Cutaway 剖面视图、"Spend the Night" 结算弹窗与 6 维报告展示。
-- [ ] **Milestone 4: Target Look (垂直切片)**
-  - 材质打磨、雪地脚印 displacement、低角度落日金晖体积感、环境音效集成。
+> 本清单直接对齐参考图 *North Star v0.1* 的全部视觉、听觉与程序要素，作为建模、美术、Shader、音效与代码的真实生产指导单。
+
+### 4.1 3D 模型资源清单 (`assets/models/`)
+
+所有模型遵循 **Stylized Low-Poly + 柔和倒角法线** 风格；因采用 45° 正交等距相机，树木与岩石均可通过旋转/镜像复用。
+
+| 分类 | 资源名称 | 规格与子部件要求 | 用途与对应里程碑 |
+| :--- | :--- | :--- | :--- |
+| **角色与挂件** | `char_survivor.glb` | 穿防寒连帽冲锋衣角色（约 1500–2500 面），绑骨含：平地走、深雪跋涉、缩肩发抖、蹲下探雪/护火、挥斧、铲雪、坐姿烤火 | M1 胶囊代理 → M2 低模 → M4 终版 |
+| | `prop_backpack_red.glb` | 标志性红色登山包，预留 3 个外挂插槽：`slot_wood`（绑木柴捆）、`slot_bedding`（插干草/松枝束）、`slot_shovel`（挂雪铲） | 采集后直接体现在背上（背负感） |
+| | `tool_probe / shovel / hatchet / ferrorod / pot.glb` | 折叠刻度探针（长杆带黑白刻度）、轻量雪铲、小手斧、打火棒、野营小铝锅（含锅盖与水汽挂点） | 手持工具与营地交互 |
+| **树木与植被** | `tree_spruce_snow_A/B/C.glb` | 3 个变体的挂雪云杉（枝条略向东偏斜以体现常年西风），带树冠积雪碰撞标记 | 迎风/背风视觉线索、树冠落雪判定 |
+| | `tree_standing_dead_A/B.glb` | 直立枯木（灰白剥落树皮、无针叶、形态苍劲），分“完整”与“已砍伐树桩”两态 | 核心干燥燃料来源（Deadwood） |
+| | `tree_birch_A/B.glb` | 白桦树（白色树干带黑色斑纹，挂卷曲桦树皮条），分“未剥皮”与“已剥皮”两态 | 核心引火物（Birch Bark）来源 |
+| | `tree_fallen_rootball.glb` | 翻倒的巨木连带盘结树根土盘（Root Ball）与半埋湿腐木 | **天然避风屏障**（树根凹窝挡风）+ 湿木反面教材 |
+| | `foliage_dry_grass / pine_boughs.glb` | 雪地中露出的枯黄干草丛、可砍取的低矮云杉下枝 | 地面隔热垫层（Bedding）来源 |
+| **地形与岩石** | `rock_ridge_A/B/C.glb` | 棱角分明的山脊裸岩（迎风面黑灰裸露，背风侧积雪覆盖） | 山脊线锚点、微地形避风掩体 |
+| | `probe_marker_flag.glb` | 插在雪地上的探针读数小标记杆 | 探雪后留下的持久化雪深地图锚点 |
+| **庇护所模块** | `shelter_snow_cave_cutaway.glb` | **核心亮点资产**：45° 正交剖面雪洞，拆分为外壁雪包、内腔拱顶、下沉冷气坑、高床雪台、入口隧道 | 配合 `cutaway.gdshader` 展现内部结构 |
+| | `shelter_interior_props.glb` | 洞内陈设组：松针垫层网格、棕橙色睡袋、小烛灯（Lantern）、靠墙雪铲、背包卸下态、伸缩通风管（Telescopic Vent） | 5 阶建造逐步点亮“Cozy Inside” |
+| | `shelter_trench_stages.glb` | 雪沟分阶段模型（浅雪砌雪砖墙变体 / 标准深沟 + 树枝雪块封顶） | 快速雪庇护所方案 |
+| | `shelter_leanto_stages.glb` | 倒棚分阶段模型（A 字木架 → 云杉枝斜面覆顶 → 松针床 → 前方篝火坑 + 膝高原木反射墙） | 浅雪林区火庇护所方案 |
+
+### 4.2 材质与 Shader 资源清单 (`shaders/`)
+
+达到参考图画质的关键不在高模，而在以下 **6 个核心 Shader**：
+
+| Shader 文件 | 核心技术实现 | 解决的视觉问题 |
+| :--- | :--- | :--- |
+| `snow_terrain.gdshader` | 基于法线与太阳夹角混合**暖金受光面**与**群青/钴蓝阴影面**；叠加视距高频闪点噪点（Sparkle Noise）；根据 `SnowField` 雪深微调柔和度 | 彻底摆脱“惨白塑料地面”，复刻参考图浓郁的冷暖色彩对比 |
+| `snow_footprints.gdshader` | 结合跟随玩家的局部正交俯视 `SubViewport` 轨迹贴图，在角色走过的雪面产生下陷法线与暗部凹坑 | 实现参考图角色身后那串极具生命力的深雪脚印 |
+| `cutaway_shelter.gdshader` | 朝向相机方向的平滑剖切平面 + 剖面边缘积雪质感描边 + 洞内 2700K 暖光在雪壁上的次表面散射近似（Subsurface Warmth） | 实现参考图右上角那种干净、通透又温暖的雪洞剖面图 |
+| `wind_sway.gdshader` | 顶点动画：读取全局 `WindData` 的风向与风速（含阵风脉冲），让针叶树冠与干草统一向东偏摆 | 让静态截图和动态画面都能“一眼读出风向” |
+| `sky_gradient.gdshader` | 渲染在背景 CanvasLayer 上：三段式夕阳渐变 + 太阳圆盘/星点 + 2~3 层远山剪影 + 地平线雾色同步 | 解决 45° 正交俯视看不到地平线和落日的问题 |
+| `cold_airflow_line.gdshader` | 简单的 UV 流动半透明带状 Shader（用于剖面视图里的蓝色冷气沉降箭头与白色通风管排湿气流） | 把无形的物理规律（冷空气下沉、热湿气上排）直接画给玩家看 |
+
+### 4.3 粒子与音频资源清单 (`scenes/vfx/` & `assets/audio/`)
+
+- **粒子（`GPUParticles3D`）**：
+  1. `vfx_wind_snow_streaks`：高空斜向风雪线（体现宏观风向）；
+  2. `vfx_surface_spindrift`：贴着山脊与雪坡表面滑行的吹雪烟雾（体现迎风坡与背风坡）；
+  3. `vfx_breath_frost`：角色口鼻呼出的白气（随暴露度改变频率）；
+  4. `vfx_campfire_smoke_sparks`：打火石火星、桦树皮青烟、篝火跃动火苗、铝锅沸腾白汽、树冠落雪砸落粒子。
+- **音频（配合 `WindBus` 动态低通滤波）**：
+  1. **环境风声**：`amb_wind_howl_loop.ogg`（高频呼啸）+ `amb_wind_deep_loop.ogg`（低频基底）——躲进树根后或雪洞内时高频瞬降；
+  2. **脚步与工具**：`sfx_step_shallow_snow`、`sfx_step_deep_snow`（深沉咯吱声）、`sfx_probe_thrust`（金属探针扎入雪层摩擦声）、`sfx_shovel_dig`、`sfx_axe_chop_dry`（清脆）vs `sfx_axe_chop_wet`（沉闷）；
+  3. **温暖与治愈（ASMR 级）**：`sfx_ferro_scrape`（打火石咔嚓）、`sfx_tinder_catch`（火苗噗地燃起）、`sfx_fire_crackle_loop`（木柴噼啪声）、`sfx_snow_melt_boil`（融雪咕嘟冒泡与喝热饮长舒一口气）。
+
+### 4.4 程序脚本模块全图 (`scripts/`)
+
+```text
+scripts/
+├── main.gd                           # 关卡生命周期、阶段切换、信号总装
+├── resources/
+│   ├── tuning.gd                     # [SSOT] 唯一调参表 Resource（含 [REAL]/[GAME]/[TUNE] 标注）
+│   ├── wind_data.gd                  # 风向、基础风速、阵风参数
+│   └── shelter_preset.gd             # 4 种庇护所预设的工时、门槛、材料需求
+├── world/
+│   ├── terrain_height.gd             # 纯函数高度场（西迎风坡→脊线→东背风深雪坡→林谷）
+│   ├── terrain_builder.gd            # 生成 ArrayMesh、碰撞体与场景资源分布
+│   ├── snow_field.gd                 # 雪深场 snow_at()、坡度 slope_at()、避风度 lee_factor()
+│   └── probe_marker.gd               # 地面持久化探针浮标管理
+├── player/
+│   ├── player_controller.gd          # 45° ISO 移动、深雪/上坡阻尼、寒颤与背负视觉挂载
+│   └── wind_exposure_sensor.gd       # 实时检测微地形挡风（树根/岩石/洞内）并驱动音频滤波与体感
+├── components/
+│   └── interactable.gd               # 统一上下文交互组件（探雪/砍树/剥皮/护火/烧水/挖掘）
+├── systems/
+│   ├── atmosphere_state.gd           # 时间、太阳高度角、光色、雾色唯一实时状态
+│   ├── weather_controller.gd         # 连续日落推进、阵风脉冲、作业效率衰减计算
+│   ├── inventory.gd                  # 极简背包（干柴/树皮/垫层）与角色背包挂件同步
+│   ├── campfire_controller.gd        # 三步护火引燃、树冠落雪判定、小铝锅融雪烧水回暖
+│   ├── shelter_builder.gd            # 45° 剖面 Ghost 选址校验（D5）、旋转、5 阶挖掘推进
+│   └── night_simulator.gd            # 6 维可解释结算模型（含雪庇护所与倒棚反射火双分支）
+└── ui/
+    ├── hud_controller.gd             # 右上气象卡、右下风向罗盘、物资托盘、寒冷/体力条
+    ├── world_label.gd                # 说明书风格引线标签（探针读数、Deeper snow、剖面 5 标注）
+    └── report_view.gd                # 6 维复盘报告卡与一键重开
+```

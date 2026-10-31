@@ -108,9 +108,9 @@
 | T1.2 | 雪深场：`snow_at / slope_at / lee_factor`；探针改为查询 `SnowField`，不再读碰撞体 meta；F3 开发热力图 | `scripts/world/snow_field.gd`, `player_controller.gd` | 同一斜坡上不同位置读数连续变化 | 0.75 d |
 | T1.3 | 相机调参热键：size 14 / 18 / 24，pitch 35° / 38° / 42°；定稿写入 tuning | `isometric_camera_rig.gd` | 选定值入档 | 0.25 d |
 | T1.4 | 移动阻尼：上坡减速、深雪减速 `[TUNE]` | `player_controller.gd` | 深雪区明显变慢但不烦人 | 0.25 d |
-| T1.5 | 最小风：跟随玩家的 `GPUParticles3D`，方向取 `WindData`；树木静态东倾约 5° | `scenes/world/wind_particles.tscn` | 截一张静帧也能看出风向 | 0.5 d |
+| T1.5 | 最小风与避风感官：跟随玩家的 `GPUParticles3D`（方向取 `WindData`）；`WindExposureSensor` 检测树根/巨石/背风坡，驱动风声低通滤波变闷与角色寒颤停止；雪面基础冷暖着色 | `scenes/world/wind_particles.tscn`, `scripts/player/wind_exposure_sensor.gd`, `shaders/snow_terrain.gdshader` | 截一张静帧能看出风向；躲在倒木树根后风声明显减弱 | 0.75 d |
 | T1.6 | 探针手感：按住约 0.85 s、下蹲代理动作、探针杆 mesh、地面留下持久标记和读数 | `player.tscn`, `scripts/world/probe_marker.gd` | 连扎 5 针后，地面形成一张"雪深地图" | 0.5 d |
-| T1.7 | 3 种灰模树：活云杉 / 立枯木 / 倒木，只用颜色和轮廓区分（暂不可交互） | `scenes/world/tree_*.tscn` | 灰度截图里也能分清 | 0.5 d |
+| T1.7 | 3 种灰模树 + 树根掩体：活云杉 / 立枯木 / 翻倒树根（Root Ball）与湿倒木，用颜色和轮廓区分 | `scenes/world/tree_*.tscn` | 灰度截图里也能分清；树根背风侧可避风 | 0.5 d |
 | T1.8 | 试玩 PT01：3 人，不给引导，5 分钟 | `playtests/PT01.md` | 记录首针位置、能否说出风向 | 0.5 d |
 
 **交付**：`snapshots/snapshot_01_blockout.png`，git tag `m1-blockout`
@@ -129,12 +129,12 @@
 | ID | 任务 | 涉及文件 | 完成标准 | 估时 |
 | :--- | :--- | :--- | :--- | :--- |
 | T2.1 | 交互框架：`Interactable` 组件（提示文字、按住时长、消耗游戏分钟）；玩家选最近目标；淡橙圈高亮 | `scripts/components/interactable.gd` | 任何可交互物都通过它接入 | 1 d |
-| T2.2 | 资源与背包：`wood / bark / bedding`。立枯木 → wood；倒木 → "湿木"提示，无收获；桦树 → bark；干草 / 云杉枝 → bedding。数量上限 `[TUNE]`（Web 原型为 6–8 处） | `scripts/systems/inventory.gd` | HUD 上显示 3 种数量 | 1 d |
-| T2.3 | 时间模型：时钟实时流动；动作耗时 = 按住时长 × 效率；效率随暮光和体感温度下降（移植 `efficiency()`） | `weather_controller.gd` | 16:00 后挖掘明显变慢 | 0.75 d |
+| T2.2 | 资源、背包与背负反馈：`wood / bark / bedding`。立枯木 → wood；倒木 → "湿木"提示；桦树 → bark；干草 / 云杉枝 → bedding。采集后直接在角色红背包外侧挂上木柴捆与干草束 | `scripts/systems/inventory.gd`, `player.tscn` | HUD 显示数量，且角色背包外观随采集实时变化 | 1 d |
+| T2.3 | 时间与寒冷锁定：时钟实时流动；动作耗时 = 按住时长 × 效率；暴露在寒风中累积 `chill_lock` 降低作业效率并灰化部分体力条 | `weather_controller.gd` | 16:00 后或冻僵时挖掘明显变慢 | 0.75 d |
 | T2.4 | 建造模式（B）：4 种预设的 ghost；按 D5 的雪深区间校验（雪沟在 0.3–0.9 m 自动进入"砌墙"变体），并校验坡度 / 树干 / 木材，不合格时显示**第一条原因**（移植 `validate()`） | `scripts/systems/shelter_builder.gd` | 不合格时总能看到原因 | 1.75 d |
 | T2.5 | 预设参数：入口（或棚背）旋转、通风管数量、顶厚、垫层厚度（消耗 bedding）、高床消耗木材 | 同上，`shelter_preset.gd` | 参数全部传进 `NightSimulator` | 1 d |
-| T2.6 | 挖掘进度：Space 按住推进；几何代理按阶段出现：入口 → 腔体 → 平台 → 通风 → 完工 | `scenes/shelter/*.tscn` | 中途停下，完工度正确传进报告 | 1 d |
-| T2.7 | 火（F，按 D2 / D3）：需要 wood + bark；判定背风暴露度。两种用法：① 倒棚前的反射火，夜间按备柴量结算能否烧到天亮；② 雪庇护所外的睡前篝火，只修正入夜状态。在雪庇护所内按 F 给出不能生火的原因 | `scripts/systems/campfire.gd` | 迎风点火会被吹灭；备柴不足时报告写出熄火时刻 | 1.5 d |
+| T2.6 | 5 阶逐步改善建造：按住推进 5 个阶段（掏主腔降风噪 50% → 挖冷气坑现沉降流线 → 铺松针睡袋 → 插通风管排白气 → 点亮 2700K 暖光烛灯） | `scenes/shelter/*.tscn`, `scripts/systems/shelter_builder.gd` | 每完成一阶都有即时的视觉与风声变化；中途停下完工度正确传进报告 | 1.25 d |
+| T2.7 | 三步生火仪式与融雪烧水（F，按 D2 / D3）：① 背风寻址 → 打火石引燃桦树皮（遇阵风需按住护火）→ 添柴起火；挂雪树冠正下方生大火触发落雪压火；② 架小铝锅融雪煮水，喝下解锁 `chill_lock` 并获 `pre_warmed` 入夜加分；③ 倒棚反射火按备柴量结算能否烧到天亮 | `scripts/systems/campfire_controller.gd` | 迎风点火被吹灭；树冠下生火触发落雪提示；喝热水立刻恢复效率；备柴不足报告写出熄火时刻 | 1.75 d |
 | T2.7b | 倒棚预设：骨架 + 覆盖 + 反射墙 3 个阶段；`NightSimulator` 增加倒棚分支（见 CORE_GAMEPLAY §6 表） | `scenes/shelter/lean_to.tscn`, `night_simulator.gd` | 浅雪密林可完成一局倒棚过夜 | 1 d |
 | T2.8 | 过夜：按 N，或时间到点强制进入 → 黑屏约 3 秒 → 纯文字报告（6 项分数 + 归因 + 结论）→ 重开 | `scenes/ui/report.tscn` | 一局能从头玩到尾，再重开 | 0.75 d |
 | T2.9 | 开场简报（纯文字，参照 Web 原型 `Briefing`） | `scenes/ui/briefing.tscn` | — | 0.25 d |
