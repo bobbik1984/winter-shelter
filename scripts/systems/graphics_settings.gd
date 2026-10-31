@@ -19,12 +19,17 @@ signal changed(level: int)
 signal cycled(level: int)
 
 var level: int = 1
+## 界面缩放（可读性）：[-] / [=] 切换，保存。
+const UI_SCALES := [0.9, 1.0, 1.15, 1.3]
+var ui_scale_idx: int = 1
 
 func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
 		level = clampi(int(cfg.get_value("graphics", "level", 1)), 0, 2)
 		AudioServer.set_bus_mute(0, bool(cfg.get_value("audio", "muted", false)))
+		ui_scale_idx = clampi(int(cfg.get_value("ui", "scale_idx", 1)), 0, UI_SCALES.size() - 1)
+	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
 	apply.call_deferred()
 
 ## [M] 静音（保存）；[F11] 全屏（不保存，跟随窗口）。
@@ -36,6 +41,15 @@ func toggle_mute() -> bool:
 	cfg.set_value("audio", "muted", muted)
 	cfg.save(PATH)
 	return muted
+
+func step_ui_scale(delta_idx: int) -> float:
+	ui_scale_idx = clampi(ui_scale_idx + delta_idx, 0, UI_SCALES.size() - 1)
+	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
+	var cfg := ConfigFile.new()
+	cfg.load(PATH)
+	cfg.set_value("ui", "scale_idx", ui_scale_idx)
+	cfg.save(PATH)
+	return UI_SCALES[ui_scale_idx]
 
 func toggle_fullscreen() -> void:
 	var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN

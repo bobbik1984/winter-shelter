@@ -158,6 +158,7 @@ const ZH := {
 	"Ideal for shelter": "适合建庇护所",
 	# —— 流程 ——
 	"Sound off  [M]": "声音关  [M]",
+	"UI size %d%%  [-] [=]": "界面大小 %d%%  [-] [=]",
 	"Sound on  [M]": "声音开  [M]",
 	"Graphics: %s  [F10]": "画质：%s  [F10]",
 	"[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide": "[WASD] 移动   [Space] 探雪   [E] 采集 / 施工   [B] 建造   [F] 生火   [N] 睡觉   [H] 手册   [L] English",

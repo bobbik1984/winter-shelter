@@ -225,6 +225,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if k == KEY_F11:
 		graphics.toggle_fullscreen()
 		return
+	if k == KEY_MINUS or k == KEY_EQUAL:
+		var sc := graphics.step_ui_scale(-1 if k == KEY_MINUS else 1)
+		ui.toast(Loc.t("UI size %d%%  [-] [=]") % int(round(sc * 100.0)), 1.5)
+		return
 	if k == KEY_M:
 		ui.toast(Loc.t("Sound off  [M]") if graphics.toggle_mute() else Loc.t("Sound on  [M]"), 1.5)
 		return
