@@ -115,4 +115,6 @@ polish:
   - {id: P11, text: "风积雪枕标出最深雪区（Read the Land 第 2 条）", status: written-unverified, note: "雪深 >= 2.2 m 处 21 个，顺风拉长，无碰撞"}
   - {id: P12, text: "导出预设 Linux / Windows + tools/build.sh", status: blocked, note: "预设可被 Godot 解析；缺 4.3.stable 导出模板（需授权下载）"}
   - {id: P13, text: "低画质雪面简化路径", status: done, note: "测量在噪声范围内；本机每帧约 13 ms 为固定呈现开销"}
+  - {id: P14, text: "报告时间线（你的一天）", status: written-unverified}
+  - {id: P15, text: "随机输入模糊测试 + 偶发原生崩溃缓解", status: written-unverified, note: "fuzz_test.gd；启动 30 帧后才应用画质 / 界面缩放：崩溃率约 3/36 → 约 1/50；残余在引擎层，需带符号 Godot 排查"}
   - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}
