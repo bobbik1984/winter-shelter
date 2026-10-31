@@ -30,6 +30,8 @@ var headlamp: SpotLight3D
 var state: State = State.BRIEFING
 
 var prewarmed := false
+## 全天模式（简报页按 2）：10:00 开局。记录与标准模式分开保存。
+var full_day := false
 var _saved_time_scale := 12.0
 var _sleep_confirm_t := 0.0
 var _fade_t := 0.0
@@ -199,7 +201,7 @@ func _show_report() -> void:
 	if site:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	ui.show_report(data, name_)
-	Records.save(String(input.get("shelter_type", "None")), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	Records.save(String(input.get("shelter_type", "None")) + ("@day" if full_day else ""), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 
 
 # ------------------------------------------------------------------ 输入
@@ -228,7 +230,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	match state:
 		State.BRIEFING:
-			if k == KEY_ENTER or k == KEY_KP_ENTER:
+			if k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_1:
+				start_game()
+			elif k == KEY_2:
+				full_day = true
+				weather.current_time_minutes = float(tuning.full_day_start_minutes)
+				weather.advance_minutes(0.0)
+				_last_minutes = weather.current_time_minutes
 				start_game()
 			elif k == KEY_L:
 				_toggle_lang()

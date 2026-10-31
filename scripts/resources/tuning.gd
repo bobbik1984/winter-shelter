@@ -509,6 +509,9 @@ extends Resource
 ## [GAME] 入睡时降雪强度达到此值，单根且没插木棍的通风管会被新雪部分堵塞（报告里可解释、可预防）。
 @export var vent_clog_snowfall: float = 0.5
 
+## [GAME] 全天模式的开局时刻（10:00）：影子先变短、正午最短、再变长；时间更宽裕。
+@export var full_day_start_minutes: int = 600
+
 @export_group("Weather Variety")
 ## [GAME] 每局天气的抽取权重：晴 / 阴 / 暴风雪将至。
 @export var weather_weight_clear: float = 0.5

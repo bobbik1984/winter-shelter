@@ -203,6 +203,7 @@ const ZH := {
 	"[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n": "[WASD] 移动    [Space] 按住探雪    [E] 按住采集 / 施工    [F10] 画质    [L] English\n",
 	"[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom": "[B] 建造    [F] 生火 / 添柴    [N] 睡觉    [V] 相机    [滚轮] 缩放",
 	"Press  ENTER  to begin": "按  ENTER  开始",
+	"[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)": "[2]  全天模式——10:00 开局（时间更宽裕，看影子先变短再变长）",
 	"READ THE LAND": "读懂大地",
 	"Trees show wind direction — branches are short on the windward side, crowns lean downwind.": "树指示风向——迎风侧枝条短，树冠向下风倾斜。",
 	"Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure.": "积雪形状透露深度——背风坡雪最深。用探针确认。",

@@ -47,6 +47,7 @@ func _run() -> void:
 	check(d.state == d.State.BRIEFING, "starts on briefing")
 	await key(KEY_ENTER)
 	check(d.state == d.State.PLAYING, "Enter starts the game")
+	check(int(d.weather.current_time_minutes) == d.tuning.start_minutes, "standard mode starts at 14:20")
 	# 移动
 	var p0: Vector3 = p.global_position
 	await hold("move_up", 1.0)

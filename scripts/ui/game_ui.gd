@@ -219,8 +219,11 @@ func _make_briefing(forecast: String = "") -> Control:
 		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(rl)
 	var go := _label(Loc.t("Press  ENTER  to begin"), 18, AMBER)
+	var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
+	alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
+	v.add_child(alt)
 	return shade
 
 ## 野外手册（参考图右侧 KEY RESOURCES / READ THE LAND 两块）：[H] 开关。
