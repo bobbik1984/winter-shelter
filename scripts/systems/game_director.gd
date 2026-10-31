@@ -53,6 +53,7 @@ var _forced := false
 var _probe_count := 0
 var _best_depth := 0.0
 var _zero_t := 0.0
+var _startup_frames := 0
 
 const MAX_MARKERS := 24
 const MAX_DEEPER_LABELS := 3
@@ -339,6 +340,12 @@ func _request_sleep() -> void:
 # ------------------------------------------------------------------ 每帧
 
 func _process(delta: float) -> void:
+	# 启动守卫：第 30 帧再打开粒子（与 GraphicsSettings 一致，避开 swapchain 重建）
+	if _startup_frames < 30:
+		_startup_frames += 1
+		if _startup_frames == 30:
+			for n in get_tree().get_nodes_in_group("deferred_particles"):
+				(n as GPUParticles3D).emitting = true
 	_sleep_confirm_t = maxf(0.0, _sleep_confirm_t - delta)
 	match state:
 		State.PLAYING:

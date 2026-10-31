@@ -44,7 +44,9 @@ func _ready() -> void:
 	m.albedo_color = Color(0.92, 0.95, 1.0, 0.45)
 	q.material = m
 	draw_pass_1 = q
-	emitting = true
+	# 启动守卫：等窗口 swapchain 重建后再开始发射（GameDirector 在第 30 帧统一打开）
+	emitting = false
+	add_to_group("deferred_particles")
 
 func _process(_delta: float) -> void:
 	if follow:

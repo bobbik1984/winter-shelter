@@ -107,6 +107,8 @@ func _build_breath() -> void:
 	m.albedo_color = Color(0.92, 0.95, 1.0, 0.6)
 	q.material = m
 	_breath.draw_pass_1 = q
+	_breath.emitting = false
+	_breath.add_to_group("deferred_particles")
 	add_child(_breath)
 
 ## 体温 0..100 → 呼吸间隔（冷 = 急促）与寒颤幅度（< 35 明显发抖）。

@@ -9,7 +9,9 @@ func _ready() -> void:
 	preprocess = 2.0
 	local_coords = false
 	visibility_aabb = AABB(Vector3(-70.0, -20.0, -70.0), Vector3(140.0, 60.0, 140.0))
-	emitting = true
+	# 启动守卫：等窗口 swapchain 重建后再开始发射（GameDirector 在第 30 帧统一打开）
+	emitting = false
+	add_to_group("deferred_particles")
 
 	var process := ParticleProcessMaterial.new()
 	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
