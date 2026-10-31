@@ -90,3 +90,23 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 	if minutes_to_sunset < 0.0:
 		dusk = lerpf(1.0, t.dusk_efficiency_floor, clampf(-minutes_to_sunset / 60.0, 0.0, 1.0))
 	return clampf(warmth_eff * dusk, 0.1, 1.0)
+
+
+## 当前目标行（M2 闸门"零口头帮助打完一局"）：根据进度给出下一步具体动作。
+## ctx: {probed: bool, best_depth: float, has_site: bool, stage: int, complete: bool,
+##       missing: String（下一阶段缺的材料，空 = 不缺）, next_stage: String, minutes_to_sunset: float, preset: String}
+static func next_objective(ctx: Dictionary, t: Tuning) -> String:
+	if bool(ctx.get("complete", false)):
+		if String(ctx.get("preset", "")) == "LeanTo":
+			return "Shelter done. Stockpile dry wood for the fire, then rest [N]."
+		return "Shelter done. Warm up by a fire [F] + hot drink, then rest [N]."
+	if not bool(ctx.get("has_site", false)):
+		if not bool(ctx.get("probed", false)):
+			return "Hold [Space] to probe the snow. Look for >= %.1f m on leeward slopes." % t.snow_depth_cave_min_m
+		if float(ctx.get("best_depth", 0.0)) < t.snow_depth_cave_min_m:
+			return "Keep probing — deeper snow collects east of the ridge, out of the wind."
+		return "Deep snow found. Stand next to it and press [B] to plan a shelter."
+	var missing := String(ctx.get("missing", ""))
+	if missing != "":
+		return "Gather %s — then hold [E] at your site." % missing
+	return "Hold [E] at your site: %s" % String(ctx.get("next_stage", ""))

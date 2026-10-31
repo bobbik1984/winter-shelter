@@ -13,6 +13,7 @@ var _prompt_card: PanelContainer
 var _prompt_label: Label
 var _progress: ProgressBar
 var _tray: Label
+var _objective: Label
 var _toast: Label
 var _toast_t := 0.0
 var _build_card: PanelContainer
@@ -58,10 +59,14 @@ func _ready() -> void:
 	# 背包托盘（左下，操作说明上方）
 	var tray_card := _card(Color(0.62, 0.78, 0.95))
 	tray_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	tray_card.position = Vector2(32, -120)
+	tray_card.position = Vector2(32, -140)
 	root.add_child(tray_card)
-	_tray = _label("", 14, CREAM)
-	tray_card.add_child(_tray)
+	var tv := VBoxContainer.new()
+	tray_card.add_child(tv)
+	_objective = _label("", 14, AMBER)
+	tv.add_child(_objective)
+	_tray = _label("", 13, CREAM)
+	tv.add_child(_tray)
 
 	# 消息（顶部居中）
 	_toast = _label("", 17, CREAM)
@@ -138,6 +143,9 @@ func set_prompt(text: String, progress: float) -> void:
 
 func set_inventory(wood: int, bark: int, bedding: int) -> void:
 	_tray.text = "Dry wood  %d     Birch bark  %d     Bedding  %d" % [wood, bark, bedding]
+
+func set_objective(text: String) -> void:
+	_objective.text = "▸ " + text
 
 func toast(text: String, seconds: float = 4.0) -> void:
 	_toast.text = text

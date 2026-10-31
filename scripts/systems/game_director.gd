@@ -38,6 +38,8 @@ var _deeper_count := 0
 var _deeper_points: Array[Vector3] = []
 var _cutaway_panel: Control
 var _forced := false
+var _probe_count := 0
+var _best_depth := 0.0
 
 const MAX_MARKERS := 24
 const MAX_DEEPER_LABELS := 3
@@ -282,6 +284,7 @@ func _tick_playing(delta: float) -> void:
 			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
 
 	_update_world_callouts()
+	ui.set_objective(GameRules.next_objective(_objective_ctx(), tuning))
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = clampf((now - 960.0) / 70.0, 0.0, 1.0) * 0.9
 	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - weather.sun_elevation_deg) / 4.0, 0.0, 1.0))
@@ -289,6 +292,17 @@ func _tick_playing(delta: float) -> void:
 	# 天黑后宽限期结束 → 强制入夜
 	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:
 		_sleep(true)
+
+func _objective_ctx() -> Dictionary:
+	var ctx := {"probed": _probe_count > 0, "best_depth": _best_depth, "has_site": site != null,
+		"minutes_to_sunset": weather.minutes_to_sunset()}
+	if site:
+		ctx["stage"] = site.stage()
+		ctx["complete"] = site.is_complete()
+		ctx["preset"] = site.preset_id
+		ctx["next_stage"] = site.next_stage_title()
+		ctx["missing"] = inventory.missing_text(site.next_stage_cost())
+	return ctx
 
 func _inside_site() -> bool:
 	if site == null:
@@ -348,6 +362,8 @@ func _skip(minutes: float, min_level: int = 0) -> void:
 # ------------------------------------------------------------------ 探针（T1.6 / D4）
 
 func _on_probe(pos: Vector3, depth: float) -> void:
+	_probe_count += 1
+	_best_depth = maxf(_best_depth, depth)
 	var cls := GameRules.classify_depth(depth, tuning)
 	_add_marker(pos, depth, cls["color"])
 	if callouts:

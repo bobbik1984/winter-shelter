@@ -47,6 +47,13 @@ func run() -> Dictionary:
 	for m in [200.0, 60.0, 20.0, -5.0]:
 		_check(GameRules.tip_for(m, 5.0, 90.0, false, false, t).length() <= 56, "提示须短到放进环境卡（<=56 字符）")
 
+	# 目标行
+	_check(GameRules.next_objective({}, t).contains("probe"), "开局应提示探测")
+	_check(GameRules.next_objective({"probed": true, "best_depth": 2.0}, t).contains("[B]"), "找到深雪后提示建造")
+	_check(GameRules.next_objective({"has_site": true, "missing": "2 bedding"}, t).contains("2 bedding"), "缺材料时提示采集")
+	_check(GameRules.next_objective({"has_site": true, "next_stage": "Stage 4: Vent"}, t).contains("Vent"), "提示下一阶段")
+	_check(GameRules.next_objective({"has_site": true, "complete": true}, t).contains("[N]"), "完工后提示休息")
+
 	# 效率
 	_check(is_equal_approx(GameRules.work_efficiency(1.0, 30.0, t), 1.0), "日落前满效率")
 	_check(GameRules.work_efficiency(1.0, -60.0, t) <= t.dusk_efficiency_floor + 0.001, "日落 1 小时后降到下限")
