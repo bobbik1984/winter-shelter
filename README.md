@@ -48,6 +48,7 @@ godot --headless --path . -s res://tests/run_all.gd      # 全部逻辑测试，
 godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png   # 实机截图（需窗口 / 显示）
 tools/build.sh [linux|windows|all]                      # 导出独立版本到 build/（需先安装 4.3.stable 导出模板）
 godot --path . -s res://tools/input_smoke_test.gd          # 真实输入冒烟测试（15 项，开始 → 报告）
+godot --path . -s res://tools/fuzz_test.gd -- --seconds=90 --seed=1   # 随机输入模糊测试（不崩溃 / 状态机合法）
 godot --path . -s res://tools/playtest_bot.gd -- --s=deep  # 策略机器人（good/deep/quick/twovent/wind/late/trench/leanto_short/leanto_full/none）
 ```
 
