@@ -11,7 +11,7 @@ project:
   branch: "claude/visual-pass-1（未合并、未推送）"
   blocker: "人工 F5 试玩（V1 / T0.3）与 PT01/PT02 试玩；分支未合并"
   updated: "2026-11-01"
-  playable: "简报（含最好记录）→ 探测 / 采集 / 建造（4 路线 + 顶厚 / 通风选项）/ 生火融雪 → 入夜（雪洞小场景）→ 6 维报告 → 重开；目标行；野外手册 [H]；罗盘太阳；失温倒下；暂停；头灯；降雪；Blender 角色"
+  playable: "简报（含最好记录）→ 探测 / 采集 / 建造（4 路线 + 顶厚 / 通风选项）/ 生火融雪 → 入夜（雪洞小场景）→ 6 维报告 → 重开；目标行；野外手册 [H]；罗盘太阳；失温倒下；暂停；头灯；降雪；Blender 角色；天气多样性；进洞视图；中英双语 [L]；手柄；静音 / 全屏"
 
 phases:
   - id: PRE
@@ -101,3 +101,9 @@ phases:
       - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: written-unverified, note: "WeatherController 唯一写入；天空 / 雪面 / 罗盘 / 降雪 / 头灯订阅；每局天气：晴 / 阴（云量）/ 暴风雪将至（风 +20 km/h、早雪、夜 -5 °C），简报预报"}
       - {id: V8, text: "脚印与拖痕", status: written-unverified, note: "Footprints 环形 MultiMesh；拖痕未做"}
       - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: written-unverified, note: "Tuning Camera 组 tilt_*；热键对比未做"}
+
+polish:
+  - {id: P1, text: "中英双语界面（Loc，[L] 切换并保存）", status: written-unverified, note: "约 190 条；中文报告用 NightSimulator 中文归因；依赖系统 CJK 字体"}
+  - {id: P2, text: "手柄支持", status: written-unverified, note: "左摇杆 / A / X 进 InputMap；其余按键映射；smoke test 覆盖映射，未接真实手柄"}
+  - {id: P3, text: "静音 [M] / 全屏 [F11]", status: written-unverified}
+  - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}
