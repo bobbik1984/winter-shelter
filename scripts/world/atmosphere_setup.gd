@@ -3,20 +3,15 @@ extends WorldEnvironment
 ## M1->M2 大气与夕阳光照（主创定标版）：
 ## 对齐 VISUAL_LANGUAGE.md：低角度暖金夕阳（俯角 -24°）+ 钴蓝高空环境光 + 远景暖雾。
 
+const SKY_SHADER := preload("res://shaders/sky_backdrop.gdshader")
+
 func _ready() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 
 	var sky := Sky.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.14, 0.26, 0.50)
-	sky_mat.sky_horizon_color = Color(0.94, 0.72, 0.52)
-	sky_mat.sky_curve = 0.16
-	sky_mat.ground_bottom_color = Color(0.20, 0.28, 0.42)
-	sky_mat.ground_horizon_color = Color(0.76, 0.66, 0.58)
-	sky_mat.ground_curve = 0.10
-	sky_mat.sun_angle_max = 22.0
-	sky_mat.sun_curve = 0.10
+	var sky_mat := ShaderMaterial.new()
+	sky_mat.shader = SKY_SHADER
 	sky.sky_material = sky_mat
 	env.sky = sky
 
@@ -32,7 +27,7 @@ func _ready() -> void:
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.72, 0.76, 0.86)
 	env.fog_light_energy = 0.65
-	env.fog_density = 0.0028
+	env.fog_density = 0.0017
 	env.fog_aerial_perspective = 0.70
 	env.fog_sky_affect = 0.40
 

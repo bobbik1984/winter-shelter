@@ -25,16 +25,33 @@ var _mat_footprint: StandardMaterial3D
 var _mat_ring: StandardMaterial3D
 var _mat_peak_rock: StandardMaterial3D
 var _mat_peak_snow: StandardMaterial3D
+var _mat_spruce: ShaderMaterial
+var _spruce_meshes: Dictionary = {}
+
+const SPRUCE_VARIANTS := 4
+const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
+
+## 风数据：云杉偏冠 / 迎风枝短的方向来源（SSOT：WindData）。
+@export var wind_data: WindData
+## [TUNE] 偏冠与迎风枝缩短强度（0 = 对称）。
+@export var wind_lean: float = 0.38
+## 地图内 10–16 m 圆锥"远山"占位默认关闭，由 FarTerrainBuilder 的真实远景取代。
+@export var show_distant_peaks: bool = false
 
 func _ready() -> void:
 	_make_materials()
 	_build_clusters()
 	_build_special_deadwood()
 	_build_footprints()
-	_build_distant_peaks()
+	if show_distant_peaks:
+		_build_distant_peaks()
 
 func _make_materials() -> void:
 	_mat_green = _make_material(Color(0.07, 0.16, 0.11), 0.92)
+	_mat_spruce = ShaderMaterial.new()
+	_mat_spruce.shader = SNOW_COVER_SHADER
+	_mat_spruce.set_shader_parameter("base_color", Color(0.06, 0.15, 0.11))
+	_mat_spruce.set_shader_parameter("snow_amount", 0.72)
 	_mat_snow = _make_material(Color(0.92, 0.95, 1.0), 0.78)
 	_mat_bark = _make_material(Color(0.16, 0.11, 0.07), 0.95)
 	_mat_deadwood = _make_material(Color(0.30, 0.27, 0.23), 0.96)
@@ -66,46 +83,22 @@ func _spruce(pos: Vector3, scale_factor: float, tilt_deg: float, seed_idx: int) 
 	root.scale = Vector3.ONE * scale_factor
 	add_child(root)
 
-	_add_cylinder(root, 0.14, 0.22, 2.4, 1.2, _mat_bark)
-
-	var layer_y := [1.8, 2.7, 3.6, 4.4, 5.1]
-	var layer_r := [2.05, 1.72, 1.38, 1.02, 0.68]
-	var layer_h := [1.8, 1.7, 1.6, 1.5, 1.4]
-	for layer in range(5):
-		var rnd := TerrainHeight.hash2(seed_idx * 17 + layer, layer + 3, 401)
-		var rnd_b := TerrainHeight.hash2(seed_idx * 23 + layer, layer + 9, 733)
-		var cone := _add_cone(
-			root, float(layer_r[layer]), float(layer_h[layer]),
-			float(layer_y[layer]), _mat_green
+	if not _spruce_meshes.has(seed_idx % SPRUCE_VARIANTS):
+		_spruce_meshes[seed_idx % SPRUCE_VARIANTS] = SpruceMesh.build(
+			seed_idx % SPRUCE_VARIANTS, _wind_dir(), wind_lean
 		)
-		cone.rotation.y = rnd * TAU
-		cone.position.x = (rnd_b - 0.5) * 0.12
-		cone.position.z = (rnd - 0.5) * 0.12
-
-		var cap := _add_snow_cap(
-			root, float(layer_r[layer]) * 0.66,
-			float(layer_y[layer]) + float(layer_h[layer]) * 0.30,
-			seed_idx + layer
-		)
-		cap.position.x += -0.08
-		cap.position.z += (rnd_b - 0.5) * 0.10
-		cap.rotation.y = rnd * TAU
-
-func _add_snow_cap(parent: Node3D, radius: float, y: float, seed_idx: int) -> MeshInstance3D:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 7
-	mesh.rings = 4
 	var mi := MeshInstance3D.new()
-	mi.name = "SnowCap"
-	mi.mesh = mesh
-	mi.material_override = _mat_snow
-	mi.position = Vector3(-0.08, y, 0.0)
-	mi.scale = Vector3(1.0, 0.20, 1.0)
-	mi.rotation.y = TerrainHeight.hash2(seed_idx, 11, 97) * TAU
-	parent.add_child(mi)
-	return mi
+	mi.name = "SpruceMesh"
+	mi.mesh = _spruce_meshes[seed_idx % SPRUCE_VARIANTS]
+	mi.material_override = _mat_spruce
+	# 不绕 Y 旋转：偏冠 / 迎风枝缩短方向必须与风向一致，玩家靠它读风。
+	root.add_child(mi)
+
+
+func _wind_dir() -> Vector3:
+	if wind_data == null:
+		wind_data = load("res://resources/default_wind.tres") as WindData
+	return wind_data.get_wind_direction_3d() if wind_data else Vector3.RIGHT
 
 # -----------------------------------------------------------------------------
 # B. 顶面覆雪巨石 + 背风侧雪枕

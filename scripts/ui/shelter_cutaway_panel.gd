@@ -5,17 +5,17 @@ extends PanelContainer
 
 const LABELS := [
 	{
-		"local": Vector3(0.25, 2.75, 0.03),
+		"local": Vector3(0.25, 2.95, 0.0),
 		"title": "Vent / Chimney",
 		"sub": "Reduce CO2, expel moisture",
 		"pos": Vector2(342.0, 6.0),
 		"accent": Color(0.68, 0.86, 1.0),
 	},
 	{
-		"local": Vector3(0.95, 1.88, 0.0),
+		"local": Vector3.ZERO,  # 运行时取 rig.roof_outer_point()
 		"title": "Roof thickness",
-		"sub": ">= 1.5 m",
-		"pos": Vector2(368.0, 62.0),
+		"sub": "",                # 运行时由 Tuning 生成
+		"pos": Vector2(352.0, 62.0),
 		"accent": Color(0.96, 0.86, 0.64),
 	},
 	{
@@ -26,20 +26,31 @@ const LABELS := [
 		"accent": Color(0.96, 0.78, 0.42),
 	},
 	{
-		"local": Vector3(-2.15, 0.05, -0.25),
+		"local": Vector3(-2.55, 0.10, 0.0),
 		"title": "Entrance tunnel",
 		"sub": "Slopes slightly down",
 		"pos": Vector2(12.0, 206.0),
 		"accent": Color(0.62, 0.82, 1.0),
 	},
 	{
-		"local": Vector3(-0.72, -0.38, -0.55),
+		"local": Vector3(-0.75, -0.42, 0.0),
 		"title": "Cold-air pit",
 		"sub": "Traps cold air (lower)",
 		"pos": Vector2(342.0, 220.0),
 		"accent": Color(0.46, 0.72, 1.0),
 	},
 ]
+const ROOF_LABEL_INDEX := 1
+
+## 气流示意线（rig 局部坐标，z = 0 剖切面内），与 shader 共用同一相机投影。
+const VENT_ARROW := [Vector3(0.25, 2.12, 0.0), Vector3(0.25, 2.86, 0.0)]
+const COLD_AIR_PATH := [
+	Vector3(-3.0, 0.16, 0.0), Vector3(-2.2, 0.10, 0.0), Vector3(-1.55, -0.02, 0.0),
+	Vector3(-1.15, -0.30, 0.0), Vector3(-0.70, -0.40, 0.0), Vector3(-0.32, -0.30, 0.0),
+	Vector3(-0.20, -0.08, 0.0), Vector3(-0.36, 0.06, 0.0),
+]
+const COOL_COLOR := Color(0.66, 0.86, 1.0, 0.95)
+const DIM_COLOR := Color(0.12, 0.20, 0.34, 0.95)
 
 @onready var viewport_container: SubViewportContainer = $Margin/VBox/ViewportContainer
 @onready var sub_viewport: SubViewport = $Margin/VBox/ViewportContainer/SubViewport
@@ -49,15 +60,14 @@ const LABELS := [
 
 var _cards: Array[PanelContainer] = []
 var _lines: Array[Line2D] = []
-var _roof_line: Line2D
-var _roof_tick_top: Line2D
-var _roof_tick_bottom: Line2D
+var _roof_sub: Label
 
 func _ready() -> void:
 	# 正前偏右 15°、俯角 18° 的 45° 等距剖面机位：预留顶部排湿箭头与后景冷杉空间。
 	camera.position = Vector3(1.85, 2.45, 6.80)
 	camera.look_at(Vector3(-0.15, 0.96, -0.55), Vector3.UP)
 	_build_overlay()
+	overlay.draw.connect(_draw_overlay)
 
 func _build_overlay() -> void:
 	for i in range(LABELS.size()):
@@ -74,22 +84,9 @@ func _build_overlay() -> void:
 		)
 		overlay.add_child(card)
 		_cards.append(card)
-
-	_roof_line = Line2D.new()
-	_roof_line.width = 1.35
-	_roof_line.default_color = Color(0.16, 0.25, 0.38, 0.95)
-	_roof_line.z_index = -1
-	overlay.add_child(_roof_line)
-	_roof_tick_top = _make_tick(Color(0.16, 0.25, 0.38, 0.95))
-	_roof_tick_bottom = _make_tick(Color(0.16, 0.25, 0.38, 0.95))
-
-func _make_tick(color: Color) -> Line2D:
-	var tick := Line2D.new()
-	tick.width = 1.35
-	tick.default_color = color
-	tick.z_index = -1
-	overlay.add_child(tick)
-	return tick
+	# 顶厚副标题：从 Tuning 读，不再写死
+	_roof_sub = _cards[ROOF_LABEL_INDEX].get_child(0).get_child(1) as Label
+	_roof_sub.text = "≥ %.2f m · built %.2f m" % [rig.roof_min_m, rig.roof_built_m]
 
 func _make_card(title: String, subtitle: String, accent: Color) -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -125,6 +122,10 @@ func _make_card(title: String, subtitle: String, accent: Color) -> PanelContaine
 	box.add_child(sub_label)
 	return panel
 
+## rig 局部坐标 → 面板屏幕坐标（与 shader 同一相机）。
+func _proj(local: Vector3) -> Vector2:
+	return camera.unproject_position(rig.to_global(local))
+
 func _process(_delta: float) -> void:
 	if camera == null or rig == null:
 		return
@@ -134,8 +135,10 @@ func _process(_delta: float) -> void:
 	overlay.clip_contents = true
 
 	for i in range(LABELS.size()):
-		var world: Vector3 = rig.to_global(LABELS[i]["local"])
-		var screen := camera.unproject_position(world)
+		var local: Vector3 = LABELS[i]["local"]
+		if i == ROOF_LABEL_INDEX:
+			local = rig.roof_outer_point()
+		var screen := _proj(local)
 		var card := _cards[i]
 		var card_pos: Vector2 = LABELS[i]["pos"]
 		card_pos.x = clampf(card_pos.x, 4.0, overlay.size.x - card.size.x - 4.0)
@@ -146,14 +149,58 @@ func _process(_delta: float) -> void:
 			clampf(screen.y, card_pos.y, card_pos.y + card.size.y)
 		)
 		_lines[i].points = PackedVector2Array([screen, anchor])
+	overlay.queue_redraw()
 
-	# 拱顶 1.5m 厚度双向箭头指示线（对应参考图拱顶左侧上下双箭头）
-	var roof_low := camera.unproject_position(rig.to_global(Vector3(-0.22, 1.52, 0.02)))
-	var roof_high := camera.unproject_position(rig.to_global(Vector3(-0.22, 2.38, 0.02)))
-	_roof_line.points = PackedVector2Array([roof_low, roof_high])
-	_roof_tick_top.points = PackedVector2Array([
-		roof_high + Vector2(-4.0, 5.0), roof_high, roof_high + Vector2(4.0, 5.0)
-	])
-	_roof_tick_bottom.points = PackedVector2Array([
-		roof_low + Vector2(-4.0, -5.0), roof_low, roof_low + Vector2(4.0, -5.0)
-	])
+func _draw_overlay() -> void:
+	# 顶厚双向尺寸线（两端点来自 rig：穹顶内侧 → 内侧 + built 顶厚）
+	var lo := _proj(rig.roof_inner_point())
+	var hi := _proj(rig.roof_outer_point())
+	overlay.draw_line(lo, hi, DIM_COLOR, 1.4, true)
+	for end in [[lo, 1.0], [hi, -1.0]]:
+		var pt: Vector2 = end[0]
+		var sgn: float = end[1]
+		overlay.draw_polyline(PackedVector2Array([
+			pt + Vector2(-4.0, 5.0 * sgn), pt, pt + Vector2(4.0, 5.0 * sgn)
+		]), DIM_COLOR, 1.4, true)
+		overlay.draw_line(pt + Vector2(-6.0, 0.0), pt + Vector2(6.0, 0.0), DIM_COLOR, 1.2, true)
+
+	# 排湿箭头（穿过通风井向上）
+	_draw_arrow([_proj(VENT_ARROW[0]), _proj(VENT_ARROW[1])], COOL_COLOR, 2.2)
+
+	# 冷气下沉弧线：从隧道口沿地面滑进冷气坑再打旋
+	var pts := PackedVector2Array()
+	for v in COLD_AIR_PATH:
+		pts.append(_proj(v))
+	_draw_arrow(_smooth(pts), COOL_COLOR, 2.0)
+
+## Catmull-Rom 平滑，保证弧线不出折角。
+func _smooth(pts: PackedVector2Array, per_seg: int = 8) -> Array:
+	var out: Array = []
+	for i in range(pts.size() - 1):
+		var p0 := pts[maxi(i - 1, 0)]
+		var p1 := pts[i]
+		var p2 := pts[i + 1]
+		var p3 := pts[mini(i + 2, pts.size() - 1)]
+		for k in range(per_seg):
+			var t := float(k) / float(per_seg)
+			out.append(0.5 * ((2.0 * p1) + (-p0 + p2) * t
+				+ (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+				+ (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t))
+	out.append(pts[pts.size() - 1])
+	return out
+
+func _draw_arrow(points: Array, color: Color, width: float) -> void:
+	if points.size() < 2:
+		return
+	var packed := PackedVector2Array()
+	for p in points:
+		packed.append(p)
+	# 先画一层深色描边保证在亮雪上也可读
+	overlay.draw_polyline(packed, Color(0.04, 0.09, 0.18, 0.55), width + 2.2, true)
+	overlay.draw_polyline(packed, color, width, true)
+	var tip: Vector2 = points[points.size() - 1]
+	var back: Vector2 = points[maxi(points.size() - 4, 0)]
+	var dir := (tip - back).normalized()
+	var side := Vector2(-dir.y, dir.x)
+	var head := PackedVector2Array([tip + dir * 6.0, tip - dir * 5.0 + side * 5.0, tip - dir * 5.0 - side * 5.0])
+	overlay.draw_colored_polygon(head, color)

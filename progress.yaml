@@ -9,7 +9,7 @@ project:
   tech: [Godot 4.3+, GDScript, Orthographic ISO, NightSimulator 6-axis]
   current_milestone: M1
   blocker: "T0.3 F5 人工冒烟与 T1.4–T1.8 未完成；push 缺 GitHub 凭据"
-  updated: "2026-10-31"
+  updated: "2026-11-01"
 
 phases:
   - id: PRE
@@ -65,3 +65,10 @@ phases:
     tasks:
       - {id: T4.1-T4.4, text: "终版资产 / 雪材质与脚印 / 光照 / 洞内陈设", status: todo}
       - {id: T4.5-T4.7, text: "标题画面 / 性能 / North Star 对照评审", status: todo}
+
+visual_pass_1:
+  branch: claude/visual-pass-1
+  status: written-unverified
+  scope: "SDF 剖面 shader / 天空 / 远景地形 / 云杉 + snow_cover / 实验性移轴相机"
+  evidence: "run_all.gd 155 assertions PASS；Vulkan Forward+ 实机截图 snapshots/visual_pass1_*.png；--check-only 干净"
+  note: "未做人工 F5；默认相机仍为正交（§4.1），移轴为可选模式（V 键）"

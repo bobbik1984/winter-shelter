@@ -1,10 +1,15 @@
-[gd_scene load_steps=3 format=3 uid="uid://df7k4m5y6n123"]
+[gd_scene load_steps=4 format=3 uid="uid://df7k4m5y6n123"]
 
 [ext_resource type="Script" path="res://scripts/world/terrain_builder.gd" id="1_terrain"]
 [ext_resource type="Script" path="res://scripts/world/scenery_builder.gd" id="2_scenery"]
+
+[ext_resource type="Script" path="res://scripts/world/far_terrain_builder.gd" id="3_far"]
 
 [node name="BlockoutTerrain" type="Node3D"]
 script = ExtResource("1_terrain")
 
 [node name="Scenery" type="Node3D" parent="."]
 script = ExtResource("2_scenery")
+
+[node name="FarTerrain" type="Node3D" parent="."]
+script = ExtResource("3_far")
