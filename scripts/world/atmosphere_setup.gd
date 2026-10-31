@@ -13,8 +13,8 @@ func set_sun_dir(dir: Vector3) -> void:
 		_sky_mat.set_shader_parameter("sun_dir", dir)
 	if environment:
 		var day := smoothstep(-0.10, 0.12, dir.y)
-		environment.ambient_light_energy = lerpf(0.18, 0.75, day)
-		environment.fog_light_energy = lerpf(0.12, 0.75, day)
+		environment.ambient_light_energy = lerpf(0.30, 0.75, day)
+		environment.fog_light_energy = lerpf(0.18, 0.75, day)
 		environment.fog_sun_scatter = 0.25 * day
 
 ## "lens_receivers" 组回调：移轴镜头参数（见 sky_backdrop.gdshader 的说明）。

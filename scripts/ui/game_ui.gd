@@ -22,6 +22,7 @@ var _build_info: Label
 var _briefing: Control
 var _fade: ColorRect
 var _report: Control
+var _pause: Control
 
 func _ready() -> void:
 	layer = 5
@@ -199,6 +200,32 @@ func _make_briefing() -> Control:
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
 	return shade
+
+func show_pause(on: bool) -> void:
+	if on and _pause == null:
+		var shade := ColorRect.new()
+		shade.color = Color(0.02, 0.035, 0.06, 0.75)
+		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var center := CenterContainer.new()
+		center.set_anchors_preset(Control.PRESET_FULL_RECT)
+		shade.add_child(center)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 10)
+		center.add_child(v)
+		var t := _label("PAUSED", 40, CREAM)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(t)
+		for line in ["[Esc] resume      [R] restart      [Q] quit",
+				"", "[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink",
+				"[B] build mode — [Tab] type, [R] rotate entrance, [E] place",
+				"[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics"]:
+			var l := _label(line, 15 if line.begins_with("[Esc]") else 13, AMBER if line.begins_with("[Esc]") else MUTED)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(l)
+		_pause = shade
+		get_child(0).add_child(shade)
+	if _pause:
+		_pause.visible = on
 
 func show_report(data: Dictionary, shelter_name: String) -> void:
 	if _report:

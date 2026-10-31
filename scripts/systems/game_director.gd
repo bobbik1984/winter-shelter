@@ -5,7 +5,7 @@ extends Node
 ## 只做编排：规则在 GameRules / NightSimulator / ShelterBuilder，数值在 Tuning，外观在各自节点。
 ## 由 MainLevel 在 _ready 中创建并注入引用。
 
-enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT }
+enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT, PAUSED }
 
 var main: Node3D
 var player: PlayerController
@@ -24,6 +24,8 @@ var callouts: WorldCallouts
 var site: ShelterSite
 var graphics: GraphicsSettings
 var audio: AmbientAudio
+var snowfall: Snowfall
+var headlamp: SpotLight3D
 var state: State = State.BRIEFING
 
 var prewarmed := false
@@ -81,6 +83,29 @@ func _ready() -> void:
 	graphics = GraphicsSettings.new()
 	add_child(graphics)
 	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast("Graphics: %s  [F10]" % graphics.level_name(), 2.5))
+
+	var prints := Footprints.new()
+	prints.name = "Footprints"
+	prints.player = player
+	main.add_child(prints)
+
+	# 头灯：日落后自动点亮（真实登山者的标配；保证暮色赶工仍可玩）
+	headlamp = SpotLight3D.new()
+	headlamp.name = "Headlamp"
+	headlamp.light_color = Color(0.95, 0.97, 1.0)
+	headlamp.light_energy = 0.0
+	headlamp.spot_range = 16.0
+	headlamp.spot_angle = 38.0
+	headlamp.spot_attenuation = 0.8
+	headlamp.shadow_enabled = false
+	headlamp.position = Vector3(0, 1.6, 0.2)
+	headlamp.rotation = Vector3(deg_to_rad(-28.0), PI, 0)
+	player.visual_node.add_child(headlamp)
+
+	snowfall = Snowfall.new()
+	snowfall.name = "Snowfall"
+	snowfall.follow = player
+	main.add_child(snowfall)
 
 	audio = AmbientAudio.new()
 	audio.name = "AmbientAudio"
@@ -165,7 +190,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		State.REPORT:
 			if k == KEY_R:
 				get_tree().reload_current_scene()
+		State.PAUSED:
+			match k:
+				KEY_ESCAPE, KEY_P: _set_paused(false)
+				KEY_R: get_tree().reload_current_scene()
+				KEY_Q: get_tree().quit()
 		State.PLAYING:
+			if k == KEY_ESCAPE and not build.active:
+				_set_paused(true)
+				return
 			if build.active:
 				match k:
 					KEY_TAB: build.cycle_preset()
@@ -176,6 +209,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_B: _enter_build()
 				KEY_F: _try_fire()
 				KEY_N: _request_sleep()
+
+func _set_paused(on: bool) -> void:
+	state = State.PAUSED if on else State.PLAYING
+	player.controls_enabled = not on
+	interaction.enabled = not on
+	weather.time_scale = 0.0 if on else _saved_time_scale
+	ui.show_pause(on)
 
 func _request_sleep() -> void:
 	var done := site != null and site.is_complete()
@@ -242,6 +282,9 @@ func _tick_playing(delta: float) -> void:
 			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
 
 	_update_world_callouts()
+	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
+	snowfall.intensity = clampf((now - 960.0) / 70.0, 0.0, 1.0) * 0.9
+	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - weather.sun_elevation_deg) / 4.0, 0.0, 1.0))
 
 	# 天黑后宽限期结束 → 强制入夜
 	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:

@@ -145,7 +145,8 @@ func _scatter_snags() -> void:
 		buckets[k % SNAG_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.2, z)))
 		snag_points.append(Vector2(x, z))
 		placed += 1
-	var mat := _material(Color(0.34, 0.27, 0.21), 0.25, 0.10)
+	var mat := _material(Color(0.40, 0.33, 0.27), 0.25, 0.10)
+	mat.set_shader_parameter("rim_amount", 0.8)
 	_enable_fade(mat)
 	for v in range(SNAG_VARIANTS):
 		_add_multimesh("Snag%d" % v, PropMeshes.snag(40 + v), mat, buckets[v], true)
@@ -172,7 +173,8 @@ func _scatter_rocks() -> void:
 			Vector3(s * lerpf(1.0, 1.6, big), s * lerpf(0.55, 0.9, TerrainHeight.hash2(k, 4, 29)), s))
 		buckets[k % ROCK_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - s * 0.18, z)))
 		placed += 1
-	var mat := _material(Color(0.16, 0.16, 0.19), 0.42, 0.08)
+	var mat := _material(Color(0.20, 0.20, 0.24), 0.30, 0.06)
+	mat.set_shader_parameter("rim_amount", 0.5)
 	for v in range(ROCK_VARIANTS):
 		_add_multimesh("Rocks%d" % v, PropMeshes.rock(60 + v), mat, buckets[v], true)
 

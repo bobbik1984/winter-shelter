@@ -67,6 +67,7 @@ func _make_materials() -> void:
 	dw.set_shader_parameter("base_color", Color(0.30, 0.25, 0.20))
 	dw.set_shader_parameter("snow_amount", 0.22)
 	dw.set_shader_parameter("occlusion_fade", true)
+	dw.set_shader_parameter("rim_amount", 0.8)
 	_mat_deadwood = dw
 	_mat_rock = _make_material(Color(0.12, 0.13, 0.16), 0.98)
 	_mat_grass = _make_material(Color(0.68, 0.56, 0.32), 0.94)

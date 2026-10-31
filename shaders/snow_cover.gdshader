@@ -23,6 +23,8 @@ uniform float occlusion_radius = 0.26;
 // 风摆（T3.1）：树冠随高度二次方偏向下风，阵风调制；静态截图里也能读出风向。
 uniform float sway_amount = 0.0;
 uniform vec2 wind_dir = vec2(1.0, 0.0);
+// 逆光可读性（V5）：边缘光让逆光下的枯木 / 岩石不至于糊成纯黑剪影。
+uniform float rim_amount : hint_range(0.0, 1.0) = 0.0;
 
 varying vec3 w_normal;
 varying vec3 w_pos;
@@ -82,4 +84,6 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = mix(base_roughness, 0.74, cover);
 	SPECULAR = mix(0.12, 0.3, cover);
+	RIM = rim_amount;
+	RIM_TINT = 0.6;
 }

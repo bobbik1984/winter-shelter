@@ -43,6 +43,7 @@ func _ready() -> void:
 func _make_materials() -> void:
 	_mat_snag = _snow_mat(Color(0.42, 0.38, 0.34), 0.25)
 	_mat_snag.set_shader_parameter("occlusion_fade", true)
+	_mat_snag.set_shader_parameter("rim_amount", 0.8)
 	_mat_log = _snow_mat(Color(0.20, 0.15, 0.10), 0.55)
 	_mat_root = _snow_mat(Color(0.24, 0.18, 0.13), 0.35)
 	_mat_bough = _snow_mat(Color(0.07, 0.20, 0.12), 0.45)
