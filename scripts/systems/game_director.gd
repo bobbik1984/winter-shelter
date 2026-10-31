@@ -442,6 +442,8 @@ func _on_interaction_completed(target: Interactable, result: Dictionary) -> void
 func _on_inventory_changed() -> void:
 	if ui:
 		ui.set_inventory(inventory.wood, inventory.bark, inventory.bedding)
+	if player and player.visual_node is HikerVisual:
+		(player.visual_node as HikerVisual).set_load(inventory.wood, inventory.bedding)
 
 # ------------------------------------------------------------------ 建造（T2.4–T2.6）
 

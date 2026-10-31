@@ -27,6 +27,7 @@ func _ready() -> void:
 	_coords = _build_coords()
 	_build()
 	_build_far_forest()
+	_build_lake()
 
 ## 非均匀网格：地图边缘附近密、远处稀。
 func _build_coords() -> PackedFloat32Array:
@@ -165,3 +166,35 @@ func _build_far_forest() -> void:
 	mat.set_shader_parameter("snow_amount", 0.66)
 	ForestScatter.add_chunked(self, "FarForest", SpruceMesh.build(9, blow, 0.38, 6), mat, transforms, 110.0, false)
 	print("[FarTerrain] far trees: %d" % transforms.size())
+
+
+## 远景谷底冰湖（V6，对应 North Star 远景）：在远景方向的谷底找最低点，铺一片冰面。
+func _build_lake() -> void:
+	var best := Vector2.ZERO
+	var best_h := INF
+	for r in range(110, 260, 10):
+		for k in range(-6, 7):
+			var dir := VISTA_DIR.rotated(deg_to_rad(k * 4.0))
+			var p := dir * float(r)
+			var h := _height(p.x, p.y)
+			if h < best_h:
+				best_h = h
+				best = p
+	var mi := MeshInstance3D.new()
+	mi.name = "FrozenLake"
+	var disc := CylinderMesh.new()
+	disc.top_radius = 1.0
+	disc.bottom_radius = 1.0
+	disc.height = 0.2
+	disc.radial_segments = 40
+	mi.mesh = disc
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.62, 0.74, 0.86)
+	mat.roughness = 0.18
+	mat.metallic_specular = 0.8
+	mi.material_override = mat
+	mi.position = Vector3(best.x, best_h + 1.2, best.y)
+	mi.scale = Vector3(70.0, 1.0, 38.0)
+	mi.rotation.y = atan2(VISTA_DIR.x, VISTA_DIR.y)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)

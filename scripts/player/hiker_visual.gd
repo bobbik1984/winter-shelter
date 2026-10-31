@@ -1,7 +1,13 @@
+class_name HikerVisual
 extends Node3D
 
 ## 低模登山求生者：防寒裤、冲锋衣兜帽、红色登山包 + 黄色防潮垫、
 ## 木柴捆、右手探针杆与雪地探孔圆环。只构建 Visual 子节点，不改碰撞/控制脚本。
+
+## 背负挂件（T2.2：采集结果直接体现在背包外侧）
+var _logs: Array[MeshInstance3D] = []
+var _bedding: Array[MeshInstance3D] = []
+var _mat_grass: StandardMaterial3D
 
 var _mat_pants: StandardMaterial3D
 var _mat_coat: StandardMaterial3D
@@ -68,13 +74,28 @@ func _build_backpack() -> void:
 	var pad := _add_cylinder(Vector3(0.0, 1.48, 0.36), 0.10, 0.10, 0.56, _mat_pad)
 	pad.rotation_degrees.z = 90.0
 
-	for log_idx in range(3):
+	for log_idx in range(4):
 		var log_mesh := _add_cylinder(
-			Vector3(0.31, 0.92 + float(log_idx) * 0.10, 0.36),
-			0.035, 0.045, 0.46, _mat_wood
+			Vector3(0.0, 0.86 + float(log_idx) * 0.09, 0.53),
+			0.04, 0.05, 0.62, _mat_wood
 		)
 		log_mesh.rotation_degrees.z = 90.0
-		log_mesh.rotation_degrees.y = 8.0 * float(log_idx - 1)
+		log_mesh.rotation_degrees.y = 6.0 * float(log_idx - 1)
+		log_mesh.visible = false
+		_logs.append(log_mesh)
+	_mat_grass = _mat(Color(0.74, 0.60, 0.33), 0.95)
+	for b in range(3):
+		var bundle := _add_cylinder(Vector3(-0.30 + b * 0.04, 1.30 + b * 0.05, 0.36), 0.07, 0.09, 0.5, _mat_grass)
+		bundle.rotation_degrees.x = 15.0
+		bundle.visible = false
+		_bedding.append(bundle)
+
+## 背包外观随背包内容变化：每 3 根木材多挂一根原木，每份垫层一束干草。
+func set_load(wood: int, bedding: int) -> void:
+	for i in range(_logs.size()):
+		_logs[i].visible = wood > i * 3
+	for i in range(_bedding.size()):
+		_bedding[i].visible = bedding > i
 
 func _build_probe() -> void:
 	var pole := _add_cylinder(Vector3(0.47, 1.05, 0.04), 0.024, 0.030, 2.10, _mat_dark)
