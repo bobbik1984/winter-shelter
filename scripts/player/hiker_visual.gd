@@ -22,6 +22,11 @@ var _mat_hole: StandardMaterial3D
 const GLB := "res://assets/models/char_survivor.glb"
 
 var _anim: AnimationPlayer
+## 体感表现（VISUAL_LANGUAGE §3）：呼出的白汽频率 + 寒颤幅度，随体温变化。
+var _breath: GPUParticles3D
+var _shiver := 0.0
+var _t := 0.0
+var _inst: Node3D
 var _current := ""
 
 func _ready() -> void:
@@ -39,6 +44,8 @@ func _ready() -> void:
 func _build_from_glb() -> void:
 	var inst := (load(GLB) as PackedScene).instantiate()
 	add_child(inst)
+	_inst = inst
+	_build_breath()
 	for n in inst.find_children("*", "MeshInstance3D", true, false):
 		(n as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	_anim = inst.find_children("*", "AnimationPlayer", true, false).front() as AnimationPlayer if not inst.find_children("*", "AnimationPlayer", true, false).is_empty() else null
@@ -61,6 +68,58 @@ func _build_from_glb() -> void:
 		bundle.rotation_degrees.x = -15.0
 		bundle.visible = false
 		_bedding.append(bundle)
+
+func _build_breath() -> void:
+	_breath = GPUParticles3D.new()
+	_breath.amount = 10
+	_breath.lifetime = 1.1
+	_breath.explosiveness = 0.85
+	_breath.local_coords = false
+	_breath.position = Vector3(0, 1.55, 0.2)
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 0.25, 1)
+	pm.spread = 18.0
+	pm.initial_velocity_min = 0.25
+	pm.initial_velocity_max = 0.45
+	pm.gravity = Vector3(0, 0.15, 0)
+	pm.scale_min = 0.6
+	pm.scale_max = 1.3
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.4))
+	curve.add_point(Vector2(1, 1.6))
+	var ct := CurveTexture.new()
+	ct.curve = curve
+	pm.scale_curve = ct
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0.8))
+	g.set_color(1, Color(1, 1, 1, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	_breath.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.3, 0.3)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = Color(0.92, 0.95, 1.0, 0.6)
+	q.material = m
+	_breath.draw_pass_1 = q
+	add_child(_breath)
+
+## 体温 0..100 → 呼吸间隔（冷 = 急促）与寒颤幅度（< 35 明显发抖）。
+func set_body_state(warmth: float, exerting: bool) -> void:
+	if _breath:
+		var cold := clampf(1.0 - warmth / 100.0, 0.0, 1.0)
+		_breath.lifetime = lerpf(1.4, 0.7, cold) * (0.8 if exerting else 1.0)
+	_shiver = clampf((40.0 - warmth) / 40.0, 0.0, 1.0)
+
+func _process(delta: float) -> void:
+	_t += delta
+	if _inst:
+		_inst.position = Vector3(sin(_t * 41.0) * 0.012, 0, cos(_t * 37.0) * 0.008) * _shiver
 
 func _play(name_: String, blend: float = 0.2) -> void:
 	if _anim == null or _current == name_ or not _anim.has_animation(name_):

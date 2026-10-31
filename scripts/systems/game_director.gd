@@ -339,6 +339,8 @@ func _tick_playing(delta: float) -> void:
 
 	_update_warmth(delta, 1.0)
 	player.working = interaction.progress > 0.0
+	if player.visual_node is HikerVisual:
+		(player.visual_node as HikerVisual).set_body_state(warmth.body_warmth, player.current_speed > 0.3 or player.working)
 
 	# 建造模式
 	if build.active:
