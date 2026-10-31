@@ -11,7 +11,7 @@ project:
   branch: "claude/visual-pass-1（未合并、未推送）"
   blocker: "人工 F5 试玩（V1 / T0.3）与 PT01/PT02 试玩；分支未合并"
   updated: "2026-11-01"
-  playable: "简报 → 探测 / 采集 / 建造 / 生火 → 入夜 → 6 维报告 → 重开；暂停菜单；头灯；降雪"
+  playable: "简报 → 探测 / 采集 / 建造 / 生火 → 入夜 → 6 维报告 → 重开；目标行；失温倒下；暂停菜单；头灯；降雪；Blender 角色动画"
 
 phases:
   - id: PRE
@@ -70,7 +70,8 @@ phases:
       - {id: T3.6, text: "Cutaway 剖面", status: written-unverified, note: "SDF 剖面 + 5 标注 + 顶厚取自 Tuning（V0.1）；建造/进洞时触发显示未做"}
       - {id: T3.7, text: "报告 UI", status: written-unverified, note: "6 条分数条 + 归因 + 结论 + 教训（随庇护所类型）"}
       - {id: T3.8, text: "音频灰盒", status: written-unverified, note: "AmbientAudio 程序化风声 / 踩雪 / 火噼啪，无音频资源"}
-      - {id: T3.9-T3.10, text: "内容一轮 / PT03", status: todo}
+      - {id: T3.9, text: "内容一轮 / 平衡", status: written-unverified, note: "tools/playtest_bot.gd 8 种策略：深雪高床洞 + 暖身 SAFE；最低深度洞 COLD；入口迎风 / 开工太晚 / 露天 DANGEROUS；雪沟 / 倒棚 COLD"}
+      - {id: T3.10, text: "PT03", status: todo}
 
   - id: M4
     name: "M4 Target Look"
@@ -94,9 +95,9 @@ phases:
       - {id: V1, text: "人工 F5 验证 + 合并分支", status: todo, note: "人工"}
       - {id: V2, text: "画质档位（D11）", status: written-unverified, note: "F10 低/中/高并持久化；UHD 620 @1080p：低 ~25 / 中 ~15 / 高 ~10 FPS；空场景上限 69 FPS"}
       - {id: V3, text: "影子时钟教学文案", status: written-unverified, note: "GameRules.tip_for：按剩余日照 / 体温切换，阈值在 Tuning Tips 组；报告教训引用开工时间"}
-      - {id: V4, text: "Blender 角色 + 动画", status: todo, depends: [V1]}
+      - {id: V4, text: "Blender 角色 + 动画", status: written-unverified, note: "tools/blender/build_hiker.py → assets/models/char_survivor.glb（~900 三角面）；Idle/Walk/Probe/Dig；snapshots/v4_hiker_poses.png"}
       - {id: V5, text: "枯立木 / 岩石可读性", status: written-unverified, note: "snow_cover RIM 边缘光 + 更亮树皮色"}
-      - {id: V6, text: "远景冰湖 / 河谷", status: todo}
+      - {id: V6, text: "远景冰湖 / 河谷", status: written-unverified, note: "远景谷底冰湖；出生点视角被迎风脊挡住，需走到西侧才看得到"}
       - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: todo}
       - {id: V8, text: "脚印与拖痕", status: written-unverified, note: "Footprints 环形 MultiMesh；拖痕未做"}
-      - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: todo, depends: [V1, V3]}
+      - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: written-unverified, note: "Tuning Camera 组 tilt_*；热键对比未做"}

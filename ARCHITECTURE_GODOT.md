@@ -163,6 +163,8 @@ static func evaluate_shelter(
 - **世界对象**：`ResourceSpawner`（资源与树根挡风物，并给森林 / 场景里全部立枯木挂采集点）、`ShelterSite`（持有 `ShelterBuilder`，5 阶外观 + 每阶材料）、`BuildMode`（预览与校验）、`Campfire`、`Footprints`、`Snowfall`、玩家头灯。
 - **UI**：`GameUI`（代码构建：提示、背包、消息、建造面板、简报、暂停、黑屏、报告）；`WorldCallouts` 动态引线标签 API。
 - **设置**：`GraphicsSettings`（F10，`user://settings.cfg`）。
+- **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。
+- **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
