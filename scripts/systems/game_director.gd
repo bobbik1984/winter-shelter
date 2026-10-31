@@ -169,6 +169,18 @@ func _sleep(forced: bool) -> void:
 	ui.set_prompt("", 0.0)
 	ui.toast("Night falls..." if forced else "You crawl in and try to sleep...", tuning.night_fade_seconds)
 
+## 完工雪洞的剖面贴图（独立 SubViewport），其余情况返回 null。
+func _vignette_texture() -> Texture2D:
+	if site == null or not site.is_complete() or not (site.preset_id in ["RaisedCave", "BasicCave"]):
+		return null
+	if _cutaway_panel == null:
+		return null
+	var vp := _cutaway_panel.get_node_or_null("Margin/VBox/ViewportContainer/SubViewport") as SubViewport
+	if vp == null:
+		return null
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	return vp.get_texture()
+
 func _show_report() -> void:
 	state = State.REPORT
 	var input := night_input()
@@ -244,7 +256,13 @@ func _process(delta: float) -> void:
 		State.NIGHT_FADE:
 			_fade_t += delta
 			ui.set_fade(clampf(_fade_t / 1.2, 0.0, 1.0))
-			if _fade_t >= tuning.night_fade_seconds:
+			var vignette := _vignette_texture()
+			var total := tuning.night_fade_seconds + (3.5 if vignette else 0.0)
+			if vignette:
+				var a := clampf((_fade_t - 1.4) / 0.8, 0.0, 1.0) * clampf((total - _fade_t) / 0.6, 0.0, 1.0)
+				ui.show_vignette(vignette, "Outside, the wind howls. Inside, the candle glows and the air stays still.", a)
+				audio.shelter_level = 2
+			if _fade_t >= total:
 				_show_report()
 		State.REPORT:
 			ui.set_fade(1.0)

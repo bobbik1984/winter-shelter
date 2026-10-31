@@ -25,6 +25,8 @@ var _fade: ColorRect
 var _report: Control
 var _pause: Control
 var _guide: Control
+var _vignette: Control
+var _vignette_tex: TextureRect
 
 func _ready() -> void:
 	layer = 5
@@ -268,7 +270,37 @@ func show_pause(on: bool) -> void:
 	if _pause:
 		_pause.visible = on
 
+## 入夜小场景（Brutal Outside, Cozy Inside）：黑屏上显示自己雪洞的剖面与烛光。
+func show_vignette(tex: Texture2D, caption: String, alpha: float) -> void:
+	if _vignette == null:
+		var root := Control.new()
+		root.set_anchors_preset(Control.PRESET_FULL_RECT)
+		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var center := CenterContainer.new()
+		center.set_anchors_preset(Control.PRESET_FULL_RECT)
+		root.add_child(center)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 14)
+		center.add_child(v)
+		_vignette_tex = TextureRect.new()
+		_vignette_tex.custom_minimum_size = Vector2(1040, 550)
+		_vignette_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_vignette_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		v.add_child(_vignette_tex)
+		var l := _label("", 18, CREAM)
+		l.name = "Caption"
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(l)
+		_vignette = root
+		get_child(0).add_child(root)
+	_vignette.visible = alpha > 0.0
+	_vignette.modulate.a = alpha
+	_vignette_tex.texture = tex
+	(_vignette.find_child("Caption", true, false) as Label).text = caption
+
 func show_report(data: Dictionary, shelter_name: String) -> void:
+	if _vignette:
+		_vignette.visible = false
 	if _report:
 		_report.queue_free()
 	var shade := ColorRect.new()
