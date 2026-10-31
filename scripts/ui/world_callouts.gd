@@ -1,7 +1,7 @@
 extends Control
 
-## 参考图说明书风格的 3 个世界空间引线标注：
-## Deeper snow / Good depth / Deadwood。每帧把 3D 世界点投影到 2D，卡片随相机移动。
+## 主场景大地图的 3 个探索级世界引线标注（保持主画面清爽，不与右上角独立剖面特写窗重叠）：
+## Deeper snow / Good depth / Deadwood。
 
 const CALLOUTS := [
 	{
@@ -22,40 +22,8 @@ const CALLOUTS := [
 		"world": Vector3(5.5, 0.0, 3.5),
 		"title": "DEADWOOD",
 		"sub": "Harvest for fuel",
-		"offset": Vector2(-235.0, 18.0),
+		"offset": Vector2(28.0, 18.0),
 		"accent": Color(1.0, 0.55, 0.12),
-	},
-	{
-		"world": Vector3(10.1, 0.0, 12.5),
-		"title": "ENTRANCE TUNNEL",
-		"sub": "Slopes slightly down",
-		"offset": Vector2(-210.0, 40.0),
-		"accent": Color(0.62, 0.82, 1.0),
-		"y_offset": 0.8,
-	},
-	{
-		"world": Vector3(9.7, 0.0, 11.3),
-		"title": "COLD-AIR PIT",
-		"sub": "Traps cold air lower",
-		"offset": Vector2(-220.0, 118.0),
-		"accent": Color(0.42, 0.68, 1.0),
-		"y_offset": 0.5,
-	},
-	{
-		"world": Vector3(11.1, 0.0, 8.4),
-		"title": "RAISED PLATFORM",
-		"sub": "Stay above cold air",
-		"offset": Vector2(28.0, -6.0),
-		"accent": Color(0.96, 0.78, 0.42),
-		"y_offset": 1.0,
-	},
-	{
-		"world": Vector3(11.4, 0.0, 7.8),
-		"title": "VENT / CHIMNEY",
-		"sub": "Expel moisture",
-		"offset": Vector2(30.0, -96.0),
-		"accent": Color(0.72, 0.88, 1.0),
-		"y_offset": 3.2,
 	},
 ]
 
