@@ -56,6 +56,18 @@ func run() -> Dictionary:
 	_check(GameRules.next_objective({"has_site": true, "complete": true}, t).contains("[N]"), "完工后提示休息")
 	_check(GameRules.next_objective({"has_site": true, "complete": true, "needs_vent_stick": true}, t).contains("vent"), "降雪时提示插通风木棍")
 
+	# 手柄映射与重复绑定
+	_check(GameInput.joy_to_key(JOY_BUTTON_START, GameDirector.State.BRIEFING, false) == KEY_ENTER, "Start 在简报页 = 开始")
+	_check(GameInput.joy_to_key(JOY_BUTTON_START, GameDirector.State.PLAYING, false) == KEY_ESCAPE, "Start 游戏中 = 暂停")
+	_check(GameInput.joy_to_key(JOY_BUTTON_B, GameDirector.State.PLAYING, true) == KEY_B, "建造中 B = 取消")
+	_check(GameInput.joy_to_key(JOY_BUTTON_B, GameDirector.State.PLAYING, false) == KEY_F, "平时 B = 生火")
+	_check(GameInput.joy_to_key(JOY_BUTTON_RIGHT_SHOULDER, GameDirector.State.PLAYING, false) == KEY_NONE, "非建造时 RB 无动作")
+	if InputMap.has_action("interact"):
+		GameInput.ensure_joypad()
+		var n1 := InputMap.action_get_events("interact").size()
+		GameInput.ensure_joypad()
+		_check(InputMap.action_get_events("interact").size() == n1, "重复调用 ensure_joypad 不应叠加绑定")
+
 	# 效率
 	_check(is_equal_approx(GameRules.work_efficiency(1.0, 30.0, t), 1.0), "日落前满效率")
 	_check(GameRules.work_efficiency(1.0, -60.0, t) <= t.dusk_efficiency_floor + 0.001, "日落 1 小时后降到下限")

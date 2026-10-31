@@ -41,6 +41,7 @@ func check(c: bool, msg: String) -> void:
 func _run() -> void:
 	var m = load("res://scenes/main.tscn").instantiate()
 	root.add_child(m)
+	current_scene = m   # 让 reload_current_scene() 与真实运行一致
 	for i in 20: await process_frame
 	var d = m.get_node("GameDirector")
 	var p = m.player
@@ -118,5 +119,11 @@ func _run() -> void:
 	# 手柄：报告页按 Start = 重开（这里只验证映射，不真的重开）
 	check(d._joy_to_key(JOY_BUTTON_START) == KEY_R, "gamepad Start maps to retry on the report")
 	check(InputMap.action_has_event("interact", _joy_btn(JOY_BUTTON_A)), "gamepad A is bound to interact")
+	# R 重开：应回到新一局的简报页
+	await key(KEY_R)
+	for i in 30: await process_frame
+	var m2 = current_scene
+	var d2 = m2.get_node_or_null("GameDirector") if m2 else null
+	check(m2 != m and d2 != null and d2.state == d2.State.BRIEFING, "R on the report restarts at a fresh briefing")
 	printerr("RESULT ", "PASS" if fails.is_empty() else "FAIL %d" % fails.size())
 	quit(0 if fails.is_empty() else 1)

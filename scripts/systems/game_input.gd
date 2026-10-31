@@ -14,12 +14,15 @@ static func ensure_joypad() -> void:
 			var e := InputEventJoypadMotion.new()
 			e.axis = axes[action][0]
 			e.axis_value = axes[action][1]
-			InputMap.action_add_event(action, e)
+			# InputMap 跨场景重载保留：已绑定就不再重复添加（R 重开会再次调用）
+			if not InputMap.action_has_event(action, e):
+				InputMap.action_add_event(action, e)
 	for pair in [["interact", JOY_BUTTON_A], ["probe", JOY_BUTTON_X]]:
 		if InputMap.has_action(pair[0]):
 			var b := InputEventJoypadButton.new()
 			b.button_index = pair[1]
-			InputMap.action_add_event(pair[0], b)
+			if not InputMap.action_has_event(pair[0], b):
+				InputMap.action_add_event(pair[0], b)
 
 ## state: GameDirector.State；building: 是否在建造模式。
 static func joy_to_key(btn: JoyButton, state: int, building: bool) -> Key:
