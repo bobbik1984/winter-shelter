@@ -23,7 +23,7 @@
 
 ## 🐞 已知问题（未排期）
 
-- [ ] **偶发原生崩溃（排查中）**：随机输入模糊测试 `tools/fuzz_test.gd --seed=2` 约 2/5 次在 40 s 内 SIGSEGV（Godot 4.3 release 无符号，无脚本报错）；加日志或 gdb 下不复现（时序相关）。已排除：启动 + 设置文件、F10 / 静音 / 语言 / 建造 / 界面缩放的快速切换、R 重开。其余种子 15 次 0 崩溃
+- [x] **偶发原生崩溃（已缓解）**：模糊测试 `--seed=2` 约 3/21 次在场景载入后 SIGSEGV，时刻与窗口 swapchain 重建重合（`--verbose` 第二次 "Using present mode"）。修复：GraphicsSettings 启动约 30 帧后才应用 3D 渲染缩放 / 阴影设置、之前忽略 F10。修复后 0/28。根因在引擎层（Godot 4.3 release 无符号，未能取得回溯），升级 Godot 时复测
 
 - [x] 中文字体：已随包附带 Droid Sans Fallback（Apache-2.0，4 MB，取自本机系统字体）作为默认字体的后备字体
 
