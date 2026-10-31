@@ -421,9 +421,9 @@ extends Resource
 @export_group("Body Warmth")
 ## [GAME] 核心体温上限，100 = 状态最佳。
 @export var warmth_max: float = 100.0
-## [TUNE] 迎风暴露区基础掉温速率（Warmth/s）。
-@export var warmth_cold_decay_exposed: float = 1.2
-## [TUNE] 树根/巨石背风区最大减免比例；1.2 × (1 - 0.70) ≈ 0.36/s。
+## [TUNE] 迎风暴露区基础掉温速率（Warmth/现实秒）。0.25 → 完全暴露约 6.7 分钟从 100 掉到 0。
+@export var warmth_cold_decay_exposed: float = 0.25
+## [TUNE] 树根/巨石背风区最大减免比例；0.25 × (1 - 0.70) ≈ 0.075/s。
 @export var warmth_windbreak_mitigation_max: float = 0.70
 ## [TUNE] 额外衣物/烘干层的掉温减缓比例 35%。
 @export var warmth_clothing_mitigation_bonus: float = 0.35
@@ -441,3 +441,74 @@ extends Resource
 @export var warmth_tier_chilled: float = 35.0
 ## [TUNE] 入夜低体温对 NightSimulator Heat 分的惩罚系数。
 @export var warmth_night_heat_penalty: float = 0.35
+
+# -----------------------------------------------------------------------------
+# 游戏循环（M1 收尾 + M2：移动阻尼、探针、交互、背包、建造、生火、过夜）
+# -----------------------------------------------------------------------------
+
+@export_group("Movement")
+## [TUNE] 深雪开始拖慢的雪深 0.6 m。
+@export var deep_snow_start_m: float = 0.6
+## [TUNE] 深雪拖慢饱和的雪深 2.0 m。
+@export var deep_snow_full_m: float = 2.0
+## [TUNE] 最深雪中的速度倍率 0.55（不烦人，但明显变慢）。
+@export var deep_snow_speed_min: float = 0.55
+## [TUNE] 上坡速度下限倍率 0.45。
+@export var uphill_speed_min: float = 0.45
+
+@export_group("Interaction")
+## [GAME] 可交互距离 2.4 m。
+@export var interact_radius_m: float = 2.4
+## [GAME] 采集一次的游戏分钟消耗 6。
+@export var gather_minutes: float = 6.0
+## [GAME] 每次砍立枯木获得木材 2。
+@export var wood_per_harvest: int = 2
+## [GAME] 每棵立枯木可砍次数 2。
+@export var deadwood_uses: int = 2
+## [GAME] 每次剥桦树皮获得引火物 1。
+@export var bark_per_harvest: int = 1
+## [GAME] 每丛干草 / 云杉枝获得垫层 1。
+@export var bedding_per_harvest: int = 1
+## [TUNE] 立枯木 / 桦树 / 干草点位数量。
+@export var deadwood_spots: int = 6
+@export var birch_spots: int = 4
+@export var bedding_spots: int = 8
+## [GAME] 背包上限（木材）。
+@export var max_wood: int = 12
+
+@export_group("Building")
+## [GAME] 每个施工阶段按住交互键的现实秒数（按住时游戏时间按工时跳进）。
+@export var stage_hold_seconds: float = 2.4
+## [GAME] 建造预览距玩家前方的距离 3.0 m。
+@export var ghost_distance_m: float = 3.0
+## [GAME] 视为"在庇护所内"的半径 2.2 m。
+@export var shelter_inside_radius_m: float = 2.2
+## [GAME] 视为"靠近天然挡风物（翻倒树根）"的半径 4.5 m。
+@export var windbreak_radius_m: float = 4.5
+## [GAME] 跳进游戏时间时，劳作的体温流失按暴露率的比例计（干活发热）。
+@export var work_exposure_factor: float = 0.35
+
+@export_group("Campfire")
+## [GAME] 生火按住秒数。
+@export var fire_hold_seconds: float = 2.0
+## [GAME] 每根木材燃烧的游戏分钟（营火，非通宵）。
+@export var campfire_minutes_per_wood: float = 25.0
+## [GAME] 火的有效取暖半径 3.5 m。
+@export var fire_warm_radius_m: float = 3.5
+## [GAME] 树冠下生火判定半径 2.2 m（落雪压火）。
+@export var canopy_radius_m: float = 2.2
+## [GAME] 融雪烧水的游戏分钟。
+@export var melt_snow_minutes: float = 15.0
+
+@export_group("Night")
+## [GAME] 天黑后强制入夜的宽限（分钟，从 night_minutes 起算）。
+@export var forced_sleep_grace_minutes: float = 40.0
+## [GAME] 入夜黑屏时长（现实秒）。
+@export var night_fade_seconds: float = 3.0
+
+@export_group("Tips")
+## [GAME] 提示文案切换阈值：距日落剩余分钟。
+@export var tip_plenty_minutes: float = 75.0
+@export var tip_hurry_minutes: float = 35.0
+## [GAME] 体温低于此值时优先提示取暖。
+@export var tip_cold_warmth: float = 40.0

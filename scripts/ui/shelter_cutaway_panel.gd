@@ -131,7 +131,7 @@ func _proj(local: Vector3) -> Vector2:
 	return camera.unproject_position(rig.to_global(local))
 
 func _process(_delta: float) -> void:
-	if camera == null or rig == null:
+	if camera == null or rig == null or not is_visible_in_tree():
 		return
 
 	overlay.position = Vector2.ZERO

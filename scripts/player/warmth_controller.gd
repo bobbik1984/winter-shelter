@@ -77,14 +77,17 @@ func update_warmth(
 		warmth_changed.emit(body_warmth, rate, get_rate_indicator())
 	return rate
 
+## 速率箭头：阈值相对 Tuning 掉温 / 回温速率，调参后不需要改这里。
 func get_rate_indicator() -> String:
-	if last_rate <= -1.0:
+	var t := _get_tuning()
+	var cold := t.warmth_cold_decay_exposed
+	if last_rate <= -cold * 0.8:
 		return "▼▼▼"
-	if last_rate < -0.05:
+	if last_rate < -cold * 0.1:
 		return "▼"
-	if last_rate < 0.05:
+	if last_rate < cold * 0.1:
 		return "—"
-	if last_rate < 1.0:
+	if last_rate < t.warmth_fire_recovery_rate * 0.4:
 		return "▲"
 	return "▲▲▲"
 

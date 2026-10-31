@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://mainlevel001"]
+[gd_scene load_steps=13 format=3 uid="uid://mainlevel001"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://df7k4m5y6n123" path="res://scenes/world/blockout_terrain.tscn" id="2_terrain"]
@@ -10,7 +10,6 @@
 [ext_resource type="Script" path="res://scripts/world/wind_particles.gd" id="8_wind"]
 [ext_resource type="Script" path="res://scripts/player/warmth_controller.gd" id="9_warmth"]
 [ext_resource type="Script" path="res://scripts/world/shelter_cutaway_rig.gd" id="10_shelter"]
-[ext_resource type="Script" path="res://scripts/world/campfire_pot_rig.gd" id="11_campfire"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_cold"]
 sky_top_color = Color(0.25, 0.45, 0.72, 1)
@@ -57,11 +56,6 @@ scale = Vector3(0.45, 0.45, 0.45)
 script = ExtResource("10_shelter")
 place_on_terrain = true
 world_origin = Vector3(20.5, 0, 11.2)
-
-[node name="CampfirePot" type="Node3D" parent="."]
-position = Vector3(-4.2, 0, 9.2)
-scale = Vector3(0.58, 0.58, 0.58)
-script = ExtResource("11_campfire")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)

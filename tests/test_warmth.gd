@@ -37,7 +37,7 @@ func _test_exposed(t: Tuning, c) -> void:
 	var rate: float = c.compute_warmth_rate(0.0, false, 0, 0.0)
 	_check(
 		is_equal_approx(rate, -t.warmth_cold_decay_exposed),
-		"迎风暴露应约 -1.2/s，实际 %.4f" % rate
+		"迎风暴露应等于 Tuning 掉温速率，实际 %.4f" % rate
 	)
 	_check(c.get_rate_indicator() == "▼▼▼", "暴露指示器应为 ▼▼▼")
 
@@ -49,7 +49,7 @@ func _test_leeward(t: Tuning, c) -> void:
 		is_equal_approx(rate, expected),
 		"背风区应约 %.2f/s，实际 %.4f" % [expected, rate]
 	)
-	_check(absf(rate + 0.36) < 0.01, "背风区应接近 -0.36/s，实际 %.4f" % rate)
+	_check(rate > -t.warmth_cold_decay_exposed * 0.5, "背风区掉温应不到暴露区一半，实际 %.4f" % rate)
 	_check(c.get_rate_indicator() == "▼", "背风区指示器应为 ▼")
 
 
@@ -111,7 +111,7 @@ func _test_efficiency(t: Tuning, c) -> void:
 
 func _test_update_clamps(t: Tuning, c) -> void:
 	c.set_body_warmth(0.5)
-	c.update_warmth(1.0, 0.0, false, 0, 0.0)
+	c.update_warmth(10.0, 0.0, false, 0, 0.0)
 	_check(is_equal_approx(c.body_warmth, 0.0), "体温不应低于 0")
 
 	c.set_body_warmth(t.warmth_max - 0.5)

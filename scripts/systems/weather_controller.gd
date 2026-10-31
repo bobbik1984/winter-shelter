@@ -6,7 +6,8 @@ signal weather_updated(temp_celsius: float, wind_str: String)
 
 @export var wind_data: WindData
 @export var sun_light: DirectionalLight3D
-@export var time_scale: float = 12.0 # 现实 1 秒 = 游戏 12 秒
+## 游戏秒 / 现实秒；_ready 时由 Tuning.real_seconds_per_game_hour 推出（300 s/h → 12×）。
+@export var time_scale: float = 12.0
 
 const TUNING_PATH := "res://resources/tuning.tres"
 ## [GAME] 太阳光强与色温随高度角变化：低角度暖橙、高角度近白金。
@@ -28,6 +29,7 @@ func _ready() -> void:
 	if tuning == null:
 		tuning = Tuning.new()
 	current_time_minutes = float(tuning.start_minutes)
+	time_scale = 3600.0 / maxf(tuning.real_seconds_per_game_hour, 1.0)
 	sunset_minutes = SunModel.sunset_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
 	_update_weather_signals()
 	_apply_sun.call_deferred()
@@ -59,6 +61,18 @@ func _apply_sun() -> void:
 	sun_light.light_color = SUN_COLOR_LOW.lerp(SUN_COLOR_HIGH, smoothstep(2.0, 22.0, p.x))
 	sun_light.shadow_enabled = day > 0.01
 	get_tree().call_group("sun_receivers", "set_sun_dir", to_sun)
+
+## 动作消耗游戏时间：时钟直接跳进（采集 / 建造 / 融雪），太阳随之更新。
+func advance_minutes(minutes: float) -> void:
+	current_time_minutes += maxf(minutes, 0.0)
+	_apply_sun()
+
+func minutes_to_sunset() -> float:
+	return sunset_minutes - current_time_minutes
+
+func clock_string() -> String:
+	var m := int(current_time_minutes)
+	return "%02d:%02d" % [m / 60, m % 60]
 
 ## 当前时刻的 HH:MM 日落字符串（HUD 用，不再写死 16:18）。
 func sunset_clock() -> String:

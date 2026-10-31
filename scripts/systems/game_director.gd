@@ -1,0 +1,566 @@
+class_name GameDirector
+extends Node
+
+## 一局游戏的总导演（M2 循环）：简报 → 自由行动（探测 / 采集 / 建造 / 生火）→ 入夜 → 6 维报告 → 重开。
+## 只做编排：规则在 GameRules / NightSimulator / ShelterBuilder，数值在 Tuning，外观在各自节点。
+## 由 MainLevel 在 _ready 中创建并注入引用。
+
+enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT }
+
+var main: Node3D
+var player: PlayerController
+var weather: WeatherController
+var warmth: WarmthController
+var hud: HUDController
+var tuning: Tuning
+var wind: WindData
+
+var inventory: Inventory
+var interaction: InteractionController
+var build: BuildMode
+var spawner: ResourceSpawner
+var ui: GameUI
+var callouts: WorldCallouts
+var site: ShelterSite
+var state: State = State.BRIEFING
+
+var prewarmed := false
+var _saved_time_scale := 12.0
+var _sleep_confirm_t := 0.0
+var _fade_t := 0.0
+var _last_minutes := 0.0
+var _markers: Array[Node3D] = []
+var _deeper_count := 0
+var _deeper_points: Array[Vector3] = []
+var _cutaway_panel: Control
+var _forced := false
+
+const MAX_MARKERS := 24
+const MAX_DEEPER_LABELS := 3
+
+func setup(p_main: Node3D, p_player: PlayerController, p_weather: WeatherController,
+		p_warmth: WarmthController, p_hud: HUDController) -> void:
+	main = p_main
+	player = p_player
+	weather = p_weather
+	warmth = p_warmth
+	hud = p_hud
+
+func _ready() -> void:
+	tuning = load("res://resources/tuning.tres") as Tuning
+	wind = load("res://resources/default_wind.tres") as WindData
+
+	inventory = Inventory.new()
+	inventory.max_wood = tuning.max_wood
+	inventory.has_extra_clothing = true
+	add_child(inventory)
+	inventory.changed.connect(_on_inventory_changed)
+
+	interaction = InteractionController.new()
+	interaction.player = player
+	interaction.tuning = tuning
+	add_child(interaction)
+	interaction.completed.connect(_on_interaction_completed)
+
+	spawner = ResourceSpawner.new()
+	spawner.name = "Resources"
+	spawner.tuning = tuning
+	spawner.on_harvest = _on_harvest
+	main.add_child(spawner)
+
+	build = BuildMode.new()
+	build.name = "BuildMode"
+	build.player = player
+	build.visual = player.visual_node
+	build.tuning = tuning
+	build.wind_from = wind.get_wind_direction_3d()
+	main.add_child(build)
+
+	ui = GameUI.new()
+	add_child(ui)
+	_on_inventory_changed()
+
+	callouts = get_tree().get_first_node_in_group("world_callouts") as WorldCallouts
+	_cutaway_panel = hud.get_parent().get_node_or_null("ShelterCutawayPanel") as Control
+	if _cutaway_panel:
+		_cutaway_panel.visible = false
+	var instr := hud.get_node_or_null("Instructions") as Label
+	if instr:
+		instr.text = "[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build mode   [F] Fire   [N] Sleep"
+
+	warmth.auto_update = false
+	warmth.has_extra_clothing = true
+	warmth.set_body_warmth(tuning.warmth_max * 0.92)
+	player.probe_activated.connect(_on_probe)
+	_last_minutes = weather.current_time_minutes
+	_enter_briefing()
+
+# ------------------------------------------------------------------ 状态
+
+func _enter_briefing() -> void:
+	state = State.BRIEFING
+	player.controls_enabled = false
+	interaction.enabled = false
+	_saved_time_scale = weather.time_scale
+	weather.time_scale = 0.0
+	ui.show_briefing(true)
+
+func start_game() -> void:
+	state = State.PLAYING
+	ui.show_briefing(false)
+	player.controls_enabled = true
+	interaction.enabled = true
+	weather.time_scale = _saved_time_scale
+	ui.toast("Probe the snow [Space]. Deep, leeward snow is where a snow cave works.", 6.0)
+
+func _sleep(forced: bool) -> void:
+	if state != State.PLAYING:
+		return
+	_forced = forced
+	if build.active:
+		build.exit()
+	state = State.NIGHT_FADE
+	_fade_t = 0.0
+	player.controls_enabled = false
+	interaction.enabled = false
+	weather.time_scale = 0.0
+	ui.set_prompt("", 0.0)
+	ui.toast("Night falls..." if forced else "You crawl in and try to sleep...", tuning.night_fade_seconds)
+
+func _show_report() -> void:
+	state = State.REPORT
+	var input := night_input()
+	var report := NightSimulator.evaluate(input, tuning)
+	var data := NightReportText.build(report, input, tuning)
+	var name_ := "None — slept in the open"
+	if site:
+		name_ = "%s (%d/5 stages)" % [site.builder.active_preset().display_name, site.stage()]
+	ui.show_report(data, name_)
+
+# ------------------------------------------------------------------ 输入
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var k := (event as InputEventKey).keycode
+	match state:
+		State.BRIEFING:
+			if k == KEY_ENTER or k == KEY_KP_ENTER:
+				start_game()
+		State.REPORT:
+			if k == KEY_R:
+				get_tree().reload_current_scene()
+		State.PLAYING:
+			if build.active:
+				match k:
+					KEY_TAB: build.cycle_preset()
+					KEY_R: build.rotate_entrance()
+					KEY_B, KEY_ESCAPE: _exit_build()
+				return
+			match k:
+				KEY_B: _enter_build()
+				KEY_F: _try_fire()
+				KEY_N: _request_sleep()
+
+func _request_sleep() -> void:
+	var done := site != null and site.is_complete()
+	if done or _sleep_confirm_t > 0.0:
+		_sleep(false)
+		return
+	_sleep_confirm_t = 4.0
+	var have := "no shelter" if site == null else "a shelter only %d/5 done" % site.stage()
+	ui.toast("Sleep now, with %s? Press N again to confirm." % have, 4.0)
+
+# ------------------------------------------------------------------ 每帧
+
+func _process(delta: float) -> void:
+	_sleep_confirm_t = maxf(0.0, _sleep_confirm_t - delta)
+	match state:
+		State.PLAYING:
+			_tick_playing(delta)
+		State.NIGHT_FADE:
+			_fade_t += delta
+			ui.set_fade(clampf(_fade_t / 1.2, 0.0, 1.0))
+			if _fade_t >= tuning.night_fade_seconds:
+				_show_report()
+		State.REPORT:
+			ui.set_fade(1.0)
+
+func _tick_playing(delta: float) -> void:
+	# 游戏分钟推进 → 火堆燃烧
+	var now := weather.current_time_minutes
+	var dm := now - _last_minutes
+	_last_minutes = now
+	if dm > 0.0:
+		for f in get_tree().get_nodes_in_group("campfires"):
+			(f as Campfire).burn(dm)
+
+	_update_warmth(delta, 1.0)
+
+	# 建造模式
+	if build.active:
+		var info := "Snow %.1f m · slope %d° · %s" % [build.depth, int(build.slope), build.wind_text()]
+		if build.near_windbreak:
+			info += " · rootball windbreak nearby"
+		ui.show_build(true, "BUILD — " + build.display_name(), build.reason, build.valid, info)
+		if Input.is_action_just_pressed("interact"):
+			_place_site()
+	else:
+		var p := interaction.prompt_text()
+		if player.is_probing:
+			ui.set_prompt("Probing snow depth…", player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
+		elif p != "":
+			ui.set_prompt("[E]  " + p, interaction.progress)
+		else:
+			ui.set_prompt("", 0.0)
+
+	# 剖面面板：建造雪洞时或身处雪洞内显示（T3.6 触发）
+	if _cutaway_panel:
+		var show := build.active and build.preset_id in ["RaisedCave", "BasicCave"]
+		show = show or (site != null and site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
+		_cutaway_panel.visible = show
+
+	# 提示行：影子就是时钟（V3）
+	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):
+		var hint := hud.get_node("TopRightCard/VBox/HintLabel") as Label
+		hint.text = GameRules.tip_for(weather.minutes_to_sunset(), weather.sun_elevation_deg,
+			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
+
+	_update_world_callouts()
+
+	# 天黑后宽限期结束 → 强制入夜
+	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:
+		_sleep(true)
+
+func _inside_site() -> bool:
+	if site == null:
+		return false
+	var a := player.global_position
+	var b := site.global_position
+	return Vector2(a.x - b.x, a.z - b.z).length() < tuning.shelter_inside_radius_m
+
+func _warmth_inputs() -> Dictionary:
+	var pos := player.global_position
+	var lee := SnowField.lee_factor_at(pos.x, pos.z)
+	var wb_d := ResourceSpawner.nearest_windbreak_distance(get_tree(), pos)
+	var cover := _tree_cover(pos)
+	var windbreak := maxf(1.0 - GameRules.fire_exposure(lee, wb_d < 3.0, cover), 0.0)
+	var level := site.shelter_level() if _inside_site() else 0
+	var fire := 0.0
+	for f in get_tree().get_nodes_in_group("campfires"):
+		fire = maxf(fire, (f as Campfire).warmth_at(pos, tuning.fire_warm_radius_m))
+	var after_sunset := -weather.minutes_to_sunset()
+	var env := 1.0 + 0.6 * clampf(after_sunset / 60.0, 0.0, 1.0)
+	return {"windbreak": windbreak, "level": level, "fire": fire, "env": env}
+
+func _tree_cover(p: Vector3) -> float:
+	var forest := get_tree().get_first_node_in_group("forest")
+	if forest == null:
+		return 0.0
+	return GameRules.tree_cover(forest.spruce_points, Vector2(p.x, p.z), 6.0)
+
+func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> void:
+	var w := _warmth_inputs()
+	w["level"] = maxi(int(w["level"]), min_level)
+	warmth.windbreak_factor = w["windbreak"]
+	warmth.in_shelter_level = w["level"]
+	warmth.near_fire_intensity = w["fire"]
+	warmth.update_warmth(real_seconds * factor, w["windbreak"], warmth.has_extra_clothing,
+		w["level"], w["fire"], w["env"])
+	if float(w["fire"]) > 0.3 and weather.minutes_to_sunset() < 60.0:
+		prewarmed = true
+
+## 动作消耗游戏时间：时钟跳进；按"劳作中"的暴露率结算体温；火堆燃烧。
+## min_level：劳作时所处的庇护等级（例如在雪洞里挖掘 = 1，避开风吹）。
+func _skip(minutes: float, min_level: int = 0) -> void:
+	if minutes <= 0.0:
+		return
+	weather.advance_minutes(minutes)
+	var real_equiv := minutes * 60.0 / maxf(_saved_time_scale, 1.0)
+	_update_warmth(real_equiv, tuning.work_exposure_factor, min_level)
+
+# ------------------------------------------------------------------ 探针（T1.6 / D4）
+
+func _on_probe(pos: Vector3, depth: float) -> void:
+	var cls := GameRules.classify_depth(depth, tuning)
+	_add_marker(pos, depth, cls["color"])
+	if callouts:
+		callouts.set_callout("probe", pos + Vector3(0, 0.6, 0), String(cls["title"]), String(cls["sub"]), cls["color"])
+		# D4：Deeper snow 只在玩家探测过、且达到雪洞深度的位置出现
+		if depth >= tuning.snow_depth_cave_min_m and _deeper_count < MAX_DEEPER_LABELS:
+			var far_enough := true
+			for q in _deeper_points:
+				if q.distance_to(pos) < 8.0:
+					far_enough = false
+			if far_enough:
+				_deeper_points.append(pos)
+				callouts.set_callout("deeper_%d" % _deeper_count, pos + Vector3(0, 0.4, 0), "Deeper snow",
+					"Ideal for shelter", Color(0.52, 0.72, 1.0), Vector2(-200.0, 20.0))
+				_deeper_count += 1
+	_skip(1.0)
+
+func _add_marker(pos: Vector3, depth: float, color: Color) -> void:
+	var m := Node3D.new()
+	m.position = pos
+	main.add_child(m)
+	var pole := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.025
+	cyl.bottom_radius = 0.025
+	cyl.height = 1.1
+	cyl.radial_segments = 6
+	pole.mesh = cyl
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.12, 0.12, 0.14)
+	pole.material_override = mat
+	pole.position = Vector3(0, 0.55, 0)
+	m.add_child(pole)
+	var flag := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.28, 0.16, 0.02)
+	flag.mesh = box
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = color
+	fm.emission_enabled = true
+	fm.emission = color
+	fm.emission_energy_multiplier = 0.4
+	flag.material_override = fm
+	flag.position = Vector3(0.15, 1.0, 0)
+	m.add_child(flag)
+	var label := Label3D.new()
+	label.text = "%.1f m" % depth
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 40
+	label.pixel_size = 0.006
+	label.outline_size = 10
+	label.modulate = color
+	label.position = Vector3(0, 1.45, 0)
+	label.no_depth_test = false
+	m.add_child(label)
+	_markers.append(m)
+	if _markers.size() > MAX_MARKERS:
+		_markers.pop_front().queue_free()
+
+# ------------------------------------------------------------------ 采集（T2.2）
+
+func _on_harvest(it: Interactable) -> Dictionary:
+	match it.kind:
+		"deadwood":
+			var got := inventory.add("wood", tuning.wood_per_harvest)
+			if got <= 0:
+				return {"ok": false, "msg": "Your pack can't carry more wood."}
+			return {"ok": true, "minutes": tuning.gather_minutes, "msg": "+%d dry wood — standing dead trees burn well." % got}
+		"birch":
+			inventory.add("bark", tuning.bark_per_harvest)
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d birch bark — the best tinder there is." % tuning.bark_per_harvest}
+		"grass":
+			inventory.add("bedding", tuning.bedding_per_harvest)
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d bedding (dry grass)." % tuning.bedding_per_harvest}
+		"bough":
+			inventory.add("bedding", tuning.bedding_per_harvest)
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": "+%d bedding (spruce boughs)." % tuning.bedding_per_harvest}
+		"wet_log":
+			return {"ok": true, "minutes": tuning.gather_minutes * 0.5,
+				"msg": "This fallen log is soaked through — it won't burn. Look for STANDING dead trees."}
+	return {"ok": false, "msg": ""}
+
+func _on_interaction_completed(target: Interactable, result: Dictionary) -> void:
+	var msg := String(result.get("msg", ""))
+	if msg != "":
+		ui.toast(msg)
+	if bool(result.get("ok", true)):
+		_skip(float(result.get("minutes", 0.0)))
+	if target.uses_left == 0 and target.kind in ["grass", "bough"]:
+		target.get_parent().queue_free()
+
+func _on_inventory_changed() -> void:
+	if ui:
+		ui.set_inventory(inventory.wood, inventory.bark, inventory.bedding)
+
+# ------------------------------------------------------------------ 建造（T2.4–T2.6）
+
+func _enter_build() -> void:
+	if site != null and site.stage() > 0:
+		ui.toast("You're already building a %s. Hold [E] at the site to continue." % site.builder.active_preset().display_name)
+		return
+	interaction.enabled = false
+	build.enter()
+
+func _exit_build() -> void:
+	build.exit()
+	interaction.enabled = true
+	ui.show_build(false)
+
+func _place_site() -> void:
+	if not build.valid:
+		ui.toast(build.reason)
+		return
+	if site != null:
+		site.queue_free()
+	site = ShelterSite.new()
+	site.name = "ShelterSite"
+	site.setup(build.preset_id, build.entrance_dir, build.depth, build.slope, build.near_windbreak)
+	site.position = build.site_pos
+	main.add_child(site)
+	site.interactable.hold_seconds = tuning.stage_hold_seconds
+	site.interactable.prompt_fn = _site_prompt
+	site.interactable.handler = _on_build_stage
+	_exit_build()
+	ui.toast("Site marked. Hold [E] at the site to work: %s" % site.next_stage_title(), 6.0)
+
+func _site_prompt() -> String:
+	if site == null or site.is_complete():
+		return ""
+	var cost := site.next_stage_cost()
+	var need := ""
+	if not cost.is_empty():
+		var parts: Array[String] = []
+		for k in cost:
+			parts.append("%d %s" % [cost[k], k])
+		need = "  (needs " + ", ".join(parts) + ")"
+	return "%s%s  ·  ~%d min" % [site.next_stage_title(), need, int(site.stage_minutes() / _efficiency())]
+
+func _efficiency() -> float:
+	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)
+
+func _on_build_stage() -> Dictionary:
+	var cost := site.next_stage_cost()
+	if not inventory.has_all(cost):
+		return {"ok": false, "msg": "Not enough materials — still need %s." % inventory.missing_text(cost)}
+	inventory.spend(cost)
+	var minutes := site.stage_minutes() / _efficiency()
+	var r := site.advance()
+	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
+		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
+		_attach_fire_interactable(site.fire)
+	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
+	_skip(minutes, 1 if site.is_snow_shelter() else 0)
+	minutes = 0.0
+	var msg := "Stage %d/5 done — %s" % [int(r["stage"]), String(r["stage_title"])]
+	if site.is_complete():
+		msg = "Shelter complete. Bring in what you need — rest when ready [N]."
+		if site.preset_id == "LeanTo":
+			msg += " Stockpile dry wood: the reflector fire burns %.0f h per log." % tuning.fire_fuel_hours_per_log
+	return {"ok": true, "minutes": minutes, "msg": msg}
+
+# ------------------------------------------------------------------ 生火（T2.7）
+
+func _nearest_fire(max_d: float) -> Campfire:
+	var best: Campfire = null
+	var pos := player.global_position
+	for f in get_tree().get_nodes_in_group("campfires"):
+		var c := f as Campfire
+		var d := Vector2(c.global_position.x - pos.x, c.global_position.z - pos.z).length()
+		if d < max_d:
+			max_d = d
+			best = c
+	return best
+
+func _under_canopy(p: Vector3) -> bool:
+	var forest := get_tree().get_first_node_in_group("forest")
+	if forest == null:
+		return false
+	for q: Vector2 in forest.spruce_points:
+		if q.distance_to(Vector2(p.x, p.z)) < tuning.canopy_radius_m:
+			return true
+	return false
+
+func _try_fire() -> void:
+	var near := _nearest_fire(2.6)
+	if near:
+		if inventory.wood <= 0:
+			ui.toast("No dry wood left to add.")
+			return
+		inventory.spend({"wood": 1})
+		near.add_fuel(tuning.campfire_minutes_per_wood)
+		ui.toast("Added a log (+%d min of fire)." % int(tuning.campfire_minutes_per_wood))
+		_skip(2.0)
+		return
+	var p := player.global_position + player.facing() * 1.3
+	var lee := SnowField.lee_factor_at(p.x, p.z)
+	var near_wb := ResourceSpawner.nearest_windbreak_distance(get_tree(), p) < 3.5
+	var exposure := GameRules.fire_exposure(lee, near_wb, _tree_cover(p))
+	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
+	var check := GameRules.fire_check(inventory.wood, inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
+	if not bool(check["ok"]):
+		var reason := String(check["reason"])
+		# 被风吹灭 / 落雪压灭：引火物已经烧掉了（代价让教训可记住）
+		if reason.contains("wind") or reason.contains("branches"):
+			inventory.spend({"bark": tuning.fire_tinder_cost})
+			_skip(4.0)
+		ui.toast(reason, 5.0)
+		return
+	inventory.spend({"wood": tuning.fire_wood_cost, "bark": tuning.fire_tinder_cost})
+	var fire := Campfire.new()
+	fire.name = "Campfire"
+	fire.position = p
+	main.add_child(fire)
+	fire.ignite(tuning.fire_wood_cost * tuning.campfire_minutes_per_wood)
+	_attach_fire_interactable(fire)
+	_skip(5.0)
+	ui.toast("Fire lit. Warm up, dry off, and melt snow for a hot drink [E].", 5.0)
+
+func _attach_fire_interactable(fire: Campfire) -> void:
+	var it := Interactable.new()
+	it.kind = "fire"
+	it.hold_seconds = 1.8
+	it.ring_radius = 0.9
+	it.prompt_fn = func() -> String: return "Melt snow & drink hot water" if fire.lit else ""
+	it.handler = func() -> Dictionary:
+		var gained := warmth.apply_hot_drink()
+		prewarmed = true
+		return {"ok": true, "minutes": tuning.melt_snow_minutes, "msg": "Hot water: +%d warmth." % int(gained)}
+	fire.add_child(it)
+
+# ------------------------------------------------------------------ 世界标签
+
+func _update_world_callouts() -> void:
+	if callouts == null:
+		return
+	# 最近的未采完立枯木（Read the Land 第 4 条）
+	var pos := player.global_position
+	var best: Interactable = null
+	var best_d := 22.0
+	for n in get_tree().get_nodes_in_group("interactables"):
+		var it := n as Interactable
+		if it.kind != "deadwood" or it.uses_left == 0:
+			continue
+		var d := it.global_position.distance_to(pos)
+		if d < best_d:
+			best_d = d
+			best = it
+	if best:
+		callouts.set_callout("deadwood", best.global_position + Vector3(0, 1.0, 0), "Deadwood", "Harvest for fuel",
+			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0))
+	elif callouts.has_callout("deadwood"):
+		callouts.remove_callout("deadwood")
+
+# ------------------------------------------------------------------ 入夜结算输入
+
+func night_input() -> Dictionary:
+	var input: Dictionary
+	if site == null or site.stage() == 0:
+		var p := player.global_position
+		input = {
+			"shelter_type": "None",
+			"snow_depth_meters": SnowField.snow_at(p.x, p.z),
+			"terrain_shelter": SnowField.lee_factor_at(p.x, p.z),
+			"completion_ratio": 0.0,
+		}
+	else:
+		input = site.builder.build_night_sim_input(warmth)
+		var sp := site.global_position
+		var lee := SnowField.lee_factor_at(sp.x, sp.z)
+		input["wind_angle_diff"] = GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d())
+		input["terrain_shelter"] = clampf(lee + (0.4 if site.near_windbreak else 0.0), -1.0, 1.0)
+		if site.preset_id == "LeanTo":
+			var lit := site.fire != null and site.fire.lit
+			input["fire_lit"] = lit
+			input["fire_held"] = lit
+			input["firewood_logs"] = float(inventory.wood)
+			input["fuel_hours"] = float(inventory.wood) * tuning.fire_fuel_hours_per_log
+			input["fire_exposure"] = GameRules.fire_exposure(lee, site.near_windbreak, _tree_cover(sp))
+	input["starting_warmth"] = warmth.body_warmth
+	input["prewarmed"] = prewarmed
+	input["wind_speed_kmh"] = wind.speed_kmh
+	return input

@@ -41,7 +41,7 @@ const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
 func _ready() -> void:
 	_make_materials()
 	_build_clusters()
-	_build_special_deadwood()
+	# 交互立枯木与橙圈改由 ResourceSpawner + InteractionController 提供（T2.1）
 	_build_footprints()
 	if show_distant_peaks:
 		_build_distant_peaks()

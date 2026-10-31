@@ -37,6 +37,8 @@ const VISTA_DIR := Vector2(-0.7071, 0.7071)
 @export var seed_idx: int = 3
 
 var _fade_materials: Array[ShaderMaterial] = []
+## 云杉树干位置（树冠下生火 / 落雪判定用）。
+var spruce_points: PackedVector2Array = PackedVector2Array()
 
 ## "occlusion_fade" 组回调：玩家位置，用于把挡住玩家的树镂空。
 func set_focus(pos: Vector3) -> void:
@@ -45,6 +47,7 @@ func set_focus(pos: Vector3) -> void:
 
 func _ready() -> void:
 	add_to_group("occlusion_fade")
+	add_to_group("forest")
 	if wind_data == null:
 		wind_data = load("res://resources/default_wind.tres") as WindData
 	var blow := wind_data.get_blow_direction_3d() if wind_data else Vector3.RIGHT
@@ -112,6 +115,7 @@ func _scatter_spruce(blow: Vector3) -> void:
 			var t := Transform3D(Basis.IDENTITY.scaled(Vector3(s, s * lerpf(0.95, 1.18, r), s)),
 				Vector3(x, TerrainHeight.height_at(x, z) - 0.15, z))
 			buckets[(i * 7 + j * 3) % SPRUCE_VARIANTS].append(t)
+			spruce_points.append(Vector2(x, z))
 	var mat := _material(Color(0.05, 0.13, 0.10), 0.70)
 	_enable_fade(mat)
 	for v in range(SPRUCE_VARIANTS):

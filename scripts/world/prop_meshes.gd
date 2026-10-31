@@ -62,6 +62,80 @@ static func rock(seed_idx: int) -> ArrayMesh:
 	return st.commit()
 
 
+## 白桦：白色树干 + 横向黑斑（顶点色）+ 稀疏细枝。高约 6 m。顶点色 R/G/B 直接用作颜色。
+static func birch(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var h := 5.5 + TerrainHeight.hash2(seed_idx, 1, 81) * 1.5
+	var segs := 10
+	for i in range(segs):
+		var t0 := float(i) / segs
+		var t1 := float(i + 1) / segs
+		var dark := TerrainHeight.hash2(seed_idx, i, 83) > 0.62
+		var col := Color(0.12, 0.11, 0.10) if dark else Color(0.88, 0.86, 0.80)
+		st.set_color(col)
+		_frustum(st, Vector3(0, h * t0, 0), lerpf(0.16, 0.05, t0), Vector3(0, h * t1, 0), lerpf(0.16, 0.05, t1), 7)
+	st.set_color(Color(0.35, 0.28, 0.22))
+	for b in range(7):
+		var bt := lerpf(0.45, 0.92, float(b) / 6.0)
+		var ang := TerrainHeight.hash2(seed_idx, b, 87) * TAU
+		var base := Vector3(0, h * bt, 0)
+		_frustum(st, base, 0.03, base + Vector3(cos(ang), 0.55, sin(ang)) * lerpf(1.2, 0.6, bt), 0.006, 4)
+	st.generate_normals()
+	return st.commit()
+
+
+## 翻倒树根盘（Root Ball）+ 倒伏树干：天然挡风物。树根盘立在原点，树干沿 +X 躺倒。
+static func rootball(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# 树根盘：竖起的扁圆盘 + 放射状根须
+	var r := 1.5
+	var n := 14
+	var c := Vector3(0, r * 0.85, 0)
+	for i in range(n):
+		var a0 := TAU * float(i) / n
+		var a1 := TAU * float(i + 1) / n
+		var j0 := 0.8 + TerrainHeight.hash2(seed_idx, i, 91) * 0.35
+		var j1 := 0.8 + TerrainHeight.hash2(seed_idx, (i + 1) % n, 91) * 0.35
+		var p0 := c + Vector3(0, sin(a0) * r * j0, cos(a0) * r * j0)
+		var p1 := c + Vector3(0, sin(a1) * r * j1, cos(a1) * r * j1)
+		var f := Vector3(-0.35, 0, 0)
+		st.add_vertex(c + f); st.add_vertex(p0 + f); st.add_vertex(p1 + f)
+		st.add_vertex(c - f); st.add_vertex(p1 - f); st.add_vertex(p0 - f)
+		_frustum(st, p0 - f, 0.18, p0 + f, 0.18, 4)
+		_frustum(st, p0, 0.07, p0 + (p0 - c).normalized() * 0.6 + Vector3(0, -0.2, 0), 0.01, 3)
+	# 倒伏树干
+	_frustum(st, Vector3(0.2, 0.55, 0), 0.42, Vector3(7.5, 0.35, 0.4), 0.2, 8)
+	st.generate_normals()
+	return st.commit()
+
+
+## 半埋湿倒木（反面教材：湿木不能烧）。
+static func wet_log(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var l := 3.5 + TerrainHeight.hash2(seed_idx, 2, 95) * 1.5
+	_frustum(st, Vector3(-l * 0.5, 0.12, 0), 0.26, Vector3(l * 0.5, 0.08, 0.1), 0.18, 7)
+	st.generate_normals()
+	return st.commit()
+
+
+## 干草丛（垫层来源）：一簇细锥。
+static func grass_tuft(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in range(9):
+		var a := TerrainHeight.hash2(seed_idx, k, 97) * TAU
+		var d := TerrainHeight.hash2(seed_idx, k, 99) * 0.25
+		var base := Vector3(cos(a) * d, 0, sin(a) * d)
+		var h := 0.45 + TerrainHeight.hash2(seed_idx, k, 101) * 0.35
+		var lean := Vector3(cos(a), 0, sin(a)) * 0.18
+		_frustum(st, base, 0.03, base + lean + Vector3(0, h, 0), 0.003, 3)
+	st.generate_normals()
+	return st.commit()
+
+
 static func _frustum(st: SurfaceTool, a: Vector3, ra: float, b: Vector3, rb: float, sides: int) -> void:
 	var axis := (b - a).normalized()
 	var ref := Vector3.UP if absf(axis.y) < 0.9 else Vector3.RIGHT

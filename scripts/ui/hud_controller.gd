@@ -29,7 +29,10 @@ func update_time(time_str: String, sunset_str: String) -> void:
 	if time_label:
 		time_label.text = "Jan 14  " + time_str
 	if sunset_label:
-		sunset_label.text = "Sunset %s (%s left)" % [_sunset_clock, sunset_str]
+		if sunset_str == "0h 00m":
+			sunset_label.text = "Sun set at %s — dusk" % _sunset_clock
+		else:
+			sunset_label.text = "Sunset %s (%s left)" % [_sunset_clock, sunset_str]
 
 func update_weather(temp: float, wind_str: String) -> void:
 	if temp_label:

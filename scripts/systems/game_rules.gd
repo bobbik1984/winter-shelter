@@ -1,0 +1,92 @@
+class_name GameRules
+extends RefCounted
+
+## 游戏循环的纯规则函数（无节点依赖，可 headless 测试）。
+## 所有阈值来自 Tuning；这里只放"把世界状态翻译成玩法结果"的公式。
+
+## 移动速度：上坡与深雪两项独立衰减（T1.4）。uphill_slope_deg 为沿移动方向的上坡角（下坡传 0）。
+static func move_speed(base: float, uphill_slope_deg: float, snow_depth: float, t: Tuning) -> float:
+	var uphill := maxf(0.0, tan(deg_to_rad(clampf(uphill_slope_deg, 0.0, 60.0))))
+	var slope_k := maxf(t.uphill_speed_min, 1.0 / (1.0 + t.slope_slowdown * uphill))
+	var snow_k := lerpf(1.0, t.deep_snow_speed_min,
+		smoothstep(t.deep_snow_start_m, t.deep_snow_full_m, snow_depth))
+	return base * slope_k * snow_k
+
+
+## 探针读数分类（D5 雪深区间）：返回 {key, title, sub, color}。
+static func classify_depth(depth: float, t: Tuning) -> Dictionary:
+	if depth < t.snow_depth_non_snow_max_m:
+		return {"key": "shallow", "title": "Shallow snow", "sub": "~ %.1f m · lean-to only" % depth, "color": Color(0.70, 0.72, 0.78)}
+	if depth < t.snow_depth_trench_wall_max_m:
+		return {"key": "trench_wall", "title": "Thin snow", "sub": "~ %.1f m · walled trench" % depth, "color": Color(0.62, 0.78, 0.95)}
+	if depth < t.snow_depth_cave_min_m:
+		return {"key": "trench", "title": "Trench depth", "sub": "~ %.1f m · snow trench" % depth, "color": Color(0.52, 0.72, 1.0)}
+	if depth < t.snow_depth_raised_cave_min_m:
+		return {"key": "cave", "title": "Good depth", "sub": "~ %.1f m · snow cave" % depth, "color": Color(0.95, 0.78, 0.40)}
+	return {"key": "raised_cave", "title": "Deep snow", "sub": "~ %.1f m · raised cave" % depth, "color": Color(1.0, 0.66, 0.24)}
+
+
+## 入口朝向与风的来向夹角（°）：0 = 入口正对上风（最糟），180 = 完全背风。
+static func entrance_wind_angle(entrance_dir: Vector3, wind_from: Vector3) -> float:
+	var e := Vector2(entrance_dir.x, entrance_dir.z)
+	var w := Vector2(wind_from.x, wind_from.z)
+	if e.length() < 0.001 or w.length() < 0.001:
+		return 90.0
+	return rad_to_deg(acos(clampf(e.normalized().dot(w.normalized()), -1.0, 1.0)))
+
+
+## 火位 / 人的迎风暴露 0（背风 / 有挡风物）..1（完全迎风）。
+## tree_cover 0..1：附近林木挡风（Read the Land：林子里风小）。
+static func fire_exposure(lee_factor: float, near_windbreak: bool, tree_cover: float = 0.0) -> float:
+	return clampf(1.0 - lee_factor - (0.45 if near_windbreak else 0.0) - 0.5 * clampf(tree_cover, 0.0, 1.0), 0.0, 1.0)
+
+
+## 林木挡风度：半径 r 内的树数量折算 0..1（每棵约 0.15，封顶 1）。
+static func tree_cover(points: PackedVector2Array, p: Vector2, r: float) -> float:
+	var n := 0
+	for q in points:
+		if q.distance_squared_to(p) < r * r:
+			n += 1
+	return clampf(n * 0.15, 0.0, 1.0)
+
+
+## 生火判定（D2/D3）：返回 {ok, reason}。顺序即"第一条原因"。
+static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool,
+		inside_snow_shelter: bool, t: Tuning) -> Dictionary:
+	if inside_snow_shelter:
+		return {"ok": false, "reason": "No open fire inside a snow shelter — it melts the roof and fills it with CO."}
+	if bark < t.fire_tinder_cost:
+		return {"ok": false, "reason": "Need birch bark as tinder (%d)." % t.fire_tinder_cost}
+	if wood < t.fire_wood_cost:
+		return {"ok": false, "reason": "Need %d dry wood. Standing dead trees burn; fallen logs are wet." % t.fire_wood_cost}
+	if under_canopy:
+		return {"ok": false, "reason": "Fire put out by snow falling from the branches above. Move out from under the tree."}
+	if 1.0 - exposure < t.fire_blowout_dot:
+		return {"ok": false, "reason": "The wind blew the flame out. Find a leeward spot or a rootball to shelter it."}
+	return {"ok": true, "reason": "Fire lit."}
+
+
+## 上下文提示行（V3：影子就是时钟）。返回英文玩家文案。
+static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_warmth: float,
+		has_shelter: bool, shelter_complete: bool, t: Tuning) -> String:
+	if body_warmth < t.tip_cold_warmth:
+		return "Getting cold — get out of the wind or light a fire."
+	if minutes_to_sunset <= 0.0:
+		return "Sun is down. Finish up, or sleep now [N]."
+	if minutes_to_sunset < t.tip_hurry_minutes:
+		if shelter_complete:
+			return "Long shadows — night is close. Rest when ready [N]."
+		return "Very long shadows: <%d min of light. Finish now!" % int(ceil(minutes_to_sunset))
+	if minutes_to_sunset < t.tip_plenty_minutes:
+		return "Shadows lengthening — ~%d min of light left." % int(round(minutes_to_sunset / 5.0) * 5.0)
+	if not has_shelter:
+		return "Strong west wind. Probe [Space] leeward slopes."
+	return "Sun %d° — shadows grow toward evening." % int(round(sun_elevation_deg))
+
+
+## 作业效率：体温档 × 暮色衰减（非硬切换）。
+static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuning) -> float:
+	var dusk := 1.0
+	if minutes_to_sunset < 0.0:
+		dusk = lerpf(1.0, t.dusk_efficiency_floor, clampf(-minutes_to_sunset / 60.0, 0.0, 1.0))
+	return clampf(warmth_eff * dusk, 0.1, 1.0)
