@@ -480,6 +480,7 @@ func _sync_fires() -> void:
 func _on_probe(pos: Vector3, depth: float) -> void:
 	_probe_count += 1
 	_best_depth = maxf(_best_depth, depth)
+	audio.play_sfx("probe")
 	var cls := GameRules.classify_depth(depth, tuning)
 	_add_marker(pos, depth, cls["color"])
 	if callouts:
@@ -563,6 +564,11 @@ func _on_harvest(it: Interactable) -> Dictionary:
 	return {"ok": false, "msg": ""}
 
 func _on_interaction_completed(target: Interactable, result: Dictionary) -> void:
+	if bool(result.get("ok", true)):
+		match target.kind:
+			"deadwood", "wet_log": audio.play_sfx("chop")
+			"birch", "grass", "bough": audio.play_sfx("gather")
+			"shelter": audio.play_sfx("dig")
 	var msg := String(result.get("msg", ""))
 	if msg != "":
 		ui.toast(msg)
@@ -714,6 +720,7 @@ func _try_fire() -> void:
 	fire.ignite(tuning.fire_wood_cost * tuning.campfire_minutes_per_wood)
 	_attach_fire_interactable(fire)
 	_skip(5.0)
+	audio.play_sfx("fire")
 	ui.toast(Loc.t("Fire lit. Warm up, dry off, and melt snow for a hot drink [E]."), 5.0)
 
 func _attach_fire_interactable(fire: Campfire) -> void:

@@ -32,6 +32,9 @@ var _crack_env := 0.0
 var _rumble := 0.0
 var _cut := 1200.0
 var _vol := 0.2
+## 一次性音效（合成）：kind -> [包络, 衰减, 音高 Hz, 噪声比例]
+var _sfx: Array = []
+var _phase := 0.0
 
 func _ready() -> void:
 	var gen := AudioStreamGenerator.new()
@@ -41,6 +44,15 @@ func _ready() -> void:
 	volume_db = -6.0
 	play()
 	_pb = get_stream_playback() as AudioStreamGeneratorPlayback
+
+## 一次性音效：probe（金属"叮"）/ chop（木头闷响）/ gather（沙沙）/ dig（铲雪嚓嚓）/ fire（点火噼啪）。
+func play_sfx(kind: String) -> void:
+	match kind:
+		"probe": _sfx.append([0.9, 0.9993, 2300.0, 0.15])
+		"chop": _sfx.append([1.0, 0.9975, 140.0, 0.75])
+		"gather": _sfx.append([0.6, 0.9990, 0.0, 1.0])
+		"dig": _sfx.append([1.0, 0.9985, 0.0, 1.0])
+		"fire": _sfx.append([1.0, 0.9995, 90.0, 0.8])
 
 func _process(delta: float) -> void:
 	if _pb == null:
@@ -92,5 +104,19 @@ func _fill() -> void:
 				_crack_env *= 0.985
 			_rumble += 0.004 * (randf_range(-1.0, 1.0) - _rumble)
 			s += _rumble * fire * 1.8 * master
+		# 一次性音效
+		if not _sfx.is_empty():
+			_phase += 1.0 / RATE
+			var i_sfx := 0
+			while i_sfx < _sfx.size():
+				var fx: Array = _sfx[i_sfx]
+				var env: float = fx[0]
+				var tone := sin(TAU * float(fx[2]) * _phase) if float(fx[2]) > 0.0 else 0.0
+				s += (tone * (1.0 - float(fx[3])) + randf_range(-1.0, 1.0) * float(fx[3])) * env * 0.45 * master
+				fx[0] = env * float(fx[1])
+				if float(fx[0]) < 0.002:
+					_sfx.remove_at(i_sfx)
+				else:
+					i_sfx += 1
 		s = clampf(s, -1.0, 1.0)
 		_pb.push_frame(Vector2(s, s))
