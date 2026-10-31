@@ -1,0 +1,108 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/shelter_cutaway_panel.gd" id="1_panel"]
+[ext_resource type="Script" path="res://scripts/world/shelter_cutaway_rig.gd" id="2_rig"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.025, 0.045, 0.075, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.68, 0.62, 0.48, 0.75)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Environment" id="Environment_cutaway"]
+background_mode = 0
+background_color = Color(0.16, 0.25, 0.40, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.60, 0.72, 0.92, 1)
+ambient_light_energy = 0.85
+tonemap_mode = 3
+tonemap_exposure = 1.0
+
+[node name="ShelterCutawayPanel" type="PanelContainer"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -556.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 376.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_panel")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 7
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+
+[node name="HeaderVBox" type="VBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="TitleLabel" type="Label" parent="Margin/VBox/HeaderVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.91, 0.80, 1)
+theme_override_font_sizes/font_size = 14
+text = "SHELTER DESIGN (SNOW CAVE)"
+
+[node name="SubtitleLabel" type="Label" parent="Margin/VBox/HeaderVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.76, 0.86, 1)
+theme_override_font_sizes/font_size = 9
+text = "CUTAWAY VIEW (45° ISOMETRIC)"
+
+[node name="ViewportContainer" type="SubViewportContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(520, 275)
+layout_mode = 2
+mouse_filter = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Margin/VBox/ViewportContainer"]
+own_world_3d = true
+size = Vector2i(520, 275)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Margin/VBox/ViewportContainer/SubViewport"]
+environment = SubResource("Environment_cutaway")
+
+[node name="CutawaySun" type="DirectionalLight3D" parent="Margin/VBox/ViewportContainer/SubViewport"]
+rotation_degrees = Vector3(-34, -38, 0)
+light_color = Color(1.0, 0.84, 0.64, 1)
+light_energy = 1.25
+shadow_enabled = true
+
+[node name="CutawayCamera" type="Camera3D" parent="Margin/VBox/ViewportContainer/SubViewport"]
+projection = 1
+size = 4.6
+current = true
+
+[node name="ShelterRig" type="Node3D" parent="Margin/VBox/ViewportContainer/SubViewport"]
+script = ExtResource("2_rig")
+place_on_terrain = false
+
+[node name="LabelOverlay" type="Control" parent="Margin/VBox/ViewportContainer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FooterLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.75, 0.60, 1)
+theme_override_font_sizes/font_size = 10
+text = "WARMER   ·   SAFER   ·   LONGER NIGHTS"
+horizontal_alignment = 1

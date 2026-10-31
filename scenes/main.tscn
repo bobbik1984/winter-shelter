@@ -50,10 +50,16 @@ script = ExtResource("8_wind")
 [node name="BlockoutTerrain" parent="." instance=ExtResource("2_terrain")]
 
 [node name="ShelterCutaway" type="Node3D" parent="."]
+position = Vector3(20.5, 0, 11.2)
+rotation_degrees = Vector3(0, 25, 0)
+scale = Vector3(0.45, 0.45, 0.45)
 script = ExtResource("10_shelter")
+place_on_terrain = true
+world_origin = Vector3(20.5, 0, 11.2)
 
 [node name="CampfirePot" type="Node3D" parent="."]
-position = Vector3(8.5, 0, 12.5)
+position = Vector3(-4.2, 0, 9.2)
+scale = Vector3(0.58, 0.58, 0.58)
 script = ExtResource("11_campfire")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
