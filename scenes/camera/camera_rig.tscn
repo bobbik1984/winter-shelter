@@ -7,7 +7,9 @@ transform = Transform3D(0.707107, -0.435502, 0.55667, 0, 0.788011, 0.615661, -0.
 script = ExtResource("1_cam")
 
 [node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
 projection = 1
 size = 18.0
 current = true
+near = 0.05
 far = 200.0

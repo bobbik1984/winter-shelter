@@ -23,8 +23,8 @@ phases:
     name: "M0 对齐与能跑"
     tasks:
       - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: blocked, note: "需要人工安装"}
-      - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: todo}
-      - {id: T0.3, text: "F5 冒烟测试（含 T0.3-prep 截图工具）", status: todo, depends: [T0.1, T0.2]}
+      - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: written-unverified, note: "Camera3D 本地 +Z 40 m；camera_distance=40.0 / camera_size=18.0 为 rig @export；near=0.05 / far=200；yaw 45°、pitch -38° 未改。Godot 4.3.169 语法检查与隔离相机探针通过；窗口截图工具可出图，但 main.tscn 被既有 ConeMesh 错误阻塞，未做角色居中/无裁切口测"}
+      - {id: T0.3, text: "F5 冒烟测试（含 T0.3-prep 截图工具）", status: todo, depends: [T0.1, T0.2], note: "T0.3-prep 已写 tools/capture_snapshot.gd；headless 防护实测 exit 1，窗口模式可保存 PNG；F5 冒烟与探针读数待人工。已知 blockout_terrain.tscn 的 ConeMesh 无效，main.tscn 无法完整加载"}
       - {id: T0.4, text: "D1–D7 决策入档", status: blocked, note: "D1/D2/D3/D5 已入档；D4/D6/D7 待拍板"}
       - {id: T0.5, text: "Tuning 唯一调参源", status: todo}
       - {id: T0.6, text: "NightSimulator 移植 + headless 测试（含倒棚分支）", status: todo, depends: [T0.5]}
