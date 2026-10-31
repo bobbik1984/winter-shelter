@@ -26,6 +26,8 @@ var _mat_ring: StandardMaterial3D
 var _mat_peak_rock: StandardMaterial3D
 var _mat_peak_snow: StandardMaterial3D
 var _mat_spruce: ShaderMaterial
+## 场景立枯木位置（由 ResourceSpawner 挂采集点）。
+var deadwood_points: PackedVector2Array = PackedVector2Array()
 var _spruce_meshes: Dictionary = {}
 
 const SPRUCE_VARIANTS := 4
@@ -54,6 +56,7 @@ func _make_materials() -> void:
 	_mat_spruce.set_shader_parameter("snow_amount", 0.72)
 	_mat_spruce.set_shader_parameter("occlusion_fade", true)
 	add_to_group("occlusion_fade")
+	add_to_group("scenery")
 	_mat_snow = _make_material(Color(0.92, 0.95, 1.0), 0.78)
 	_mat_bark = _make_material(Color(0.16, 0.11, 0.07), 0.95)
 	var dw := ShaderMaterial.new()
@@ -336,6 +339,7 @@ func _build_distant_peaks() -> void:
 # -----------------------------------------------------------------------------
 
 func _deadwood(pos: Vector3, scale_factor: float, yaw_deg: float, seed_idx: int) -> void:
+	deadwood_points.append(Vector2(pos.x, pos.z))
 	var root := Node3D.new()
 	root.name = "StandingDeadwood"
 	root.position = Vector3(pos.x, TerrainHeight.height_at(pos.x, pos.z) - 0.1, pos.z)

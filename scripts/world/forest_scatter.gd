@@ -39,6 +39,8 @@ const VISTA_DIR := Vector2(-0.7071, 0.7071)
 var _fade_materials: Array[ShaderMaterial] = []
 ## 云杉树干位置（树冠下生火 / 落雪判定用）。
 var spruce_points: PackedVector2Array = PackedVector2Array()
+## 立枯木位置（每棵都可采集干柴：Read the Land 第 4 条）。
+var snag_points: PackedVector2Array = PackedVector2Array()
 
 ## "occlusion_fade" 组回调：玩家位置，用于把挡住玩家的树镂空。
 func set_focus(pos: Vector3) -> void:
@@ -139,6 +141,7 @@ func _scatter_snags() -> void:
 		var s := 0.75 + TerrainHeight.hash2(k, 3, 7) * 0.45
 		var basis := Basis(Vector3.UP, TerrainHeight.hash2(k, 4, 7) * TAU).scaled(Vector3.ONE * s)
 		buckets[k % SNAG_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.2, z)))
+		snag_points.append(Vector2(x, z))
 		placed += 1
 	var mat := _material(Color(0.34, 0.27, 0.21), 0.25, 0.10)
 	_enable_fade(mat)

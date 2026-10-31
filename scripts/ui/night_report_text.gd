@@ -35,8 +35,16 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		"SAFE": conclusion = "You slept through the night and walked out at dawn. Weakest point: %s." % _label(min_axis)
 		"COLD": conclusion = "You made it to dawn, shivering. Weakest point: %s." % _label(min_axis)
 		_: conclusion = "You would not have survived this night. Main cause: %s." % _label(min_axis)
-	return {"title": title, "outcome": outcome, "rows": rows, "conclusion": conclusion,
-		"lesson": LESSONS.get(min_axis, "")}
+	var lesson: String = LESSONS.get(min_axis, "")
+	if preset == "LeanTo":
+		if min_axis == "isolation":
+			lesson = "An open lean-to can't trap cold air. Pile bedding thick and keep the reflector fire fed — or find deeper snow for a cave."
+		elif min_axis == "heat":
+			lesson = "The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled." % [
+				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
+	elif preset == "None":
+		lesson = "Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing."
+	return {"title": title, "outcome": outcome, "rows": rows, "conclusion": conclusion, "lesson": lesson}
 
 static func _label(key: String) -> String:
 	for a in AXES:

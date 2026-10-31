@@ -38,6 +38,7 @@ func _ready() -> void:
 	k = _scatter(int(tuning.bedding_spots * 0.6), 4.0, 26.0, 37, _spawn_grass)
 	k = _scatter(tuning.bedding_spots - int(tuning.bedding_spots * 0.6), 6.0, 30.0, 41, _spawn_bough)
 	k = _scatter(3, 6.0, 30.0, 53, _spawn_wet_log)
+	_attach_existing_snags.call_deferred()
 
 func _make_materials() -> void:
 	_mat_snag = _snow_mat(Color(0.42, 0.38, 0.34), 0.25)
@@ -123,6 +124,22 @@ func _spawn_deadwood(p: Vector2, i: int) -> void:
 	root.position.y -= 0.2
 	_mesh(root, PropMeshes.snag(70 + i), _mat_snag, TerrainHeight.hash2(i, 5, 9) * TAU, 1.0)
 	_interactable(root, "deadwood", "Harvest standing deadwood (dry fuel)", tuning.deadwood_uses, 1.0)
+
+## 森林 / 场景里已有的立枯木（MultiMesh 或拼装体）同样是燃料：只挂采集点，不另建网格。
+func _attach_existing_snags() -> void:
+	var pts := PackedVector2Array()
+	for g in ["forest", "scenery"]:
+		var n := get_tree().get_first_node_in_group(g)
+		if n == null:
+			continue
+		pts.append_array(n.snag_points if g == "forest" else n.deadwood_points)
+	for p in pts:
+		var root := Node3D.new()
+		root.name = "SnagHarvest"
+		root.position = _ground(p)
+		add_child(root)
+		_interactable(root, "deadwood", "Harvest standing deadwood (dry fuel)", tuning.deadwood_uses, 1.0)
+
 
 func _spawn_birch(p: Vector2, i: int) -> void:
 	var root := _root("Birch", p)
