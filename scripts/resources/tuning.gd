@@ -405,3 +405,31 @@ extends Resource
 @export var lean_to_base_structure: float = 0.62
 ## [TUNE] 倒棚内部容积 1.8 m³（开放结构，仅用于体积惩罚模型）。
 @export var lean_to_volume_m3: float = 1.8
+
+# -----------------------------------------------------------------------------
+# 0–100 核心体温（T2.3 / CORE_GAMEPLAY §4 / ARCHITECTURE §3.5）
+# -----------------------------------------------------------------------------
+
+@export_group("Body Warmth")
+## [GAME] 核心体温上限，100 = 状态最佳。
+@export var warmth_max: float = 100.0
+## [TUNE] 迎风暴露区基础掉温速率（Warmth/s）。
+@export var warmth_cold_decay_exposed: float = 1.2
+## [TUNE] 树根/巨石背风区最大减免比例；1.2 × (1 - 0.70) ≈ 0.36/s。
+@export var warmth_windbreak_mitigation_max: float = 0.70
+## [TUNE] 额外衣物/烘干层的掉温减缓比例 35%。
+@export var warmth_clothing_mitigation_bonus: float = 0.35
+## [TUNE] 靠近燃烧篝火的回温速率（Warmth/s）。
+@export var warmth_fire_recovery_rate: float = 2.5
+## [TUNE] 铝锅融雪热饮的瞬时回温量（Warmth）。
+@export var warmth_hot_drink_instant_boost: float = 15.0
+## [REAL] 基础雪沟/初挖雪洞依靠雪体绝热锁住体温；[TUNE] 0.0/s。
+@export var warmth_shelter_hold_rate: float = 0.0
+## [REAL] 完备雪洞（冷气槽 + 松针垫层）靠人体自发热缓慢回升；[TUNE] +0.55/s。
+@export var warmth_shelter_cozy_gain_rate: float = 0.55
+## [GAME] 体温 >= 70 时作业效率 1.0。
+@export var warmth_tier_warm: float = 70.0
+## [GAME] 体温 >= 35 时作业效率 0.75；低于 35 为 0.5。
+@export var warmth_tier_chilled: float = 35.0
+## [TUNE] 入夜低体温对 NightSimulator Heat 分的惩罚系数。
+@export var warmth_night_heat_penalty: float = 0.35

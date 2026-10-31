@@ -39,6 +39,7 @@ extends RefCounted
 ##   firewood_logs: float          通宵备柴根数（需要 Tuning.fire_fuel_hours_per_log）。
 ##   night_hours: float            名义夜长，默认取 Tuning.night_duration_hours。
 ##   prewarmed: bool               睡前篝火是否完成入夜前暖身（pre-warm）。
+##   starting_warmth: float        入夜时的 0–100 核心体温，默认 Tuning.warmth_max；低体温会惩罚 Heat。
 ##
 ## 火规则（D2/D3）：
 ##   * 雪庇护所内不允许生火；fire_lit/fuel_hours 不参与整夜供热，只接受 prewarmed 的入夜修正。
@@ -100,6 +101,12 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		input,
 		"prewarmed",
 		_input_bool(input, "pre_sleep_fire", false)
+	)
+	var starting_warmth := clampf(
+		_input_float(input, "starting_warmth", t.warmth_max), 0.0, t.warmth_max
+	)
+	var warmth_deficit := clampf(
+		(t.warmth_max - starting_warmth) / maxf(t.warmth_max, 0.001), 0.0, 1.0
 	)
 	var night_hours := maxf(_input_float(input, "night_hours", t.night_duration_hours), 0.01)
 	var fuel_hours := _input_float(input, "fuel_hours", -1.0)
@@ -284,6 +291,8 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		if prewarmed:
 			heat += t.prewarm_heat_bonus
 	heat = clampf(heat, 0.0, 1.0)
+	# 入夜低体温 → 初始热量赤字；这是玩家白天 0–100 Warmth 直接传导到 NightSimulator 的接口。
+	heat = clampf(heat * (1.0 - warmth_deficit * t.warmth_night_heat_penalty), 0.0, 1.0)
 
 	# ---------------------------------------------------------------- 六维评分
 	var scores := {
@@ -356,6 +365,10 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		fire_exposure, fuel_hours, night_hours, fire_reaches_dawn, fire_out_clock,
 		fire_ignored, prewarmed, has_reflector_wall, snow_depth, t
 	))
+	if warmth_deficit > 0.01:
+		notes[5] = notes[5] + " 入夜核心体温 %.0f/100，初始热量赤字使保暖表现下降约 %.0f%%。" % [
+			starting_warmth, warmth_deficit * t.warmth_night_heat_penalty * 100.0
+		]
 
 	var details := {
 		"preset": shelter_type,
@@ -373,6 +386,8 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		"fuel_hours": fuel_hours,
 		"night_hours": night_hours,
 		"chill_c": chill_c,
+		"starting_warmth": starting_warmth,
+		"warmth_deficit": warmth_deficit,
 	}
 
 	return {

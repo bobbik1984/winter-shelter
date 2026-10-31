@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://mainlevel001"]
+[gd_scene load_steps=12 format=3 uid="uid://mainlevel001"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://df7k4m5y6n123" path="res://scenes/world/blockout_terrain.tscn" id="2_terrain"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://c6v2n7x8p1m34" path="res://scenes/ui/hud.tscn" id="6_hud"]
 [ext_resource type="Script" path="res://scripts/world/atmosphere_setup.gd" id="7_atmosphere"]
 [ext_resource type="Script" path="res://scripts/world/wind_particles.gd" id="8_wind"]
+[ext_resource type="Script" path="res://scripts/player/warmth_controller.gd" id="9_warmth"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_cold"]
 sky_top_color = Color(0.25, 0.45, 0.72, 1)
@@ -48,6 +49,9 @@ script = ExtResource("8_wind")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="WarmthController" type="Node" parent="Player"]
+script = ExtResource("9_warmth")
 
 [node name="CameraRig" parent="." instance=ExtResource("4_cam")]
 camera_size = 36.0
