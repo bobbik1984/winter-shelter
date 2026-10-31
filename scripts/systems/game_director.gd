@@ -32,6 +32,14 @@ var state: State = State.BRIEFING
 var prewarmed := false
 ## 全天模式（简报页按 2）：10:00 开局。记录与标准模式分开保存。
 var full_day := false
+## 一天的时间线（报告里回顾时间花在哪）：事件 -> 时刻字符串。
+var _timeline: Array = []
+
+func _mark(event: String) -> void:
+	for e in _timeline:
+		if e[0] == event:
+			return
+	_timeline.append([event, weather.clock_string()])
 var _saved_time_scale := 12.0
 var _sleep_confirm_t := 0.0
 var _fade_t := 0.0
@@ -172,6 +180,7 @@ func _sleep(forced: bool) -> void:
 	_forced = forced
 	if build.active:
 		build.exit()
+	_mark("sleep")
 	state = State.NIGHT_FADE
 	_fade_t = 0.0
 	player.controls_enabled = false
@@ -192,6 +201,21 @@ func _vignette_texture() -> Texture2D:
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	return vp.get_texture()
 
+func _timeline_text() -> String:
+	var names := {"probe": Loc.t("first probe"), "site": Loc.t("site marked"), "done": Loc.t("shelter done"),
+		"fire": Loc.t("fire lit"), "sleep": Loc.t("bed")}
+	var start := "%02d:%02d" % [tuning.full_day_start_minutes / 60, tuning.full_day_start_minutes % 60] if full_day \
+		else "%02d:%02d" % [tuning.start_minutes / 60, tuning.start_minutes % 60]
+	var events: Array = [[start, Loc.t("start")], [weather.sunset_clock(), Loc.t("sunset")]]
+	for e in _timeline:
+		events.append([e[1], names.get(e[0], e[0])])
+	# 时刻 "HH:MM" 按字典序即时间序；日落按真实先后插入，玩家能看出自己是日落前还是后完工
+	events.sort_custom(func(x, y) -> bool: return String(x[0]) < String(y[0]))
+	var parts: Array[String] = []
+	for e in events:
+		parts.append("%s %s" % [e[1], e[0]])
+	return Loc.t("Your day: ") + "  →  ".join(parts)
+
 func _show_report() -> void:
 	state = State.REPORT
 	var input := night_input()
@@ -200,6 +224,7 @@ func _show_report() -> void:
 	var name_ := Loc.t("None — slept in the open")
 	if site:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
+	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
 	Records.save(String(input.get("shelter_type", "None")) + ("@day" if full_day else ""), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 
@@ -485,6 +510,7 @@ func _sync_fires() -> void:
 
 func _on_probe(pos: Vector3, depth: float) -> void:
 	_probe_count += 1
+	_mark("probe")
 	_best_depth = maxf(_best_depth, depth)
 	audio.play_sfx("probe")
 	var cls := GameRules.classify_depth(depth, tuning)
@@ -621,6 +647,7 @@ func _place_site() -> void:
 	site.interactable.hold_seconds = tuning.stage_hold_seconds
 	site.interactable.prompt_fn = _site_prompt
 	site.interactable.handler = _on_build_stage
+	_mark("site")
 	_exit_build()
 	ui.toast(Loc.t("Site marked. Hold [E] at the site to work: %s") % site.next_stage_title(), 6.0)
 
@@ -666,6 +693,7 @@ func _on_build_stage() -> Dictionary:
 	minutes = 0.0
 	var msg := Loc.t("Stage %d/5 done — %s") % [int(r["stage"]), Loc.t(String(r["stage_title"]))]
 	if site.is_complete():
+		_mark("done")
 		msg = Loc.t("Shelter complete. Bring in what you need — rest when ready [N].")
 		if site.preset_id == "LeanTo":
 			msg += Loc.t(" Stockpile dry wood: the reflector fire burns %.0f h per log.") % tuning.fire_fuel_hours_per_log
@@ -727,6 +755,7 @@ func _try_fire() -> void:
 	_attach_fire_interactable(fire)
 	_skip(5.0)
 	audio.play_sfx("fire")
+	_mark("fire")
 	ui.toast(Loc.t("Fire lit. Warm up, dry off, and melt snow for a hot drink [E]."), 5.0)
 
 func _attach_fire_interactable(fire: Campfire) -> void:

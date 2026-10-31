@@ -343,6 +343,10 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 14, MUTED))
 	v.add_child(_label(String(data["title"]), 36, oc))
 	v.add_child(_label(Loc.t("Shelter: %s") % shelter_name, 14, MUTED))
+	if data.has("timeline"):
+		var tl := _label(String(data["timeline"]), 12, MUTED)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(tl)
 	v.add_child(HSeparator.new())
 	for r in data["rows"]:
 		var row := HBoxContainer.new()
