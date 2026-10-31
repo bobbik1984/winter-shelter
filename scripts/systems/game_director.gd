@@ -23,6 +23,7 @@ var ui: GameUI
 var callouts: WorldCallouts
 var site: ShelterSite
 var graphics: GraphicsSettings
+var audio: AmbientAudio
 var state: State = State.BRIEFING
 
 var prewarmed := false
@@ -80,6 +81,12 @@ func _ready() -> void:
 	graphics = GraphicsSettings.new()
 	add_child(graphics)
 	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast("Graphics: %s  [F10]" % graphics.level_name(), 2.5))
+
+	audio = AmbientAudio.new()
+	audio.name = "AmbientAudio"
+	audio.gust_frequency = wind.gust_frequency
+	audio.wind_strength = clampf(wind.speed_kmh / 40.0, 0.2, 1.2)
+	add_child(audio)
 
 	ui = GameUI.new()
 	add_child(ui)
@@ -270,6 +277,14 @@ func _tree_cover(p: Vector3) -> float:
 func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> void:
 	var w := _warmth_inputs()
 	w["level"] = maxi(int(w["level"]), min_level)
+	if audio and min_level == 0:
+		var pp := player.global_position
+		audio.exposure = 1.0 - float(w["windbreak"])
+		audio.shelter_level = int(w["level"])
+		audio.fire = float(w["fire"])
+		audio.speed = player.current_speed
+		audio.snow_depth = SnowField.snow_at(pp.x, pp.z)
+		audio.master = 0.0 if state == State.REPORT else (0.4 if state == State.NIGHT_FADE else 1.0)
 	warmth.windbreak_factor = w["windbreak"]
 	warmth.in_shelter_level = w["level"]
 	warmth.near_fire_intensity = w["fire"]

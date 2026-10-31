@@ -20,6 +20,9 @@ uniform float base_roughness : hint_range(0.0, 1.0) = 0.92;
 uniform bool occlusion_fade = false;
 uniform vec3 focus_pos = vec3(0.0);
 uniform float occlusion_radius = 0.26;
+// 风摆（T3.1）：树冠随高度二次方偏向下风，阵风调制；静态截图里也能读出风向。
+uniform float sway_amount = 0.0;
+uniform vec2 wind_dir = vec2(1.0, 0.0);
 
 varying vec3 w_normal;
 varying vec3 w_pos;
@@ -43,6 +46,14 @@ float vnoise(vec3 p) {
 }
 
 void vertex() {
+	if (sway_amount > 0.0) {
+		vec2 origin = MODEL_MATRIX[3].xz;
+		float phase = dot(origin, vec2(0.37, 0.21));
+		float gust = 0.65 + 0.35 * sin(TIME * 0.55 + phase * 0.13);
+		float h = max(VERTEX.y, 0.0);
+		float s = (0.55 + 0.45 * sin(TIME * 1.7 + phase)) * gust * sway_amount * h * h * 0.006;
+		VERTEX.xz += normalize(wind_dir) * s;
+	}
 	w_normal = normalize(mat3(MODEL_MATRIX) * NORMAL);
 	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }

@@ -120,6 +120,8 @@ func _scatter_spruce(blow: Vector3) -> void:
 			spruce_points.append(Vector2(x, z))
 	var mat := _material(Color(0.05, 0.13, 0.10), 0.70)
 	_enable_fade(mat)
+	mat.set_shader_parameter("sway_amount", 1.0)
+	mat.set_shader_parameter("wind_dir", Vector2(blow.x, blow.z))
 	for v in range(SPRUCE_VARIANTS):
 		_add_multimesh("Spruce%d" % v, SpruceMesh.build(20 + v, blow), mat, buckets[v], true)
 
