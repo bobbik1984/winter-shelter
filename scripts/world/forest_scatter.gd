@@ -203,3 +203,7 @@ static func add_chunked(parent: Node3D, node_name: String, mesh: Mesh, mat: Mate
 		mmi.material_override = mat
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(mmi)
+		if node_name.begins_with("FarForest"):
+			mmi.add_to_group("far_forest")
+		else:
+			mmi.add_to_group("near_forest")

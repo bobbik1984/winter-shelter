@@ -22,6 +22,7 @@ var spawner: ResourceSpawner
 var ui: GameUI
 var callouts: WorldCallouts
 var site: ShelterSite
+var graphics: GraphicsSettings
 var state: State = State.BRIEFING
 
 var prewarmed := false
@@ -75,6 +76,10 @@ func _ready() -> void:
 	build.tuning = tuning
 	build.wind_from = wind.get_wind_direction_3d()
 	main.add_child(build)
+
+	graphics = GraphicsSettings.new()
+	add_child(graphics)
+	graphics.changed.connect(func(l: int) -> void: if ui: ui.toast("Graphics: %s  [F10]" % graphics.level_name(), 2.5))
 
 	ui = GameUI.new()
 	add_child(ui)
@@ -143,6 +148,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	var k := (event as InputEventKey).keycode
+	if k == KEY_F10:
+		graphics.cycle()
+		return
 	match state:
 		State.BRIEFING:
 			if k == KEY_ENTER or k == KEY_KP_ENTER:

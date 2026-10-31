@@ -38,6 +38,7 @@ func _ready() -> void:
 	_sky_mat = sky_mat
 	add_to_group("sun_receivers")
 	add_to_group("lens_receivers")
+	add_to_group("world_environment")
 	env.sky = sky
 
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY

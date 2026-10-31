@@ -40,6 +40,8 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 @export var dof_amount: float = 0.08
 
 var _zoom: float = -1.0
+## 画质档位可关闭景深（GraphicsSettings）。
+var dof_enabled: bool = true
 var _attrs: CameraAttributesPractical
 
 @onready var camera_3d: Camera3D = $Camera3D
@@ -47,6 +49,7 @@ var _attrs: CameraAttributesPractical
 func _ready() -> void:
 	# 固定 ISO 机位角度：Yaw 45°、Pitch -38°（真等距 -35.264° 的视感微调区间）
 	rotation_degrees = Vector3(camera_pitch_degrees, camera_yaw_degrees, 0.0)
+	add_to_group("camera_rig")
 	if _zoom < 0.0:
 		_zoom = default_zoom
 	if camera_3d:
@@ -80,8 +83,8 @@ func _apply_view_mode() -> void:
 		camera_3d.far = 1400.0
 		if _attrs == null:
 			_attrs = CameraAttributesPractical.new()
-		_attrs.dof_blur_far_enabled = true
-		_attrs.dof_blur_near_enabled = true
+		_attrs.dof_blur_far_enabled = dof_enabled
+		_attrs.dof_blur_near_enabled = dof_enabled
 		_attrs.dof_blur_far_distance = dist + dof_transition_m * _zoom * 2.0
 		_attrs.dof_blur_far_transition = dof_transition_m * _zoom * 6.0
 		_attrs.dof_blur_near_distance = maxf(0.5, dist - dof_transition_m * _zoom)
@@ -98,6 +101,10 @@ func _push_lens() -> void:
 	var half_t := tan(deg_to_rad(tilt_shift_fov_deg) * 0.5)
 	get_tree().call_group("lens_receivers", "set_lens", view_mode == ViewMode.TILT_SHIFT,
 		half_t, aspect, lens_shift * half_t, camera_3d.global_transform.basis.orthonormalized())
+
+func reapply() -> void:
+	if camera_3d:
+		_apply_view_mode()
 
 func set_view_mode(mode: ViewMode) -> void:
 	view_mode = mode

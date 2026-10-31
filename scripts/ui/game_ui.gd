@@ -191,7 +191,7 @@ func _make_briefing() -> Control:
 		"and the shadows tell you how much daylight is left.", 15, MUTED)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(body)
-	var keys := _label("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build\n" +
+	var keys := _label("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n" +
 		"[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom", 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(keys)
