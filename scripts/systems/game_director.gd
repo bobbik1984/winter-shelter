@@ -254,6 +254,7 @@ func _tick_playing(delta: float) -> void:
 			(f as Campfire).burn(dm)
 
 	_update_warmth(delta, 1.0)
+	player.working = interaction.progress > 0.0
 
 	# 建造模式
 	if build.active:

@@ -17,6 +17,8 @@ var tuning: Tuning
 ## 由 GameDirector 控制：简报 / 建造确认 / 结算时禁止移动。
 var controls_enabled: bool = true
 var is_probing: bool = false
+## 由 GameDirector 写入：正在按住交互（施工 / 采集）时播放劳作动画。
+var working: bool = false
 var current_speed: float = 0.0
 var _probe_t: float = 0.0
 
@@ -43,8 +45,8 @@ func _physics_process(delta: float) -> void:
 		if _probe_t >= tuning.probe_seconds:
 			_probe_t = -INF   # 本次按住只读一次
 			_finish_probe()
-		if visual_node:
-			visual_node.scale = Vector3(1.0, lerpf(visual_node.scale.y, 0.82, 10.0 * delta), 1.0)
+		if visual_node and visual_node.has_method("set_motion"):
+			visual_node.set_motion(0.0, true, false)
 		velocity.x = move_toward(velocity.x, 0, 20.0 * delta)
 		velocity.z = move_toward(velocity.z, 0, 20.0 * delta)
 		move_and_slide()
@@ -53,8 +55,6 @@ func _physics_process(delta: float) -> void:
 		is_probing = false
 		_probe_t = 0.0
 		probe_progress.emit(0.0)
-	if visual_node:
-		visual_node.scale = Vector3(1.0, lerpf(visual_node.scale.y, 1.0, 10.0 * delta), 1.0)
 
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	# 屏幕上下左右 → 世界方向：按当前相机的偏航角旋转（不写死 45°）
@@ -78,6 +78,8 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0, 30.0 * delta)
 
 	move_and_slide()
+	if visual_node and visual_node.has_method("set_motion"):
+		visual_node.set_motion(current_speed, false, working)
 	# 地图边界（山谷外是远景，不可行走）
 	global_position.x = clampf(global_position.x, -48.5, 48.5)
 	global_position.z = clampf(global_position.z, -48.5, 48.5)

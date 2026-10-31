@@ -19,12 +19,70 @@ var _mat_dark: StandardMaterial3D
 var _mat_white: StandardMaterial3D
 var _mat_hole: StandardMaterial3D
 
+const GLB := "res://assets/models/char_survivor.glb"
+
+var _anim: AnimationPlayer
+var _current := ""
+
 func _ready() -> void:
 	_make_materials()
+	if ResourceLoader.exists(GLB):
+		_build_from_glb()
+		return
+	# 回退：原生几何体拼装（没有 glb 时）
 	_build_legs()
 	_build_torso()
 	_build_backpack()
 	_build_probe()
+
+## V4：Blender 生成的角色（tools/blender/build_hiker.py）。角色面朝 +Z，背包在 -Z。
+func _build_from_glb() -> void:
+	var inst := (load(GLB) as PackedScene).instantiate()
+	add_child(inst)
+	for n in inst.find_children("*", "MeshInstance3D", true, false):
+		(n as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_anim = inst.find_children("*", "AnimationPlayer", true, false).front() as AnimationPlayer if not inst.find_children("*", "AnimationPlayer", true, false).is_empty() else null
+	if _anim:
+		# Godot 导入时会去掉 "-loop" 后缀；这里显式设置循环
+		for name_ in ["Idle", "Walk", "Dig"]:
+			if _anim.has_animation(name_):
+				_anim.get_animation(name_).loop_mode = Animation.LOOP_LINEAR
+		_play("Idle")
+	# 背负挂件（随背包内容显示）：原木横绑在包底，干草束插在包侧
+	for log_idx in range(4):
+		var log_mesh := _add_cylinder(Vector3(0.0, 0.88 + float(log_idx) * 0.09, -0.40), 0.04, 0.05, 0.62, _mat_wood)
+		log_mesh.rotation_degrees.z = 90.0
+		log_mesh.rotation_degrees.y = 6.0 * float(log_idx - 1)
+		log_mesh.visible = false
+		_logs.append(log_mesh)
+	_mat_grass = _mat(Color(0.74, 0.60, 0.33), 0.95)
+	for b in range(3):
+		var bundle := _add_cylinder(Vector3(0.24 + b * 0.04, 1.25 + b * 0.05, -0.26), 0.07, 0.09, 0.5, _mat_grass)
+		bundle.rotation_degrees.x = -15.0
+		bundle.visible = false
+		_bedding.append(bundle)
+
+func _play(name_: String, blend: float = 0.2) -> void:
+	if _anim == null or _current == name_ or not _anim.has_animation(name_):
+		return
+	_current = name_
+	_anim.play(name_, blend)
+
+## 由 PlayerController 每帧调用：速度 → 走 / 站；探针 → Probe；施工 / 采集 → Dig。
+func set_motion(speed: float, probing: bool, working: bool) -> void:
+	if probing:
+		_play("Probe", 0.12)
+	elif working:
+		_play("Dig")
+	elif speed > 0.3:
+		_play("Walk")
+		if _anim:
+			_anim.speed_scale = clampf(speed / 2.6, 0.6, 1.5)
+		return
+	else:
+		_play("Idle", 0.3)
+	if _anim:
+		_anim.speed_scale = 1.0
 
 func _make_materials() -> void:
 	_mat_pants = _mat(Color(0.18, 0.20, 0.24), 0.94)
