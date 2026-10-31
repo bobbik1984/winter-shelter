@@ -5,21 +5,21 @@ extends PanelContainer
 
 const LABELS := [
 	{
-		"local": Vector3(0.25, 2.92, -0.45),
+		"local": Vector3(0.25, 2.75, 0.03),
 		"title": "Vent / Chimney",
 		"sub": "Reduce CO2, expel moisture",
 		"pos": Vector2(342.0, 6.0),
 		"accent": Color(0.68, 0.86, 1.0),
 	},
 	{
-		"local": Vector3(0.92, 1.98, 0.0),
+		"local": Vector3(0.95, 1.88, 0.0),
 		"title": "Roof thickness",
 		"sub": ">= 1.5 m",
 		"pos": Vector2(368.0, 62.0),
 		"accent": Color(0.96, 0.86, 0.64),
 	},
 	{
-		"local": Vector3(1.18, 0.56, -0.65),
+		"local": Vector3(1.18, 0.54, -0.65),
 		"title": "Raised sleeping platform",
 		"sub": "Stay above cold air",
 		"pos": Vector2(328.0, 140.0),
@@ -54,9 +54,9 @@ var _roof_tick_top: Line2D
 var _roof_tick_bottom: Line2D
 
 func _ready() -> void:
-	# 正前偏右 15°、俯角 18° 的 45° 等距剖面机位：清晰平视进洞室内部，同时展现高床立面与雪丘顶部。
-	camera.position = Vector3(1.85, 2.30, 6.80)
-	camera.look_at(Vector3(-0.15, 0.82, -0.55), Vector3.UP)
+	# 正前偏右 15°、俯角 18° 的 45° 等距剖面机位：预留顶部排湿箭头与后景冷杉空间。
+	camera.position = Vector3(1.85, 2.45, 6.80)
+	camera.look_at(Vector3(-0.15, 0.96, -0.55), Vector3.UP)
 	_build_overlay()
 
 func _build_overlay() -> void:
@@ -77,11 +77,11 @@ func _build_overlay() -> void:
 
 	_roof_line = Line2D.new()
 	_roof_line.width = 1.35
-	_roof_line.default_color = Color(0.18, 0.28, 0.42, 0.95)
+	_roof_line.default_color = Color(0.16, 0.25, 0.38, 0.95)
 	_roof_line.z_index = -1
 	overlay.add_child(_roof_line)
-	_roof_tick_top = _make_tick(Color(0.18, 0.28, 0.42, 0.95))
-	_roof_tick_bottom = _make_tick(Color(0.18, 0.28, 0.42, 0.95))
+	_roof_tick_top = _make_tick(Color(0.16, 0.25, 0.38, 0.95))
+	_roof_tick_bottom = _make_tick(Color(0.16, 0.25, 0.38, 0.95))
 
 func _make_tick(color: Color) -> Line2D:
 	var tick := Line2D.new()
@@ -148,8 +148,8 @@ func _process(_delta: float) -> void:
 		_lines[i].points = PackedVector2Array([screen, anchor])
 
 	# 拱顶 1.5m 厚度双向箭头指示线（对应参考图拱顶左侧上下双箭头）
-	var roof_low := camera.unproject_position(rig.to_global(Vector3(-0.22, 1.62, 0.02)))
-	var roof_high := camera.unproject_position(rig.to_global(Vector3(-0.22, 2.52, 0.02)))
+	var roof_low := camera.unproject_position(rig.to_global(Vector3(-0.22, 1.52, 0.02)))
+	var roof_high := camera.unproject_position(rig.to_global(Vector3(-0.22, 2.38, 0.02)))
 	_roof_line.points = PackedVector2Array([roof_low, roof_high])
 	_roof_tick_top.points = PackedVector2Array([
 		roof_high + Vector2(-4.0, 5.0), roof_high, roof_high + Vector2(4.0, 5.0)
