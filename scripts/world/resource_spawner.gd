@@ -112,6 +112,18 @@ func _interactable(root: Node3D, kind: String, prompt: String, uses: int, ring: 
 	it.handler = func() -> Dictionary: return on_harvest.call(it) if on_harvest.is_valid() else {}
 	return it
 
+## 树干类资源的碰撞（立枯木 / 白桦 / 树根盘）。
+func _trunk(root: Node3D, radius: float, height: float = 4.0) -> void:
+	var body := StaticBody3D.new()
+	root.add_child(body)
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = radius
+	cyl.height = height
+	cs.shape = cyl
+	cs.position = Vector3(0, height * 0.4, 0)
+	body.add_child(cs)
+
 func _root(name_: String, p: Vector2) -> Node3D:
 	_placed.append(p)
 	var root := Node3D.new()
@@ -124,6 +136,7 @@ func _spawn_deadwood(p: Vector2, i: int) -> void:
 	var root := _root("Deadwood", p)
 	root.position.y -= 0.2
 	_mesh(root, PropMeshes.snag(70 + i), _mat_snag, TerrainHeight.hash2(i, 5, 9) * TAU, 1.0)
+	_trunk(root, 0.25)
 	_interactable(root, "deadwood", Loc.t("Harvest standing deadwood (dry fuel)"), tuning.deadwood_uses, 1.0)
 
 ## 森林 / 场景里已有的立枯木（MultiMesh 或拼装体）同样是燃料：只挂采集点，不另建网格。
@@ -145,6 +158,7 @@ func _attach_existing_snags() -> void:
 func _spawn_birch(p: Vector2, i: int) -> void:
 	var root := _root("Birch", p)
 	_mesh(root, PropMeshes.birch(80 + i), _mat_birch, TerrainHeight.hash2(i, 7, 9) * TAU)
+	_trunk(root, 0.2)
 	_interactable(root, "birch", Loc.t("Peel birch bark (tinder)"), 3, 0.8)
 
 func _spawn_grass(p: Vector2, i: int) -> void:
@@ -171,6 +185,15 @@ func _spawn_rootball(p: Vector2, i: int) -> void:
 	root.add_to_group("windbreaks")
 	# 树根盘面朝西（迎风），倒伏树干朝东躺下：背风侧（东）形成避风凹窝
 	_mesh(root, PropMeshes.rootball(120 + i), _mat_root, 0.0)
+	# 树根盘（竖立圆盘）碰撞：薄盒
+	var body := StaticBody3D.new()
+	root.add_child(body)
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.7, 3.0, 3.0)
+	cs.shape = box
+	cs.position = Vector3(0, 1.3, 0)
+	body.add_child(cs)
 
 ## 最近的天然挡风物距离。
 static func nearest_windbreak_distance(tree: SceneTree, pos: Vector3) -> float:

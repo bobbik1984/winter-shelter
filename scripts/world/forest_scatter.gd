@@ -41,6 +41,8 @@ var _fade_materials: Array[ShaderMaterial] = []
 var spruce_points: PackedVector2Array = PackedVector2Array()
 ## 立枯木位置（每棵都可采集干柴：Read the Land 第 4 条）。
 var snag_points: PackedVector2Array = PackedVector2Array()
+## 岩石 (x, z, 半径)：碰撞用。
+var rock_spheres: Array[Vector3] = []
 
 ## "occlusion_fade" 组回调：玩家位置，用于把挡住玩家的树镂空。
 func set_focus(pos: Vector3) -> void:
@@ -56,6 +58,34 @@ func _ready() -> void:
 	_scatter_spruce(blow)
 	_scatter_snags()
 	_scatter_rocks()
+	_build_colliders()
+
+
+## 碰撞（只挡树干与岩石，林间仍可穿行）：一个 StaticBody3D 挂所有形状。
+func _build_colliders() -> void:
+	var body := StaticBody3D.new()
+	body.name = "ForestColliders"
+	add_child(body)
+	for p in spruce_points:
+		add_trunk(body, p, 0.32)
+	for p in snag_points:
+		add_trunk(body, p, 0.25)
+	for r in rock_spheres:
+		var cs := CollisionShape3D.new()
+		var sph := SphereShape3D.new()
+		sph.radius = r.z * 0.85
+		cs.shape = sph
+		cs.position = Vector3(r.x, TerrainHeight.height_at(r.x, r.y), r.y)
+		body.add_child(cs)
+
+static func add_trunk(body: StaticBody3D, p: Vector2, radius: float) -> void:
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = radius
+	cyl.height = 4.0
+	cs.shape = cyl
+	cs.position = Vector3(p.x, TerrainHeight.height_at(p.x, p.y) + 1.5, p.y)
+	body.add_child(cs)
 
 
 func _blocked(x: float, z: float, extra: float = 0.0) -> bool:
@@ -172,6 +202,7 @@ func _scatter_rocks() -> void:
 		var basis := Basis(Vector3.UP, TerrainHeight.hash2(k, 3, 29) * TAU).scaled(
 			Vector3(s * lerpf(1.0, 1.6, big), s * lerpf(0.55, 0.9, TerrainHeight.hash2(k, 4, 29)), s))
 		buckets[k % ROCK_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - s * 0.18, z)))
+		rock_spheres.append(Vector3(x, z, s * lerpf(0.8, 1.2, big)))
 		placed += 1
 	var mat := _material(Color(0.20, 0.20, 0.24), 0.30, 0.06)
 	mat.set_shader_parameter("rim_amount", 0.5)
