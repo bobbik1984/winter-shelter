@@ -49,8 +49,9 @@ Main (Node3D) [main.gd]
 └── HUD [hud.tscn]                           # 环境卡、体温卡、罗盘、世界标签、雪洞剖面面板（独立 SubViewport）
 ```
 
-**跨节点通信约定**：视觉"接收方"通过节点组接收推送，而不是互相持有引用——
-`sun_receivers.set_sun_dir(dir)`（天空、雪面、环境光 / 雾）、`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）。V7 计划把前两者收拢进 `AtmosphereState`。
+**跨节点通信约定**：
+- 时间与大气 = **`AtmosphereState`**（V7，`scripts/systems/atmosphere_state.gd`）：`WeatherController` 唯一写入（组 `weather`），天空 / 环境光 / 雾、雪面、罗盘、降雪、头灯订阅 `changed` 或每帧读取（`AtmosphereState.of(tree)`）。
+- 其余视觉推送用节点组：`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）。
 
 ---
 
@@ -79,7 +80,7 @@ Main (Node3D) [main.gd]
 
 ### 3.3b 大气与天空（现状 + V7 规划）
 - **现状**：`atmosphere_setup.gd` 建 `Environment`（Sky shader、ACES、泛光、SSAO、雾）；`set_sun_dir` 随太阳高度调环境光与雾；`set_lens` 把移轴镜头参数传给天空 shader。
-- **规划（V7）**：`AtmosphereState` 成为时间与天气的唯一数据源（太阳、天空色、雾、云量、降雪强度），天空 / 光 / 雾 / 粒子只读它；接 T3.1 暴风雪。
+- **已实现（V7）**：`AtmosphereState` 是时间与天气的唯一数据源（时刻、太阳方向 / 高度 / 方位、昼夜系数、傍晚降雪强度）。后续云量 / 暴风雪只在这里加字段。
 - **约束**：远景雾色接近天空地平线色；不得为构图把太阳挪到假方位（D9）。
 
 ### 3.4 6 维可解释夜间模拟 (Night Review System)
@@ -260,7 +261,7 @@ scripts/
 │   ├── weather_controller.gd         ✅ 时钟、太阳驱动、天气信号
 │   ├── shelter_builder.gd            ✅ 选址校验（D5）+ 5 阶推进（逻辑）
 │   ├── night_simulator.gd            ✅ 6 维可解释结算
-│   ├── atmosphere_state.gd              大气唯一数据源（V7）
+│   ├── atmosphere_state.gd           ✅ 时间与大气唯一数据源（V7）
 │   ├── graphics_settings.gd          ✅ 画质档位
 │   ├── game_director.gd              ✅ 一局游戏的状态机与编排
 │   ├── game_rules.gd                 ✅ 循环纯规则（有测试）

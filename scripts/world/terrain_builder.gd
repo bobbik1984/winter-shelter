@@ -12,10 +12,17 @@ const TERRAIN_SHADER := preload("res://shaders/snow_terrain.gdshader")
 var _material: ShaderMaterial
 
 func _ready() -> void:
-	add_to_group("sun_receivers")
+	# V7：订阅 AtmosphereState（WeatherController 可能稍后才 ready，延迟连接）
+	_connect_atmosphere.call_deferred()
 	_build_terrain()
 
-## "sun_receivers" 组回调：更新雪面 shader 的太阳方向。
+func _connect_atmosphere() -> void:
+	var a := AtmosphereState.of(get_tree())
+	if a:
+		a.changed.connect(func(s: AtmosphereState) -> void: set_sun_dir(s.sun_dir))
+		set_sun_dir(a.sun_dir)
+
+## 雪面 shader 的太阳方向（来自 AtmosphereState）。
 func set_sun_dir(dir: Vector3) -> void:
 	if _material:
 		_material.set_shader_parameter("sun_dir_world", dir)

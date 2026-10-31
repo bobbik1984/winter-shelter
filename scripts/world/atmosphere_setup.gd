@@ -7,7 +7,7 @@ const SKY_SHADER := preload("res://shaders/sky_backdrop.gdshader")
 
 var _sky_mat: ShaderMaterial
 
-## "sun_receivers" 组回调：天空 shader 的太阳方向 + 随日高变化的环境光 / 雾。
+## 天空 shader 的太阳方向 + 随日高变化的环境光 / 雾（订阅 AtmosphereState，V7）。
 func set_sun_dir(dir: Vector3) -> void:
 	if _sky_mat:
 		_sky_mat.set_shader_parameter("sun_dir", dir)
@@ -27,6 +27,12 @@ func set_lens(enabled: bool, half_t: float, aspect: float, shift_t: float, basis
 	_sky_mat.set_shader_parameter("lens_shift_t", shift_t)
 	_sky_mat.set_shader_parameter("lens_basis", basis)
 
+func _connect_atmosphere() -> void:
+	var a := AtmosphereState.of(get_tree())
+	if a:
+		a.changed.connect(func(s: AtmosphereState) -> void: set_sun_dir(s.sun_dir))
+		set_sun_dir(a.sun_dir)
+
 func _ready() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
@@ -36,7 +42,7 @@ func _ready() -> void:
 	sky_mat.shader = SKY_SHADER
 	sky.sky_material = sky_mat
 	_sky_mat = sky_mat
-	add_to_group("sun_receivers")
+	_connect_atmosphere.call_deferred()
 	add_to_group("lens_receivers")
 	add_to_group("world_environment")
 	env.sky = sky

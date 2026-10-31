@@ -344,12 +344,13 @@ func _tick_playing(delta: float) -> void:
 			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
 
 	_update_world_callouts()
+	var atm := weather.atmosphere
 	if _compass:
-		_compass.set_sun(weather.sun_azimuth_deg, weather.sun_elevation_deg)
+		_compass.set_sun(atm.sun_azimuth_deg, atm.sun_elevation_deg)
 	ui.set_objective(GameRules.next_objective(_objective_ctx(), tuning))
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
-	snowfall.intensity = clampf((now - 960.0) / 70.0, 0.0, 1.0) * 0.9
-	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - weather.sun_elevation_deg) / 4.0, 0.0, 1.0))
+	snowfall.intensity = atm.snowfall
+	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - atm.sun_elevation_deg) / 4.0, 0.0, 1.0))
 
 	# 体温归零持续 → 失温倒下（有后果，且报告能解释：Heat 轴 + 入夜体温 0）
 	_zero_t = _zero_t + delta if warmth.body_warmth <= 0.01 else 0.0

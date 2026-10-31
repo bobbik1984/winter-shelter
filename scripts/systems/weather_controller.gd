@@ -21,8 +21,14 @@ var sunset_minutes: float = 978.0
 ## 当前太阳高度角 / 方位角（°），供 HUD 或教学提示读取。
 var sun_elevation_deg: float = 0.0
 var sun_azimuth_deg: float = 0.0
+## V7：时间与大气的唯一数据源（只有本节点写入）。
+var atmosphere := AtmosphereState.new()
+## [GAME] 傍晚降雪：16:00 起 70 分钟内渐密到 0.9。
+const SNOW_START_MINUTES := 960.0
+const SNOW_RAMP_MINUTES := 70.0
 
 func _ready() -> void:
+	add_to_group("weather")
 	if wind_data == null:
 		wind_data = WindData.new()
 	tuning = load(TUNING_PATH) as Tuning
@@ -60,7 +66,8 @@ func _apply_sun() -> void:
 	sun_light.light_energy = SUN_ENERGY_DAY * day
 	sun_light.light_color = SUN_COLOR_LOW.lerp(SUN_COLOR_HIGH, smoothstep(2.0, 22.0, p.x))
 	sun_light.shadow_enabled = day > 0.01
-	get_tree().call_group("sun_receivers", "set_sun_dir", to_sun)
+	var snow := clampf((current_time_minutes - SNOW_START_MINUTES) / SNOW_RAMP_MINUTES, 0.0, 1.0) * 0.9
+	atmosphere.update(current_time_minutes, to_sun, p.x, p.y, snow)
 
 ## 动作消耗游戏时间：时钟直接跳进（采集 / 建造 / 融雪），太阳随之更新。
 func advance_minutes(minutes: float) -> void:
