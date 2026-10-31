@@ -20,6 +20,18 @@ snapshots/
 
 > 与 [`PRODUCTION_PLAN.md`](../PRODUCTION_PLAN.md) 的 M1–M4 一一对应。
 
+### 过程快照（不替代里程碑快照）
+
+| 文件 | 内容 |
+| :--- | :--- |
+| `m0_smoke.png` / `m1_*.png` / `m2_*.png` | 早期正交 45° 阶段的实机截图 |
+| `visual_pass1_cutaway.png` | V0.1 SDF 雪洞剖面面板（放大 2×） |
+| `visual_pass2_ortho.png` | V 键正交备用模式 |
+| `visual_pass3_1420.png` | 默认移轴透视 14:20（当前主画面） |
+| `visual_pass3_sun_cycle.png` | 真实日轨：10:00 / 14:20 / 16:05 / 16:40 四格对比 |
+
+新增过程快照命名：`visual_passN_<描述>.png`；涉及性能的改动在提交信息或回执中附 FPS。
+
 ---
 
 ## 规则

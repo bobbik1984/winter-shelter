@@ -1,4 +1,6 @@
-# PRODUCTION_PLAN.md — Snow Shelter Challenge 生产计划 v1.0
+# PRODUCTION_PLAN.md — Snow Shelter Challenge 生产计划 v1.1
+
+> **v1.1（2026-11-01）**：插入**视觉先行轨道 V**（§4.V），记录 visual-pass 1–3 的成果与后续任务；新增决策 D8–D11；Read the Land 增加第 5 条"影子就是时钟"；被 V 轨道改写的 M 任务见 §4.V 映射表。
 
 > **依据**：[参考图 North Star v0.1](design_assets/Codex%20Image%20Sep%2012,%202026,%2003_30_15%20PM.png) · 4 份设计文档 · `ARCHITECTURE_GODOT.md` · `references/20260919_fable5_mvp`（Web 原型）
 > **原则**：同一个游戏，逐步提高保真度（参考图底栏 *Same Game, Increasing Fidelity*）。
@@ -11,17 +13,21 @@
 
 **最终产物**：一个 Godot 4 垂直切片。单局 10–20 分钟，约 100 m × 100 m 地图，完整走完 *观察 → 探测 → 采集 → 建造 → 过夜 → 复盘*，画面达到参考图第 4 格 "Target Look"。
 
-**现状（2026-10-04）**
+**现状（2026-11-01）**
 
 | 资产 | 状态 | 说明 |
 | :--- | :--- | :--- |
-| 设计文档 v0.2 | ✅ 冻结约 80% | VISION / CORE_GAMEPLAY / MVP / VISUAL / ARCHITECTURE |
-| Godot 工程骨架 | ⚠️ 已写代码，**从未在 Godot 中打开运行过** | 本机未找到 Godot。代码审阅发现：相机直接放在玩家位置、没有向后偏移，正交相机的近裁剪面很可能切掉角色和身后地形（推断，未验证） |
-| Web 原型 `fable5_mvp` | ⚠️ 代码上是完整循环，**本次未能验证构建** | 简报→探测→采集→建造→生火→过夜→6 维报告都有实现。`npm ci` 因网络/代理失败，所以没有跑过类型检查和构建 |
+| 设计文档 v0.2 | ✅ 冻结约 80% | VISION / CORE_GAMEPLAY / MVP / VISUAL / ARCHITECTURE；相机与天空规则已按 D1 修订 / D8 / D9 更新 |
+| Godot 工程 | ✅ Godot 4.3 stable 可导入、可运行、可实机截图（Vulkan Forward+） | 6 套 headless 测试 164 assertions 全绿；**尚未人工 F5 完整试玩** |
+| 画面 | ⚠️ 已接近 North Star 的构图与氛围 | 移轴透视 + 真实日轨落日、密林 / 枯立木 / 岩石、远景山谷、SDF 雪洞剖面（visual-pass 1–3，分支 `claude/visual-pass-1`，未合并） |
+| 玩法循环 | ⚠️ 逻辑层完成、交互层未接 | NightSimulator / ShelterBuilder / WarmthController 有测试；交互框架、背包、建造按键、过夜报告 UI 未做 |
+| 性能 | ⚠️ Intel UHD 620 @1080p 约 13 FPS（改动前基线同为 13） | 见 D11 与 V2 |
+| Web 原型 `fable5_mvp` | ⚠️ 未能验证构建 | `npm ci` 网络失败；已冻结为参考（D6） |
 
 **路线**：M0 对齐 → M1 Blockout → M2 Playable → M3 Systems+UI → M4 Target Look，合计约 **46.5–47.5 个专注工作日**。
+视觉先行轨道 V 与 M1/M2 并行（约 9.5 天，其中约 5 天是从 M3/M4 提前做掉的工作，见 §8）。**下一步重心回到玩法**：M1 剩余任务 + M2 交互循环，V 轨道只做 V1–V4。
 
-**决策**（§3）：D1 / D2 / D3 / D5 已于 2026-10-05 定稿；D4 / D6 / D7 仍是建议，待确认。
+**决策**（§3）：D1 / D2 / D3 / D5 已于 2026-10-05 定稿；D8 / D9 于 2026-11-01 定稿；D4 / D6 / D7 / D10 / D11 仍是建议，待确认。
 
 ---
 
@@ -30,18 +36,19 @@
 | # | 图中元素 | 对应系统 / 资产 | 首次出现 | 达到图中水准 |
 | :-- | :--- | :--- | :--- | :--- |
 | 1 | 标题 *SNOW SHELTER CHALLENGE · FIND · GATHER · BUILD · SURVIVE* | 标题画面 / 开场简报 | M2（纯文字简报） | M4 |
-| 2 | ISO 雪坡主画面（迎风坡、脊线、林缘、岩石） | 地形 + 植被 | M1 灰模 | M4 |
+| 2 | 雪坡主画面（迎风坡、脊线、林缘、岩石） | 地形 + 植被（`ForestScatter` 密林 / 枯立木 / 岩石） | M1 灰模 | M4（**现状**：程序化低模已达 M3 水准） |
 | 3 | 角色（红背包、探针、身后脚印） | 玩家 | M1 胶囊 | M4（脚印 M4） |
 | 4 | `Good depth ~2.1 m` | 探针读数世界标签 | M1 | M3 样式 |
 | 5 | `Deeper snow — Ideal for shelter` | 选址标记（见 D4） | M2 | M3 |
 | 6 | `Deadwood — Harvest for fuel` + 淡橙圈 | 交互高亮 / 采集 | M2 | M3 |
 | 7 | 环境卡 `Jan 14 14:20 · Sunset 16:18 · −17°C · W 32 km/h` + 提示行 | HUD | M1（已有简版） | M3 |
-| 8 | 右下罗盘 | HUD 风向罗盘 | M3 | M3 |
-| 9 | 雪洞剖面 5 标注：通风管 / 顶厚（图中 ≥1.5 m 有误，应为 ≥0.3 m，见 D5）/ 高床 / 入口隧道 / 冷气坑 | 庇护所预设 + Cutaway 视图 | M2（几何代理） | M3 剖面，M4 材质 |
+| 8 | 右下罗盘 | HUD 风向罗盘（随相机朝向旋转，指针 = 下风方向） | M3 | ✅ 已达标 |
+| 9 | 雪洞剖面 5 标注：通风管 / 顶厚（图中 ≥1.5 m 有误，应为 ≥0.3 m，见 D5）/ 高床 / 入口隧道 / 冷气坑 | 庇护所预设 + Cutaway 视图 | M2（几何代理） | ✅ SDF 剖面 + 标注已达 M3；M4 材质 |
 | 10 | 洞内烛灯、装备、睡袋 | 内部陈设 + 暖光（见 D3） | M3 | M4 |
 | 11 | Key Resources：桦树皮 / 干草 / 木材 | 资源与背包 | M2 | M3 图标 |
 | 12 | Read the Land 4 条规则 | 环境线索 ↔ 机制（§2） | M1–M2 | M3 |
-| 13 | 远景山谷 + 落日天空 | 天空背景层（见 D1） | M3 | M4 |
+| 13 | 远景山谷 + 落日天空 | Sky shader + 远景地形 / 远景林（见 D1 修订、D9） | M3 | ✅ 构图已达，冰湖 / 河谷待做（V6） |
+| 16 | 低角度长影、太阳在画面里 | `SunModel` 真实日轨（D9）——影子就是时钟（§2 第 5 条） | V 轨道 | ✅ |
 | 14 | 底栏 4 阶段 | 本计划 M1–M4 | — | — |
 | 15 | *Survival Starts with Understanding* | 复盘报告的语气与结尾 | M2 | M3 |
 
@@ -59,6 +66,7 @@
 | Snow drifts reveal depth | 背风坡雪面圆润、更亮、有雪檐 | `SnowField` 深度场驱动雪面形状与着色 | 在浅雪处无法放置，或结构分低 | M1 深度场 / M2 视觉 |
 | Leeward slopes collect snow | 脊线东侧明显积深雪 | 深度场生成：上风侧高度差越大，雪越深（Web 原型 `world.ts` 已实现） | 同上 | M1 |
 | Standing dead trees mean fuel | 灰色、无针叶、树皮剥落的立枯木；半埋的倒木 | `Harvestable.kind = standing_dead / fallen_wet` | 采到湿倒木 → 生火失败 | M2 |
+| **Shadows tell time**（2026-11 新增） | 太阳真实东南→南→西南移动；影子上午长、正午最短、傍晚再拉长；天空转暖再转暮蓝 | `SunModel`（纬度 / 赤纬 / 正午，Tuning `Sun` 组）驱动 `WeatherController` → 太阳光、天空、环境光、雾 | 误判剩余日照 → 天黑时庇护所未完工（报告归因"开工太晚"） | ✅ 视觉；教学提示 V3 |
 
 ---
 
@@ -66,17 +74,68 @@
 
 | ID | 问题 | 状态 | 结论 |
 | :--- | :--- | :--- | :--- |
-| **D1** | 正交相机看不到地平线和太阳 | ✅ 已定（2026-10-05）；**2026-11-01 修订**：默认改为移轴透视、太阳摆在相机前方，天空改用 Sky shader（`sky_backdrop.gdshader`），见 AGENTS.md §4.1 | 天空做成**背景层**，同时反映时间和天气，并与地面光照共用一个 `AtmosphereState`。规格见 `VISUAL_LANGUAGE.md` §2.1。已知限制：大部分时间天空不在画面里，M1 后再决定是否加屏幕顶部天空带 |
+| **D1** | 正交相机看不到地平线和太阳 | ✅ 已定（2026-10-05）；**2026-11-01 修订** | 原结论（Canvas 背景层）作废。现结论：默认相机改为移轴透视（D8），天空是真实 `Sky`（`sky_backdrop.gdshader`），天际线常驻画面上沿；天空、太阳光、环境光、雾共用同一份太阳状态（目前经 `sun_receivers` 组推送，V7 收拢为 `AtmosphereState`）。规格见 `VISUAL_LANGUAGE.md` §1–§2 |
 | **D2** | 火的用途 | ✅ 已定 | 火是**非雪庇护所**的保温方式，必须保留。MVP 加入第 4 种方案 **倒棚 + 反射火**（浅雪密林，需要备足通宵燃料）。雪庇护所外可以生睡前篝火（暖身、烘干、融雪），不整夜供热 |
 | **D3** | 哪里能生火取暖 | ✅ 已定 | 雪庇护所内**不能**；开放倒棚可以（火在开口外）；帐篷 / 泥屋 / 石屋可以，封闭的必须配**烟囱**（MVP 之后）。雪洞内烛灯只做醒着时的照明，入睡熄灭 |
 | **D4** | `Deeper snow` 标签什么时候出现 | 建议，待确认 | 只在玩家**探测或查看过**的位置出现 |
 | **D5** | 雪深门槛 | ✅ 已定（调研后） | < 0.3 m 非雪庇护所；0.3–0.9 m 雪沟需砌墙；≈1.0 m 标准雪沟；≥ 1.5 m 雪洞；≥ 2.0 m 高床雪洞。顶厚下限约 30 cm（参考图的 1.5 m 是错的，M4 重绘时修正）。依据见 `research/SNOW_SHELTER_RESEARCH.md` |
 | **D6** | 哪个原型是主线 | 建议，待确认 | **Godot 是唯一生产线**。Web 原型冻结为参考 + 调参沙盒；移植它的规则时，雪深门槛按 D5 改，篝火"整夜加温"按 D2 改 |
-| **D7** | 最终美术方向 | 建议，待确认 | 以参考图为准，像素风只属于原型。资产来源：M1 用 Godot 原生几何体；M2–M3 自制低模或 CC0 素材；M4 定制或购买 |
+| **D7** | 最终美术方向 | 建议，待确认 | 以参考图为准，像素风只属于原型。资产来源见 D10 |
+| **D8** | 默认相机 | ✅ 已定（2026-11-01，用户拍板："north star 的表现力优先于 45° 正交的省事"） | **移轴透视**：光轴近水平（竖线不汇聚）+ 镜头下移看地面 + 天际线在画面上沿；偏航 135°（朝西南）；正交等距保留为 V 键备用模式。玩家输入、罗盘一律从相机朝向推导。挡住玩家的树用抖动镂空。规格 `VISUAL_LANGUAGE.md` §1 |
+| **D9** | 太阳与时间 | ✅ 已定（2026-11-01，用户提出） | 太阳走**真实日轨**（47.8°N、1 月 14 日赤纬 −21.3°、正午 12:00 → 日落 16:18 由公式算出），不为构图挪假方位。影子长度 / 方向是玩家读时间的主要线索（§2 第 5 条）。参数在 Tuning `Sun` 组 |
+| **D10** | 资产生产方式 | 建议，待确认 | **程序化优先**（`SpruceMesh` / `PropMeshes` + 统一 `snow_cover.gdshader` 自动积雪），足以覆盖植被、岩石、地形到 M3；**Blender 只做"英雄资产"**：角色 + 动画（V4）、终版雪洞内饰、工具。所有外部 `.glb` 套 `snow_cover` 自动积雪，不手绘雪 |
+| **D11** | 性能底线 | 建议，待确认 | 低配（Intel UHD 620 级核显）用"低"档 1080p 输出 ≥ 30 fps（FSR 缩放）；中端独显"高"档 1080p / 60 fps（原 T4.6）。画质档位见 V2 |
 
 ---
 
 ## 4. 里程碑
+
+### V — 视觉先行轨道（2026-11 插入，与 M1/M2 并行）
+
+> **为什么插入**：用户以 North Star 为目标要求先拉画面；同时画面决定了相机（D8）与时间表达（D9），这两件会影响 M1 闸门"能否读出风向 / 时间"。
+> **原则**：V 轨道只做"决定游戏长什么样、玩家怎么读世界"的事；**不加玩法系统**。完成 V1–V4 后重心回到 M1 / M2。
+
+**已完成（分支 `claude/visual-pass-1`，状态 written-unverified，证据见 `progress.yaml`）**
+
+| ID | 内容 | 产出 |
+| :--- | :--- | :--- |
+| V0.1 | SDF 光线步进雪洞剖面（平滑切口、poché 描边、烛光透壁、顶厚取自 Tuning） | `shaders/cutaway_sdf.gdshader`, `shelter_cutaway_rig.gd`, `shelter_cutaway_panel.gd` |
+| V0.2 | 程序化积雪云杉（迎风枝短、背风偏冠）+ 统一自动积雪材质 | `spruce_mesh.gd`, `shaders/snow_cover.gdshader` |
+| V0.3 | 远景山谷 / 远山 / 远景林；天空 shader（含移轴镜头修正） | `far_terrain_builder.gd`, `shaders/sky_backdrop.gdshader` |
+| V0.4 | 移轴透视默认相机（D8）；输入与罗盘从相机推导 | `isometric_camera_rig.gd`, `player_controller.gd`, `compass_rose.gd` |
+| V0.5 | 地图内密林 / 枯立木 / 岩石（MultiMesh 分块剔除）；视野走廊 | `forest_scatter.gd`, `prop_meshes.gd` |
+| V0.6 | 真实日轨（D9）+ 暮色 / 夜空 + 随日高变化的环境光与雾 | `sun_model.gd`, `weather_controller.gd`, `tests/test_sun_model.gd` |
+| V0.7 | 挡住玩家的树抖动镂空（阴影不受影响） | `snow_cover.gdshader` `occlusion_fade` |
+| V0.8 | 修正：`WindData.direction` 是风的**来向**；新增 `get_blow_direction_3d()` | `wind_data.gd` |
+
+**待做（按优先级）**
+
+| ID | 任务 | 涉及文件 | 完成标准 | 估时 |
+| :--- | :--- | :--- | :--- | :--- |
+| V1 | 人工 F5 验证 visual-pass 1–3 并合并分支 | — | 走遍地图无报错；V 切换正常；镂空不闪烁；14:20 → 17:00 连续推进无跳变；合并到 master | 0.25 d（人工） |
+| V2 | 画质档位 低 / 中 / 高 + 设置入口（渲染缩放、SSAO、DOF、泛光、阴影距离、远景林密度） | `scripts/systems/graphics_settings.gd`, `project.godot` | 达到 D11：UHD 620 "低"档 ≥ 30 fps；档位可存档 | 1 d |
+| V3 | 影子时钟教学：HUD 提示行按太阳高度切换（"Shadows are lengthening — about 1 h of light left"）；开场简报一句；报告里"开工太晚"归因引用影长 | `hud_controller.gd`, `scripts/ui/tips.gd`, `night_simulator.gd`（只改文案） | 新测试者能不看时钟说出"天快黑了" | 0.5 d |
+| V4 | 角色：Blender 建模登山者（约 2k 三角面，红背包、探针）+ 走 / 探 / 挖 / 砍 动画 → `.glb`，替换 `hiker_visual.gd` 拼装体 | `assets/models/char_survivor.glb`, `player.tscn` | 默认机位下与 North Star 角色同等可读；动画与移动速度匹配 | 3 d |
+| V5 | 枯立木 / 岩石可读性：逆光边缘光、灰白剥落树皮色、岩石积雪量随坡度 | `snow_cover.gdshader`, `forest_scatter.gd` | 灰度截图里枯木与活树、岩石与雪包可分 | 0.5 d |
+| V6 | 远景谷底冰湖 / 河谷 + 远山分层雾 | `far_terrain_builder.gd` | 与 North Star 远景元素对齐 | 0.75 d |
+| V7 | `AtmosphereState` 收拢：太阳、天空、雾、环境光、云量、降雪强度一处写入（替代 `sun_receivers` 组推送）；接 T3.1 暴风雪 | `scripts/systems/atmosphere_state.gd` | 只改一处数据全画面跟随；= T3.2 剩余部分 | 1 d |
+| V8 | 脚印与拖痕（= T4.2 一部分） | `shaders/snow_footprints.gdshader` | 角色身后留下渐隐脚印 | 1 d |
+| V9 | 相机参数定稿入 Tuning（替代原 T1.3）：移轴 fov / 下移量 / 距离 / 缩放范围；热键对比 | `tuning.gd`, `isometric_camera_rig.gd` | 选定值入档 | 0.25 d |
+
+**被 V 轨道改写的原任务**
+
+| 原任务 | 变化 |
+| :--- | :--- |
+| T1.3 相机调参热键 | 由 V9 替代（参数从正交 size/pitch 换成移轴 fov/shift/distance） |
+| T1.5 最小风 | 粒子方向已改为读 `WindData`；风声低通 / 避风传感器仍在 T1.5 |
+| T1.7 三种灰模树 | 活云杉 / 枯立木已由程序化低模替代；翻倒树根与避风碰撞仍待做 |
+| T3.2 连续日落 | 太阳与光色已由 `SunModel` 连续驱动；剩余的统一数据源 = V7 |
+| T3.3 天空背景层 | **作废**（Canvas 方案）；已由 Sky shader + 远景地形实现，降雪 / 云量压暗并入 V7 |
+| T3.6 Cutaway 剖面 | 已完成（SDF 方案）；"建造模式或进洞时显示"的触发逻辑仍待做 |
+| T4.2 / T4.3 雪材质 / 光照 | 闪点、蓝影、逆光暖辉、泛光已做；脚印 = V8；体积雾未做 |
+| T4.6 性能 | 低配部分提前到 V2 |
+
+---
 
 ### M0 — 对齐与能跑（1–2 天）
 
@@ -99,14 +158,15 @@
 ### M1 — Blockout（约 5 天）· 参考图第 1 格
 
 > *Core space and scale · Movement and camera (45° isometric) · Test gameplay flow*
+> 相机已按 D8 改为移轴透视；闸门第②问扩展为"只看画面能读出风向和大致时间吗？"
 
-**目标问题**（MVP 文档的唯三验收）：① 移动舒服吗？② 只看画面能读出风向吗？③ 玩家会主动去背风坡扎第一针吗？
+**目标问题**（MVP 文档的唯三验收）：① 移动舒服吗？② 只看画面能读出风向（和大致时间）吗？③ 玩家会主动去背风坡扎第一针吗？
 
 | ID | 任务 | 涉及文件 | 完成标准 | 估时 |
 | :--- | :--- | :--- | :--- | :--- |
 | T1.1 | 高度场地形：从高度函数生成 `ArrayMesh` + `HeightMapShape3D`（移植 `world.ts` 的 `buildTerrain`）。布局：西侧迎风坡 → 脊线 → 东侧背风深雪坡 → 平台 → 沟谷；东北密林，西南稀疏 | `scripts/world/terrain_builder.gd`, `scenes/world/terrain.tscn` | 100 m 内可走遍，坡度肉眼可辨 | 1.5 d |
 | T1.2 | 雪深场：`snow_at / slope_at / lee_factor`；探针改为查询 `SnowField`，不再读碰撞体 meta；F3 开发热力图 | `scripts/world/snow_field.gd`, `player_controller.gd` | 同一斜坡上不同位置读数连续变化 | 0.75 d |
-| T1.3 | 相机调参热键：size 14 / 18 / 24，pitch 35° / 38° / 42°；定稿写入 tuning | `isometric_camera_rig.gd` | 选定值入档 | 0.25 d |
+| T1.3 | ~~相机调参热键：size 14 / 18 / 24，pitch 35° / 38° / 42°~~ → **由 V9 替代**（D8 移轴相机） | `isometric_camera_rig.gd` | 选定值入档 | 0.25 d |
 | T1.4 | 移动阻尼：上坡减速、深雪减速 `[TUNE]` | `player_controller.gd` | 深雪区明显变慢但不烦人 | 0.25 d |
 | T1.5 | 最小风与避风感官：跟随玩家的 `GPUParticles3D`（方向取 `WindData`）；`WindExposureSensor` 检测树根/巨石/背风坡，驱动风声低通滤波变闷与角色寒颤停止；雪面基础冷暖着色 | `scenes/world/wind_particles.tscn`, `scripts/player/wind_exposure_sensor.gd`, `shaders/snow_terrain.gdshader` | 截一张静帧能看出风向；躲在倒木树根后风声明显减弱 | 0.75 d |
 | T1.6 | 探针手感：按住约 0.85 s、下蹲代理动作、探针杆 mesh、地面留下持久标记和读数 | `player.tscn`, `scripts/world/probe_marker.gd` | 连扎 5 针后，地面形成一张"雪深地图" | 0.5 d |
@@ -156,7 +216,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | T3.1 | 天气：树木摆动 shader、贴地吹雪粒子、阵风、夜间降雪导致通风口堵塞的概率 | `shaders/wind_sway.gdshader`, `weather_controller.gd` | §2 的第 1 条规则完整成立 | 2 d |
 | T3.2 | 连续日落：建立 `AtmosphereState`（时间、太阳方向和颜色、天空渐变、雾、云量、降雪强度），方向光、环境光、雾、雪粒子都从它读取；光色用 Web 原型三段式：金黄 → 玫瑰 → 暮蓝 | `scripts/systems/atmosphere_state.gd`, `weather_controller.gd` | 没有任何硬切换；只改一处数据，全画面跟着变 | 1.5 d |
-| T3.3 | 天空背景层（D1，规格见 `VISUAL_LANGUAGE.md` §2.1）：`Environment` 用 Canvas 背景；渐变 shader + 太阳 / 星点 + 远山剪影；随时间变色、随云量和降雪变灰变模糊；远景雾色与地平线同色 | `scenes/world/sky_backdrop.tscn`, `shaders/sky_gradient.gdshader` | 走到地图远端能看到天空；14:20、16:18、17:00 三张截图明显不同；暴风雪时远山消失 | 1.5 d |
+| T3.3 | ~~**作废**（见 §4.V 映射表）~~ 天空背景层（D1 原方案）：`Environment` 用 Canvas 背景；渐变 shader + 太阳 / 星点 + 远山剪影；随时间变色、随云量和降雪变灰变模糊；远景雾色与地平线同色 | `scenes/world/sky_backdrop.tscn`, `shaders/sky_gradient.gdshader` | 走到地图远端能看到天空；14:20、16:18、17:00 三张截图明显不同；暴风雪时远山消失 | 1.5 d |
 | T3.4 | 按参考图做 HUD：环境卡（提示行由上下文选取，移植 `tips.ts`）、罗盘、资源托盘、交互提示 | `scenes/ui/hud.tscn`, `scripts/ui/tips.gd` | 与参考图 7 / 8 / 11 号元素对齐 | 2 d |
 | T3.5 | 世界标签：探针读数（带标尺图标）、`Deeper snow` 标记（D4）、`Deadwood` 标签，统一用一个组件 | `scenes/ui/world_label.tscn` | 与参考图 4 / 5 / 6 号元素对齐 | 1 d |
 | T3.6 | Cutaway 剖面：模块化雪洞网格 + 朝相机剖切 shader；建造模式或进洞时显示；5 个标注同参考图 | `scenes/shelter/`, `shaders/cutaway.gdshader` | 与参考图 9 号元素对齐 | 2.5 d |
@@ -192,14 +252,16 @@
 
 ## 5. 资产保真度阶梯
 
-| 资产 | M1 | M2 | M3 | M4 |
-| :--- | :--- | :--- | :--- | :--- |
-| 地形 | 高度场灰模 | 白雪 + 坡度着色 | 吹雪 + 深度着色 | 闪点 + 脚印 |
-| 云杉 | 圆锥 + 圆柱 | 低模绿色 | + 摆动 | 积雪枝条 |
-| 立枯木 | 灰圆柱 | 灰色秃干带残枝 | + 橙圈交互 | 剥落树皮 |
-| 角色 | 橙色胶囊 | 低模 + 红背包 | + 动作代理 | 终版 + 动画 |
-| 雪洞 | 圆顶代理 | 分阶段代理 | 剖面 + 标注 | 材质 + 内饰 |
-| UI | 调试文本 | 纯文字面板 | 参考图样式 | 打磨 |
+| 资产 | M1 | M2 | M3 | M4 | **现状（2026-11-01）** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 地形 | 高度场灰模 | 白雪 + 坡度着色 | 吹雪 + 深度着色 | 闪点 + 脚印 | 闪点 + 风纹 + 逆光暖辉；无脚印（V8） |
+| 云杉 | 圆锥 + 圆柱 | 低模绿色 | + 摆动 | 积雪枝条 | 程序化锯齿下垂枝层 + 自动积雪 + 风向偏冠；无摆动（T3.1） |
+| 立枯木 | 灰圆柱 | 灰色秃干带残枝 | + 橙圈交互 | 剥落树皮 | 程序化断枝枯木；逆光偏黑（V5） |
+| 岩石 | — | 低模 | 积雪 | 终版 | 噪声位移岩块 + 自动积雪 |
+| 远景 | — | — | 天空层 | 山谷 + 落日 | 远景谷 / 远山 / 远景林 + 真实日轨天空；冰湖待做（V6） |
+| 角色 | 橙色胶囊 | 低模 + 红背包 | + 动作代理 | 终版 + 动画 | 原生几何体拼装，无动画（V4 Blender） |
+| 雪洞 | 圆顶代理 | 分阶段代理 | 剖面 + 标注 | 材质 + 内饰 | SDF 剖面 + 5 标注 + 烛光；世界内分阶段模型未做 |
+| UI | 调试文本 | 纯文字面板 | 参考图样式 | 打磨 | HUD 卡片 / 体温 / 罗盘 / 世界标签已是参考图样式 |
 
 ---
 
@@ -229,11 +291,15 @@ Do NOT:     新增资源类型 / 新增预设 / 改 NightSimulator
 | 风险 | 应对 |
 | :--- | :--- |
 | Godot 工程从未运行过，手写的 `.tscn` 可能有问题 | M0 第一件事就是解决它 |
-| 正交俯视缺少透视深度线索，"读地形"可能太难 | M1 闸门专门测；备选方案：等高阴影、AO、强化雪面法线 |
+| "读地形"可能太难 | 已改移轴透视（D8）+ 景深 + 大气透视；M1 闸门专门测；备选：等高阴影、强化雪面法线 |
 | 剖面视图实现复杂 | 用模块化代理 + 剖切平面，**不做**真实的布尔挖掘或体素 |
 | 两个原型并行导致规则分叉 | D6：Web 原型冻结 |
 | 范围膨胀 | 每个里程碑都有"不做"清单；试玩没过只调参，不加系统 |
 | 调参数值被当成科学事实 | 沿用 `[REAL] / [GAME] / [TUNE]` 标注 |
+| 画面跑在玩法前面，循环迟迟不可玩 | V 轨道只做 V1–V4，之后重心回 M1 / M2；V5–V9 按需插空 |
+| 低配机性能（核显 1080p 约 13 fps） | V2 画质档位 + D11 底线；新增视觉特性必须报告 FPS 变化 |
+| 透视相机下树木遮挡玩家 | `occlusion_fade` 抖动镂空；出生点留视野走廊；新增遮挡物材质需支持镂空 |
+| Godot 引擎坑：天空背景忽略 `frustum_offset`；脚本模式下全局 shader uniform 不生效；新 `class_name` 需先 `--import` | 已有规避（镜头参数推给天空 shader、改用节点组推送）；记录在 `ARCHITECTURE_GODOT.md` §3.7 |
 
 ---
 
@@ -246,6 +312,7 @@ Do NOT:     新增资源类型 / 新增预设 / 改 NightSimulator
 | M2 | 12 |
 | M3 | 13.5 |
 | M4 | 15 |
-| **合计** | **约 46.5–47.5** |
+| V（已完成 V0.x 约 5 + 待做 V1–V9 约 8.25） | 约 13（其中约 5 天抵扣 M3 / M4：T3.3 作废、T3.6 / T4.2 / T4.3 / T4.6 部分完成） |
+| **合计** | **约 54.5–55.5**（扣除抵扣后净增约 8 天，主要来自 V4 角色与 V2 画质档位） |
 
 全职约 10 周；每周投入约 2 个专注日则约 5.5 个月。比 v1.0 多出的约 3.5 天来自倒棚 + 反射火（D2）和天空背景层（D1）。M1 和 M2 的闸门可能导致返工，届时更新本表。

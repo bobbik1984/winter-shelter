@@ -1,25 +1,118 @@
 # CURRENT_STAGE.md — 当前施工合同
 
-> **修订**：2026-10-05 · **当前里程碑**：M0 对齐与能跑 → M1 Blockout（只细化到 M1，过 M1 闸门后再细化 M2）
-> **上游**：任务定义与闸门见 [`PRODUCTION_PLAN.md`](PRODUCTION_PLAN.md) §4；协作规则见 [`AGENTS.md`](AGENTS.md) §5–§7；状态投影见 [`progress.yaml`](progress.yaml)。
+> **修订**：2026-11-01 · **当前阶段**：视觉先行轨道 V 收尾（V1–V4）→ 回到 M1 剩余任务 → M2 交互循环
+> **上游**：任务定义与闸门见 [`PRODUCTION_PLAN.md`](PRODUCTION_PLAN.md) §4（V 轨道在 §4.V）；协作规则见 [`AGENTS.md`](AGENTS.md) §5–§7；状态投影见 [`progress.yaml`](progress.yaml)。
 > 本文件只回答"**现在做什么、谁来做、按什么顺序、做到什么算完**"。
 
 ---
 
-## 1. 现实基线（2026-10-05）
+## 0. 现在做什么（2026-11-01）
 
-| 事实 | 影响 |
-| :--- | :--- |
-| 本机**没有 Godot**；工程骨架从未打开或运行过 | 所有代码任务上限为 `written-unverified`。**T0.1（人工安装）是全局关键路径** |
-| `camera_rig.tscn` 中 `Camera3D` 位于 rig 原点、无偏移 | 正交相机近裁剪面大概率切掉角色（推断）→ T0.2 |
-| `night_simulator.gd` 是 6 维评分，但没有倒棚分支，数值写在脚本内 | T0.5 + T0.6 |
-| 探针读碰撞体 meta `snow_depth`，不是深度场 | M1 T1.2 改掉；M0 冒烟测试仍按 meta 读数验收 |
-| 决策 D1/D2/D3/D5 已定；D4/D6/D7 待你拍板 | T0.4 未完全关闭；不阻塞 M0 代码任务，D6 阻塞"是否继续移植 Web 原型" |
-| Web 原型 `references/20260919_fable5_mvp` 未能构建（npm 网络失败） | T0.7 需你在网络正常的环境做 |
+```mermaid
+flowchart TD
+    V1["V1 人工 F5 验证 + 合并 claude/visual-pass-1（你）"]
+    V2["V2 画质档位"]
+    V3["V3 影子时钟教学文案"]
+    V4["V4 Blender 角色 + 动画"]
+    V9["V9 相机参数入 Tuning"]
+    T14["T1.4 移动阻尼"]
+    T16["T1.6 探针手感 + 地面标记（改读 SnowField）"]
+    T15["T1.5 避风传感器 + 风声"]
+    T18["T1.8 PT01 试玩（人工）"]
+    G1{"M1 闸门：读出风向和时间"}
+    M2["M2：T2.1 交互框架 → T2.2 背包 → T2.4–T2.8 建造 / 过夜循环"]
+    V1 --> V2 & V3 & T14
+    V1 --> V4
+    T14 --> T16
+    V3 --> V9
+    V3 --> T18
+    V9 --> T18
+    T15 --> T18
+    T16 --> T18
+    T18 --> G1 --> M2
+```
+
+| 顺序 | 任务 | 执行者 | 可并行 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | **V1** F5 验证 + 合并分支 | 你（Agent 可协助推送 / 开 PR） | — | 视觉三轮都是 written-unverified，必须先过人工 |
+| 2 | V2 ‖ V3 ‖ T1.4，V9 排在 V3 之后 | godot-dev ×3 | ⚠️ V3 与 V9 都改 `tuning.gd` → 串行；V2 独占 `project.godot` | |
+| 3 | T1.6（在 T1.4 之后，同改 `player_controller.gd`）‖ T1.5 | godot-dev | ⚠️ T1.6 与 T1.4 串行 | |
+| 3 | V4 角色 | Blender + godot-dev | ✅ 独占 `player.tscn` / `hiker_visual.gd` | 用户已授权使用 Blender |
+| 4 | 主控合并 + verifier 截图 + FPS | 主控 → verifier | ❌ | 截图：`snapshots/visual_pass4_*.png`，附 FPS |
+| 5 | T1.8 PT01 | 你 + 3 人 | — | 闸门第②问含"能否说出大致时间" |
+| 之后 | M2（T2.1 起） | — | — | 过 M1 闸门后再细化任务卡 |
+
+**暂缓**：V5–V8（可读性、冰湖、AtmosphereState、脚印）在 M2 循环跑通前只在空档插做。
+
+### 本阶段任务卡
+
+```text
+Task:       V2 画质档位
+Read first: PRODUCTION_PLAN.md D11 / §4.V, ARCHITECTURE_GODOT.md §3.6
+Files:      scripts/systems/graphics_settings.gd (new), project.godot, scripts/world/atmosphere_setup.gd, scripts/world/far_terrain_builder.gd
+Depends:    V1
+Done when:  低 / 中 / 高 三档（渲染缩放、SSAO、DOF、泛光、阴影距离、远景林密度）；F 键或设置菜单切换并持久化；
+            回执附三档在本机 1080p 的 FPS（用 RenderingServer 测 GPU ms），"低"档 ≥ 30 fps
+Do NOT:     删除视觉特性；改相机构图
+Needs Godot: 是
+```
+
+```text
+Task:       V3 影子时钟教学
+Read first: PRODUCTION_PLAN.md §2 第 5 条 / D9, VISUAL_LANGUAGE.md §2.2, scripts/systems/sun_model.gd
+Files:      scripts/ui/tips.gd (new), scripts/ui/hud_controller.gd, scripts/systems/night_simulator.gd（仅归因文案）,
+            scripts/resources/tuning.gd, resources/tuning.tres（新增 Tips 组）, tests/test_tips.gd (new)
+Depends:    V1
+Done when:  环境卡提示行按太阳高度 / 剩余日照切换 ≥ 3 句（例："Shadows are lengthening — about 1 h of light left."）；
+            文案阈值来自 Tuning（[GAME]）；报告"开工太晚"归因提到影长；tests 覆盖阈值选择
+Do NOT:     加新 UI 面板；在画面上画影子刻度
+Needs Godot: 逻辑测试不需要；截图需要
+```
+
+```text
+Task:       V4 角色（Blender）
+Read first: ARCHITECTURE_GODOT.md §4.1（char_survivor 规格）, VISUAL_LANGUAGE.md §2.3, snapshots/snapshot_00_visual_north_star.png
+Files:      assets/models/char_survivor.glb (new), assets/source/char_survivor.blend (new), scenes/player/player.tscn, scripts/player/hiker_visual.gd
+Depends:    V1
+Done when:  约 2k 三角面；红背包 + 黄防潮垫 + 黑白刻度探针；idle / walk / probe / dig 4 段动画，walk 与 move_speed 匹配；
+            默认机位截图里角色轮廓可读；导入零警告
+Do NOT:     改碰撞体尺寸；改 player_controller 移动逻辑
+Needs Godot: 是（+ Blender）
+```
+
+```text
+Task:       V9 相机参数定稿入 Tuning（替代 T1.3）
+Read first: VISUAL_LANGUAGE.md §1, scripts/camera/isometric_camera_rig.gd
+Files:      scripts/resources/tuning.gd, resources/tuning.tres, scripts/camera/isometric_camera_rig.gd
+Depends:    V1, V3（同改 tuning.gd）
+Done when:  fov / lens_shift / distance / player_screen_y / zoom 范围 / 偏航 迁入 Tuning `Camera` 组（[TUNE]）；
+            开发热键 F6/F7 循环 2–3 组候选并在截图中对比；选定值入档
+Do NOT:     改投影方案；改正交备用模式默认值
+Needs Godot: 是
+```
+
+T1.4 / T1.5 / T1.6 / T1.8 任务卡见下方 §4 Wave 2（原文仍有效；T1.6 的探针改读 `SnowField`）。
 
 ---
 
-## 2. 任务依赖图
+## 1. 现实基线（2026-11-01）
+
+| 事实 | 影响 |
+| :--- | :--- |
+| Godot 4.3 stable 已安装（`/home/bobbik/.local/bin/godot`），Vulkan Forward+ 可实机截图 | 代码任务可以真正验证；但"人工 F5 试玩"仍未做 → 状态上限多为 written-unverified |
+| 6 套 headless 测试 164 assertions 全绿（night_sim / terrain / snow_field / warmth / shelter_builder / sun_model） | 新逻辑继续走测试先行 |
+| 视觉三轮在分支 `claude/visual-pass-1`，**未合并 master、未推送** | V1 |
+| 默认相机已改为移轴透视（D8），太阳走真实日轨（D9） | 文档已同步；T1.3 → V9；T3.3 作废 |
+| 探针仍读碰撞体 meta `snow_depth`，不是深度场 | T1.6 |
+| 本机 UHD 620 @1080p 约 13 FPS | V2 / D11 |
+| 交互、背包、建造按键、过夜报告 UI 都未接 | M2 主体工作 |
+| D4 / D6 / D7 / D10 / D11 待你拍板 | 不阻塞 V / M1 |
+
+> 以下 §2–§6 是 2026-10-05 制定的 M0 / M1 施工合同，保留作历史与 M1 剩余任务卡来源；与 §0 冲突时以 §0 为准。
+
+---
+
+## 2. 任务依赖图（2026-10-05 版，历史）
 
 ```mermaid
 flowchart TD

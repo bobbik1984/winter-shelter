@@ -16,12 +16,12 @@
    核心循环（9 步法则）、参数身份规范（`[REAL]` / `[GAME]` / `[TUNE]`）、自然衰减、Telescopic Vent、雪洞内禁用明火规则，以及 6 维可解释结算模型。
 3. [**`MVP_SNOW_SHELTER.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/MVP_SNOW_SHELTER.md)  
    MVP 01 开发范围、连续暮光抉择、12 项具体验收清单，以及 Blockout 唯三验证标准。
-4. [**`VISUAL_LANGUAGE.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/VISUAL_LANGUAGE.md)  
-   45° 正交等距视角（Orthographic 45° ISO）、冷暖对比色彩规则、极简 UI 与 4 阶递进交付模型。
-5. [**`ARCHITECTURE_GODOT.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/ARCHITECTURE_GODOT.md)  
-   Godot 4 引擎技术实现图景：场景节点树、正交等距运动解算、探针与气象总线、6 维可解释 `NightSimulator`。
+4. [**`VISUAL_LANGUAGE.md`**](VISUAL_LANGUAGE.md)  
+   移轴透视相机（D8）、太阳就是时钟（D9）、冷暖对比色彩、自动积雪资产规则、极简 UI 与 4 阶递进交付模型。
+5. [**`ARCHITECTURE_GODOT.md`**](ARCHITECTURE_GODOT.md)  
+   Godot 4.3 实现图景：节点树、相机 / 太阳 / 天空子系统、程序化植被与性能约定、已知引擎坑、6 维可解释 `NightSimulator`。
 
-> **路线**：[**`PRODUCTION_PLAN.md`**](file:///d:/OneDrive/Learning/Code/Gemini/wild/PRODUCTION_PLAN.md) —— M0–M4 任务、完成标准、退出闸门与决策记录。
+> **路线**：[**`PRODUCTION_PLAN.md`**](PRODUCTION_PLAN.md) —— M0–M4 + 视觉先行轨道 V、完成标准、退出闸门与决策记录（D1–D11）。
 
 ---
 
@@ -34,9 +34,21 @@
 | 需要人来做的事、待判断事项 | [`todo.md`](file:///d:/OneDrive/Learning/Code/Gemini/wild/todo.md) |
 | Agent 工作规则 | [`AGENTS.md`](file:///d:/OneDrive/Learning/Code/Gemini/wild/AGENTS.md) |
 
-路线：M0 对齐与能跑 → M1 Blockout → M2 Playable → M3 Systems + UI → M4 Target Look。
+路线：M0 对齐与能跑 → M1 Blockout → M2 Playable → M3 Systems + UI → M4 Target Look；视觉先行轨道 V 并行（2026-11）。
 
-**Godot 版本**：尚未安装（T0.1 完成后写入）。
+**当前（2026-11-01）**：视觉三轮在分支 `claude/visual-pass-1`（待 F5 验证与合并）；下一步 V1–V4，然后回到 M1 剩余任务与 M2 交互循环。最新画面：[`snapshots/visual_pass3_1420.png`](snapshots/visual_pass3_1420.png)，日轨对比：[`snapshots/visual_pass3_sun_cycle.png`](snapshots/visual_pass3_sun_cycle.png)。
+
+**Godot 版本**：4.3 stable（Forward+ / Vulkan）。
+
+**常用命令**（工程根目录）：
+
+```bash
+godot --headless --path . --import                       # 新增 class_name 后必须先跑
+godot --headless --path . -s res://tests/run_all.gd      # 全部逻辑测试，非 0 退出即失败
+godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png   # 实机截图（需窗口 / 显示）
+```
+
+运行时按键：WASD 移动 · Space / 右键 探针 · **V** 切换移轴 / 正交 · 滚轮 推拉（移轴模式）。
 
 ---
 
@@ -55,23 +67,28 @@ wild/
 ├── VISION.md                     # 愿景、设计边界与非目标
 ├── CORE_GAMEPLAY.md              # 9 步核心循环与 6 维可解释规则
 ├── MVP_SNOW_SHELTER.md           # MVP 01 范围与 12 项检查清单
-├── VISUAL_LANGUAGE.md            # 45° ISO 规范与 4 阶递进模型
+├── VISUAL_LANGUAGE.md            # 相机 / 太阳 / 色彩 / 资产规则与 4 阶递进模型
 ├── ARCHITECTURE_GODOT.md         # Godot 4 架构与节点设计
 ├── design_assets/                # 概念设计与视觉参考
 ├── snapshots/                    # 各里程碑视觉快照归档
 ├── resources/                    # 资源实例文件 (.tres)
-│   └── default_wind.tres         # 默认西风数据
+│   ├── tuning.tres               # 唯一调参源（SSOT）
+│   └── default_wind.tres         # 默认西风数据（direction = 风的来向）
+├── shaders/                      # snow_terrain / snow_cover / sky_backdrop / cutaway_sdf
+├── tests/                        # headless 逻辑测试（run_all.gd 入口）
+├── tools/                        # capture_snapshot.gd 截图工具
 ├── scenes/                       # Godot 场景 (.tscn)
 │   ├── main.tscn                 # 主关卡场景
 │   ├── world/                    # 地形与植被
 │   ├── player/                   # 玩家与探针
-│   ├── camera/                   # 45° 正交相机云台
+│   ├── camera/                   # 相机云台（移轴 / 正交）
 │   └── ui/                       # HUD 与微标签
 └── scripts/                      # GDScript 核心逻辑 (.gd)
     ├── main.gd                   # 场景总控
-    ├── player/                   # 45° ISO 运动解算
-    ├── camera/                   # 相机追踪
-    ├── systems/                  # 天气控制器、探针采样、NightSimulator
-    ├── ui/                       # HUD 控制器
-    └── resources/                # 资源类脚本定义 (WindData, ShelterPreset)
+    ├── player/                   # 相机相对移动、体温、拼装角色
+    ├── camera/                   # 相机云台
+    ├── world/                    # 地形、雪深、植被散布、远景、程序化网格、剖面
+    ├── systems/                  # SunModel、天气 / 时钟、ShelterBuilder、NightSimulator
+    ├── ui/                       # HUD、罗盘、世界标签、剖面面板
+    └── resources/                # Tuning、WindData、ShelterPreset
 ```

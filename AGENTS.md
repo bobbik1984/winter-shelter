@@ -53,9 +53,13 @@
 5. **测试**：纯逻辑（`NightSimulator`、`SnowField`、校验函数）必须有 headless 测试，放 `tests/`，入口 `tests/run_all.gd`（`extends SceneTree`，失败时 `quit(1)`）。
 6. **禁止**：安装软件、联网下载、重型构建，除非用户明确授权；在 OneDrive 目录内 `npm install`。
 
-### Godot 命令（首次使用时校准并回写本节）
+### Godot 命令（2026-11-01 已在 Linux 本机校准：Godot 4.3 stable，`/home/bobbik/.local/bin/godot`）
 
-```powershell
+- 新增带 `class_name` 的脚本后，**先跑一次 `--import`**，否则其它脚本会报 "Identifier not declared"。
+- 截图需要真实显示（或 Xvfb）；headless 无法渲染。截图 / 测试走 `-s` 脚本模式时 `[shader_globals]` 不生效，不要依赖 global uniform（见 ARCHITECTURE §3.7）。
+- 视觉改动的回执要附 FPS（`RenderingServer.viewport_get_measured_render_time_gpu`）。
+
+```bash
 # 导入 / 生成 .godot 缓存（首次打开工程）
 godot --headless --path . --import
 # 单脚本语法检查
@@ -78,6 +82,7 @@ godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png
 | `written-unverified` | 代码/文档已写，但没有在 Godot 中运行验证（本机未装 Godot 时的上限） |
 | `done` | 完成标准逐条有证据：测试输出、零报错日志、截图路径 |
 | `blocked` | 需要人（安装、拍板、试玩）或外部条件，注明阻塞原因 |
+| `superseded` | 被新决策替代、不再执行（注明替代任务，如 T1.3 → V9） |
 
 - 没跑过 Godot 的代码，报告里必须写"未运行"。不得写"应该能用""已修复"。
 - 证据存放：测试输出与截图路径写进任务回执；需要长期保留的放 `snapshots/` 或 `playtests/`。

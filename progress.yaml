@@ -1,14 +1,15 @@
 # progress.yaml — 机器可读进度投影（派生自 CURRENT_STAGE.md 与已验收证据）
-# 状态取值：todo | written-unverified | done | blocked
+# 状态取值：todo | written-unverified | done | blocked | superseded（被新决策替代，不再执行）
 # 规则：只有证据齐全才写 done（见 AGENTS.md §5）；任务 ID 与 PRODUCTION_PLAN.md §4 一致。
 project:
   name: Winter Shelter (Snow Shelter Challenge)
   code: wild
   version: "0.2-alpha"
   status: dev
-  tech: [Godot 4.3+, GDScript, Orthographic ISO, NightSimulator 6-axis]
-  current_milestone: M1
-  blocker: "T0.3 F5 人工冒烟与 T1.4–T1.8 未完成；push 缺 GitHub 凭据"
+  tech: [Godot 4.3 stable, GDScript, Tilt-shift perspective (ortho fallback), SunModel real solar arc, NightSimulator 6-axis]
+  current_milestone: "V 轨道收尾（V1–V4）→ M1 剩余"
+  branch: "claude/visual-pass-1（未合并、未推送）"
+  blocker: "V1 人工 F5 验证与合并；T0.3 F5 冒烟；T1.4–T1.8 未完成"
   updated: "2026-11-01"
 
 phases:
@@ -22,10 +23,10 @@ phases:
   - id: M0
     name: "M0 对齐与能跑"
     tasks:
-      - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: written-unverified, note: "Godot 4.3.169 已安装（/home/bobbik/.local/bin/godot）；headless --import 零错误；未在编辑器打开，README 未写版本"}
+      - {id: T0.1, text: "安装 Godot 4.3+ stable 并导入工程", status: done, note: "Godot 4.3.stable（/home/bobbik/.local/bin/godot）；--import 零错误；Vulkan Forward+ 实机截图成功；README 已写版本"}
       - {id: T0.2, text: "相机 +Z 后移 40 m、far ≥ 200", status: done, note: "Camera3D 本地 +Z 40 m；camera_distance=40.0 / camera_size=18.0 为 rig @export；near=0.05 / far=200；yaw 45°、pitch -38° 未改。snapshots/m1_blockout_diorama.png 实机截图验证角色可见、居中；pitch -38 与卡片 35.264 的偏差留 T1.3"}
       - {id: T0.3, text: "F5 冒烟测试（含 T0.3-prep 截图工具）", status: todo, depends: [T0.1, T0.2], note: "T0.3-prep 已写 tools/capture_snapshot.gd 并窗口试跑成功；F5 冒烟与探针读数（坡上 2.15 m / 平地 0.65 m）待人工 + verifier"}
-      - {id: T0.4, text: "D1–D7 决策入档", status: blocked, note: "D1/D2/D3/D5 已入档；D4/D6/D7 待拍板"}
+      - {id: T0.4, text: "D1–D11 决策入档", status: blocked, note: "D1(修订)/D2/D3/D5/D8/D9 已入档；D4/D6/D7/D10/D11 待拍板"}
       - {id: T0.5, text: "Tuning 唯一调参源", status: done, note: "scripts/resources/tuning.gd（133 个 @export / 22 组，全部带 [REAL]/[GAME]/[TUNE]）+ resources/tuning.tres（无手写 uid）；D5 门槛与睡前篝火规则已落地"}
       - {id: T0.6, text: "NightSimulator 移植 + headless 测试（含倒棚分支）", status: done, depends: [T0.5], note: "6 维 site/structure/insulation/isolation/air/heat；4 预设 + None + 倒棚备柴/吹灭；13 个测试/72 assertions；run_all.gd 全绿"}
       - {id: T0.7, text: "Web 原型试玩 PT00", status: blocked, note: "npm 网络失败，需人工在正常网络下构建"}
@@ -37,11 +38,11 @@ phases:
       - {id: T1.1a, text: "高度函数 + 测试", status: done, note: "scripts/world/terrain_height.gd：world.ts buildTerrain 移植；6 assertions 通过（脊线最高、东坡更缓、法线/范围）"}
       - {id: T1.1b, text: "地形网格 + 碰撞", status: written-unverified, depends: [T1.1a], note: "terrain_builder.gd：SurfaceTool ArrayMesh + trimesh 碰撞，100×100 m；snapshots/m1_blockout_diorama.png 实机渲染；F5 走遍全图待人工"}
       - {id: T1.2, text: "SnowField 雪深场 + 测试", status: written-unverified, depends: [T1.1a], note: "scripts/world/snow_field.gd + 8 assertions 通过（背风更深、范围、连续性）；探针仍读碰撞体 meta，T1.6 接入"}
-      - {id: T1.3, text: "相机调参热键并定稿", status: todo, depends: [T0.2], note: "截图暂用 size 36 的 diorama 机位；14/18/24 与 35/38/42 热键待做"}
+      - {id: T1.3, text: "相机调参热键并定稿", status: superseded, note: "D8 改为移轴透视，由 V9 替代"}
       - {id: T1.4, text: "移动阻尼", status: todo, depends: [T1.2]}
-      - {id: T1.5, text: "最小风粒子", status: written-unverified, depends: [T0.5], note: "snow_terrain.gdshader 冷暖/坡度/雪深 + 低角度暖阳 + 冷蓝天光 + WindParticles 已实机出图；风声低通/避风传感器未做"}
+      - {id: T1.5, text: "最小风粒子 + 避风传感器", status: written-unverified, depends: [T0.5], note: "WindParticles 方向改读 WindData 下风；云杉迎风枝短/背风偏冠可读风向；风声低通/避风传感器未做"}
       - {id: T1.6, text: "探针手感 + 地面标记", status: todo, depends: [T1.2]}
-      - {id: T1.7, text: "三种灰模树", status: written-unverified, depends: [T1.1b], note: "多层积雪云杉（东倾 5°）/枯立木/倒木根盘/脊岩已入场景并出图；根盘避风碰撞与灰度可辨验收未做"}
+      - {id: T1.7, text: "三种灰模树", status: written-unverified, depends: [T1.1b], note: "活云杉/枯立木已由程序化低模（SpruceMesh/PropMeshes + ForestScatter）替代；翻倒根盘避风碰撞与灰度可辨验收未做"}
       - {id: T1.8, text: "试玩 PT01", status: todo, note: "人工"}
 
   - id: M2
@@ -56,33 +57,39 @@ phases:
   - id: M3
     name: "M3 Systems + UI"
     tasks:
-      - {id: T3.1-T3.3, text: "天气 / AtmosphereState 连续日落 / 天空背景层（D1）", status: todo}
-      - {id: T3.4-T3.7, text: "HUD / 世界标签 / Cutaway 剖面 / 报告 UI", status: todo}
+      - {id: T3.1, text: "天气：树摆 / 贴地吹雪 / 阵风 / 夜雪堵通风", status: todo}
+      - {id: T3.2, text: "连续日落 AtmosphereState", status: written-unverified, note: "太阳与光色已由 SunModel 连续驱动；统一数据源 = V7"}
+      - {id: T3.3, text: "天空背景层（Canvas 方案）", status: superseded, note: "D1 修订：Sky shader + 远景地形（V0.3）"}
+      - {id: T3.4-T3.5, text: "HUD / 世界标签", status: written-unverified, note: "环境卡、体温卡、随相机罗盘、世界引线标签已实机截图；tips.gd 上下文提示未做（V3）"}
+      - {id: T3.6, text: "Cutaway 剖面", status: written-unverified, note: "SDF 剖面 + 5 标注 + 顶厚取自 Tuning（V0.1）；建造/进洞时触发显示未做"}
+      - {id: T3.7, text: "报告 UI", status: todo}
       - {id: T3.8-T3.10, text: "音频灰盒 / 内容一轮 / PT03", status: todo}
 
   - id: M4
     name: "M4 Target Look"
     tasks:
-      - {id: T4.1-T4.4, text: "终版资产 / 雪材质与脚印 / 光照 / 洞内陈设", status: todo}
+      - {id: T4.1, text: "终版资产 + 动画", status: todo, note: "植被/岩石已程序化（D10）；角色 = V4"}
+      - {id: T4.2-T4.3, text: "雪材质与脚印 / 光照", status: written-unverified, note: "闪点/蓝影/逆光暖辉/泛光/真实日轨已做；脚印 = V8；体积雾未做"}
+      - {id: T4.4, text: "洞内陈设", status: written-unverified, note: "剖面内 SDF 陈设 + 烛光；世界内分阶段模型未做"}
       - {id: T4.5-T4.7, text: "标题画面 / 性能 / North Star 对照评审", status: todo}
 
-visual_pass_1:
-  branch: claude/visual-pass-1
-  status: written-unverified
-  scope: "SDF 剖面 shader / 天空 / 远景地形 / 云杉 + snow_cover / 实验性移轴相机"
-  evidence: "run_all.gd 155 assertions PASS；Vulkan Forward+ 实机截图 snapshots/visual_pass1_*.png；--check-only 干净"
-  note: "未做人工 F5；默认相机仍为正交（§4.1），移轴为可选模式（V 键）"
-
-visual_pass_2:
-  branch: claude/visual-pass-1
-  status: written-unverified
-  scope: "north star 构图：默认移轴透视 + 太阳入画、远景深谷/远山/远景林、地图内密林+枯立木+岩石（MultiMesh 分块）、逆光雪面、泛光/SSAO"
-  evidence: "run_all.gd 155 PASS；snapshots/visual_pass2_{tiltshift,ortho}.png；本机 ~12 FPS（基线 13）"
-  note: "未人工 F5；性能仅在 Intel UHD 620 上测过"
-
-visual_pass_3:
-  branch: claude/visual-pass-1
-  status: written-unverified
-  scope: "真实日轨 SunModel（影子长→短→长 = 时钟）、相机朝西南、暮色/夜色天空、挡人树木镂空"
-  evidence: "run_all.gd 164 PASS（新增 sun_model 9 条）；snapshots/visual_pass3_sun_cycle.png（10:00/14:20/16:05/16:40）；本机 ~13 FPS"
-  note: "未人工 F5"
+  - id: V
+    name: "视觉先行轨道（PRODUCTION_PLAN §4.V）"
+    tasks:
+      - {id: V0.1, text: "SDF 雪洞剖面", status: written-unverified, evidence: "commit 685522b；snapshots/visual_pass1_cutaway.png"}
+      - {id: V0.2, text: "程序化云杉 + snow_cover 自动积雪", status: written-unverified, evidence: "commit 685522b"}
+      - {id: V0.3, text: "远景谷/远山/远景林 + 天空 shader（含移轴修正）", status: written-unverified, evidence: "commit 016eb52"}
+      - {id: V0.4, text: "移轴透视默认相机（D8）+ 输入/罗盘从相机推导", status: written-unverified, evidence: "commit 016eb52；snapshots/visual_pass2_ortho.png（V 键正交）"}
+      - {id: V0.5, text: "密林 / 枯立木 / 岩石（MultiMesh 分块）", status: written-unverified, evidence: "commit 016eb52"}
+      - {id: V0.6, text: "真实日轨 SunModel（D9）+ 暮色夜空", status: written-unverified, evidence: "commit 0db34ad；tests/test_sun_model.gd 9 assertions；snapshots/visual_pass3_sun_cycle.png"}
+      - {id: V0.7, text: "遮挡镂空 occlusion_fade", status: written-unverified, evidence: "commit 0db34ad；snapshots/visual_pass3_1420.png"}
+      - {id: V0.8, text: "WindData 来向/下风语义修正", status: written-unverified, evidence: "commit 016eb52"}
+      - {id: V1, text: "人工 F5 验证 + 合并分支", status: todo, note: "人工"}
+      - {id: V2, text: "画质档位（D11）", status: todo, depends: [V1], note: "本机 UHD 620 @1080p 约 13 FPS（基线 13）"}
+      - {id: V3, text: "影子时钟教学文案", status: todo, depends: [V1]}
+      - {id: V4, text: "Blender 角色 + 动画", status: todo, depends: [V1]}
+      - {id: V5, text: "枯立木 / 岩石可读性", status: todo}
+      - {id: V6, text: "远景冰湖 / 河谷", status: todo}
+      - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: todo}
+      - {id: V8, text: "脚印与拖痕", status: todo}
+      - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: todo, depends: [V1, V3]}

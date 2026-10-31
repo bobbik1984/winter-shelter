@@ -1,7 +1,8 @@
 # ARCHITECTURE_GODOT.md — Godot 4 技术架构与实现图景
 
 > **引擎版本定位**：Godot 4.x (Forward+ / Mobile)  
-> **核心渲染模型**：Orthographic 45° Isometric 3D + 2D CanvasLayer HUD  
+> **核心渲染模型**：移轴透视 3D（默认，D8；正交等距为 V 键备用）+ 2D CanvasLayer HUD · Godot **4.3 stable** · Forward+（Vulkan）
+> **修订**：2026-11-01（§1–§4 按实际代码更新；标 *规划* 的条目尚未实现）  
 > **参数标注规范**：`[REAL]` 现实规律 | `[GAME]` 机制抽象 | `[TUNE]` 调参基准
 
 ---
@@ -10,86 +11,58 @@
 
 ```text
 wild/
-├── project.godot                     # Godot 4 主工程配置文件
-├── icon.svg                          # 项目图标
-├── scenes/                           # 场景文件 (.tscn)
-│   ├── main.tscn                     # 顶层集成场景 (主关卡)
-│   ├── world/
-│   │   └── blockout_terrain.tscn     # 灰模地形 (CSG 80-120m 斜坡与背风区)
-│   ├── player/
-│   │   └── player.tscn               # 玩家实体 (CharacterBody3D + 探针)
-│   ├── camera/
-│   │   └── camera_rig.tscn           # 45° 正交相机云台 (平滑跟随)
-│   └── ui/
-│       └── hud.tscn                  # 右上角气象卡片 + 世界空间探针深度读数
-├── scripts/                          # GDScript 核心逻辑 (.gd)
-│   ├── main.gd                       # 顶层关卡主控
-│   ├── player/
-│   │   └── player_controller.gd      # 45° ISO 运动解算与输入
-│   ├── camera/
-│   │   └── isometric_camera_rig.gd   # 正交镜头平滑追踪
-│   ├── systems/
-│   │   ├── weather_controller.gd     # 时间、落日、风向控制器
-│   │   └── night_simulator.gd        # 6 维可解释雪洞评估与报告生成器
-│   ├── ui/
-│   │   └── hud_controller.gd         # HUD 数据驱动刷新
-│   └── resources/                    # 自定义 Resource 脚本类
-│       ├── wind_data.gd              # 气象数据类定义
-│       └── shelter_preset.gd         # 雪洞预设数据结构定义
-└── resources/                        # 资源实例 (.tres)
-    └── default_wind.tres             # 默认西风资源实例
+├── project.godot                     # 主工程配置（FSR 0.67 渲染缩放、阴影 4096、输入映射）
+├── scenes/
+│   ├── main.tscn                     # 顶层集成场景（只由主控 Agent 修改）
+│   ├── world/blockout_terrain.tscn   # 地形 + Scenery + Forest + FarTerrain
+│   ├── player/player.tscn            # CharacterBody3D + 拼装角色 + 探针射线
+│   ├── camera/camera_rig.tscn        # 相机云台（移轴 / 正交）
+│   └── ui/                           # hud.tscn、hud_warmth.tscn、shelter_cutaway_panel.tscn
+├── scripts/                          # 见 §4.4
+├── shaders/                          # 见 §4.2
+├── resources/                        # tuning.tres（SSOT）、default_wind.tres
+├── tests/                            # headless 逻辑测试，入口 run_all.gd
+├── tools/capture_snapshot.gd         # 窗口模式实机截图
+└── snapshots/                        # 里程碑与过程快照
 ```
 
 ---
 
 ## 2. 场景与节点架构 (Node Tree Hierarchy)
 
-### `res://scenes/main.tscn` 顶层节点结构：
+### `res://scenes/main.tscn` 顶层节点结构（现状）：
 
 ```text
 Main (Node3D) [main.gd]
-├── WorldEnvironment (环境光: 极寒蓝冷色调, 启用法线与粗糙度)
-├── SunLight (DirectionalLight3D: 低角度斜射, 暖金橙色, 开启硬阴影)
-│
-├── BlockoutTerrain (Node3D) [blockout_terrain.tscn]
-│   ├── BaseGround (CSGBox3D: 100m x 2m x 100m, [TUNE] 积雪深 0.65m)
-│   ├── SnowSlope (CSGBox3D 倾斜 30°: 适宜雪洞选址, [TUNE] 积雪深 2.15m)
-│   └── Trees (Node3D)
-│       ├── Spruce1, Spruce2 (活针叶树)
-│       └── DeadwoodTree (立枯木，带 harvestable 标签)
-│
-├── Player (CharacterBody3D) [player.tscn]
-│   ├── CollisionShape3D (CapsuleShape3D)
-│   ├── Visual (Node3D: 橙色防寒服小人 + 背包)
-│   └── AvalancheProbe (RayCast3D: 向下探测深度与碰撞体元数据)
-│
-├── CameraRig (Node3D) [camera_rig.tscn]
-│   └── Camera3D (Projection=Orthogonal, Size=18m [TUNE], Rot=[-38°, 45°, 0°])
-│
-├── WeatherController (Node) [weather_controller.gd]
-│   └── (驱动 SunLight 旋转俯角、颜色与日落时间流逝)
-│
-└── HUD (CanvasLayer) [hud.tscn]
-    └── HUDController (Control)
-        ├── TopRightCard (PanelContainer: 时间/落日/温度/风向)
-        └── ProbePopup (PanelContainer: 世界投影浮动测深读数)
+├── WorldEnvironment [atmosphere_setup.gd]   # Sky shader、ACES、泛光、SSAO、雾；组 sun_receivers / lens_receivers
+├── SunLight (DirectionalLight3D)            # 方向 / 颜色 / 强度由 WeatherController 按 SunModel 驱动
+├── WindParticles [wind_particles.gd]        # 方向读 WindData.get_blow_direction_3d()
+├── BlockoutTerrain [blockout_terrain.tscn]
+│   ├── (TerrainMesh + TerrainBody)  [terrain_builder.gd]     # 100×100 m 高度场，组 sun_receivers
+│   ├── Scenery   [scenery_builder.gd]       # 8 个生态小岛、交互枯木圈、脚印链；组 occlusion_fade
+│   ├── Forest    [forest_scatter.gd]        # 密林 / 枯立木 / 岩石 MultiMesh（25 m 分块）；组 occlusion_fade
+│   └── FarTerrain [far_terrain_builder.gd]  # 地图外远景谷 / 远山 / 远景林（110 m 分块），无碰撞
+├── ShelterCutaway (隐藏) / CampfirePot      # 世界内雪洞位置占位、篝火锅
+├── Player [player.tscn] + WarmthController
+├── CameraRig [camera_rig.tscn]              # 跟随玩家；每帧推送 lens / occlusion focus
+├── WeatherController                        # 时钟、太阳（SunModel）、天气信号
+└── HUD [hud.tscn]                           # 环境卡、体温卡、罗盘、世界标签、雪洞剖面面板（独立 SubViewport）
 ```
+
+**跨节点通信约定**：视觉"接收方"通过节点组接收推送，而不是互相持有引用——
+`sun_receivers.set_sun_dir(dir)`（天空、雪面、环境光 / 雾）、`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）。V7 计划把前两者收拢进 `AtmosphereState`。
 
 ---
 
 ## 3. 核心子系统技术设计 (System Specifications)
 
-### 3.1 45° 正交相机云台 (Isometric Camera Rig)
-- **数学对齐**：
-  - 水平旋转（Yaw）：固定 `45.0°`（镜头对角对齐世界网格对角线）；
-  - 俯角（Pitch）：默认 `-38.0°`（经典 True Isometric 为 `-35.264°`，保留视感微调区间）；
-  - 投影模式：`Camera3D.PROJECTION_ORTHOGONAL`；
-  - 视口尺寸（Size）：`18.0` `[TUNE]`。  
-    *注：Godot 正交 size 代表完整视口跨度（在默认 16:9 横屏 `KEEP_HEIGHT` 下，高度为 18m，水平宽度约为 32m）。*
-- **坐标系转换（ISO Movement Mapping）**：
-  - 在 45° 相机下，屏幕正上方（W 键）对应世界坐标的 `(-1, 0, -1).normalized()`；
-  - 屏幕正右方（D 键）对应世界坐标的 `(1, 0, -1).normalized()`；
-  - `player_controller.gd` 使用 `raw_dir.rotated(Vector3.UP, deg_to_rad(45.0))` 进行底层向量转换，保证移动方向绝对符合玩家屏幕直觉。
+### 3.1 相机云台（移轴透视为默认，D8）
+- **TILT_SHIFT**：`PROJECTION_FRUSTUM`。rig 俯仰 0°、偏航 135°；`size = 2·near·tan(fov/2)`，`frustum_offset.y = lens_shift·near·tan(fov/2)`（负值 = 镜头下移）。
+  相机在 rig 局部 `(0, d·sinθ, d·cosθ)`，θ 由"玩家在画面 58 % 高度"反算，所以玩家位于光轴下方而竖线不汇聚。景深用 `CameraAttributesPractical`。
+- **ORTHO**（V 键）：`PROJECTION_ORTHOGONAL`、俯仰 -38°、沿 rig 本地 +Z 后移 40 m、far 200。
+- **滚轮**：只在移轴模式下推拉距离（0.45–2.6 倍）。
+- **输入映射**：`player_controller.gd` 用当前相机前向的偏航角旋转输入向量（**不再写死 45°**）；罗盘同理。
+- **每帧推送**：`_push_lens()` → 天空镜头修正；`occlusion_fade.set_focus(玩家位置)` → 遮挡镂空。
 
 ### 3.2 探针测深系统 (Snowpack Probing System)
 - **采样方案**：
@@ -99,16 +72,15 @@ Main (Node3D) [main.gd]
   - 探针向落点发射射线采样，命中后触发信号 `probe_activated(world_pos, depth)`；
   - `MainLevel` 调度器通过 `camera.unproject_position(world_pos)` 将 3D 碰撞点实时映射到 2D 屏幕坐标，由 HUD 弹出微标签。
 
-### 3.3 气象、连续日落与暮光抉择 (Continuous Daylight System)
-- **`[GAME]` 连续衰减曲线（拒绝硬性开关惩罚）**：
-  - 时间步进：`14:20`（860m）匀速向 `16:18`（978m）推进；
-  - `DirectionalLight3D` 俯角从 `-25°` 逐渐压低至 `-4°`，光色由冷白平滑过渡到落日熔金；
-  - 日落后不触发暴力翻倍，而是通过能见度收缩、温度持续下探、风寒效应加剧，诱导玩家在“冒黑赶工作业”与“提前钻洞过夜”之间进行心理权衡。
+### 3.3 时间、太阳与连续暮光（`SunModel` + `WeatherController`）
+- **`SunModel`**（`scripts/systems/sun_model.gd`，纯函数，`tests/test_sun_model.gd` 覆盖）：由纬度、赤纬、正午分钟算太阳高度角 / 方位角 / 世界方向、日出日落时刻、单位高度影长。参数在 Tuning `Sun` 组（`[REAL]`）。
+- **`WeatherController`**：时钟从 `Tuning.start_minutes` 起按 `time_scale` 推进；每帧用 `SunModel` 设置 `SunLight` 的朝向（`Basis.looking_at(-to_sun)`）、颜色（低角度暖橙 → 高角度白金）、强度（日落后归零、关阴影），并向 `sun_receivers` 推送太阳方向。日落时刻由模型算出，HUD 不再写死。
+- **`[GAME]` 连续衰减**：日落后不触发硬惩罚；能见度、温度、风寒持续恶化，玩家在"摸黑赶工"与"提前钻洞"之间权衡（玩法效率衰减仍待接入）。
 
-### 3.3b 大气状态与天空背景层 (AtmosphereState & Sky Backdrop)
-- **`AtmosphereState`**（`scripts/systems/atmosphere_state.gd`）是时间和天气的**唯一数据源**：时间、太阳方向和颜色、天空渐变三色、雾色和雾密度、云量、降雪强度。`WeatherController` 每帧写入；以下节点只读：`SunLight`、`WorldEnvironment`（环境光、雾）、`BlizzardParticles`、`SkyBackdrop`。
-- **`SkyBackdrop`**：`Environment.background_mode = BG_CANVAS`，配合一个低层级的 CanvasLayer（`background_canvas_max_layer` 指向它），里面是全屏 `ColorRect` + `shaders/sky_gradient.gdshader`（渐变、太阳 / 星点、2–3 层远山剪影，uniform 来自 `AtmosphereState`）。只在 3D 地形没覆盖的地方露出来。
-- **约束**：远景雾色必须等于天空地平线颜色。规格和已知限制见 `VISUAL_LANGUAGE.md` §2.1。
+### 3.3b 大气与天空（现状 + V7 规划）
+- **现状**：`atmosphere_setup.gd` 建 `Environment`（Sky shader、ACES、泛光、SSAO、雾）；`set_sun_dir` 随太阳高度调环境光与雾；`set_lens` 把移轴镜头参数传给天空 shader。
+- **规划（V7）**：`AtmosphereState` 成为时间与天气的唯一数据源（太阳、天空色、雾、云量、降雪强度），天空 / 光 / 雾 / 粒子只读它；接 T3.1 暴风雪。
+- **约束**：远景雾色接近天空地平线色；不得为构图把太阳挪到假方位（D9）。
 
 ### 3.4 6 维可解释夜间模拟 (Night Review System)
 纯逻辑无状态评估器 `NightSimulator.gd`，输入庇护所几何与施工指标，产出 6 项 0-100 分及自然语言归因复盘。
@@ -166,13 +138,33 @@ static func evaluate_shelter(
 
 ---
 
+### 3.6 程序化植被与渲染性能约定
+- 植被 / 岩石用 `MultiMeshInstance3D`，并通过 `ForestScatter.add_chunked()` **按空间分块**（地图内 25 m、远景 110 m）——整图一块的 MultiMesh 永远无法被视锥 / 阴影级联剔除。
+- 远景林使用低面数变体（`SpruceMesh.build(..., spikes = 6)`），不投影。
+- `project.godot`：FSR 渲染缩放 0.67、软阴影质量 1；阳光阴影距离 90 m；雪洞剖面 SubViewport 每 4 帧重绘一次。
+- 基线（Intel UHD 620，1080p）：约 13 FPS。**新增视觉特性需在回执中报告 FPS 变化**；画质档位见 V2、底线见 D11。
+
+### 3.7 已知 Godot 4.3 引擎坑（已规避）
+| 现象 | 规避 |
+| :--- | :--- |
+| 天空背景按对称视锥重建 `EYEDIR`，忽略 `Camera3D.frustum_offset` → 太阳 / 地平线画错高度 | 相机 rig 推送真实镜头参数，`sky_backdrop.gdshader` 在非 cubemap pass 按屏幕 UV 重建视线 |
+| 天空 shader 读 `LIGHT0_DIRECTION` 拿不到值 | 太阳方向作为普通 uniform 经 `sun_receivers` 组推送 |
+| `project.godot` 的 `[shader_globals]` 在 `-s` 脚本模式（截图 / 测试）下不生效 | 不用 global uniform，改用节点组推送 |
+| 新增 `class_name` 脚本后，其它脚本报 "Identifier not declared" | 先跑一次 `godot --headless --path . --import` 刷新全局类缓存 |
+| unshaded 材质的 `ALBEDO` 是线性空间（0.2 显示约为 sRGB 0.48） | 在线性空间选色（见 `cutaway_sdf.gdshader` 注释） |
+| `discard` 同时作用于阴影 pass | 用 `PROJECTION_MATRIX[3][3] > 0.5`（正交 = 平行光阴影）跳过 |
+
+---
+
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
 > 本清单直接对齐参考图 *North Star v0.1* 的全部视觉、听觉与程序要素，作为建模、美术、Shader、音效与代码的真实生产指导单。
 
 ### 4.1 3D 模型资源清单 (`assets/models/`)
 
-所有模型遵循 **Stylized Low-Poly + 柔和倒角法线** 风格；因采用 45° 正交等距相机，树木与岩石均可通过旋转/镜像复用。
+所有模型遵循 **Stylized Low-Poly + 柔和倒角法线** 风格；树木与岩石可通过旋转/镜像复用。
+
+> **现状（D10）**：云杉、枯立木、岩石、远景已由程序化网格（`SpruceMesh` / `PropMeshes`）+ `snow_cover.gdshader` 实现，下表中这些条目降为"需要时再替换"。**Blender 优先做角色 `char_survivor.glb` 及动画（V4）**，其次是终版雪洞内饰与工具。导入的 `.glb` 一律套 `snow_cover` 自动积雪；云杉的偏冠方向必须与 `WindData` 下风方向一致。
 
 | 分类 | 资源名称 | 规格与子部件要求 | 用途与对应里程碑 |
 | :--- | :--- | :--- | :--- |
@@ -186,23 +178,22 @@ static func evaluate_shelter(
 | | `foliage_dry_grass / pine_boughs.glb` | 雪地中露出的枯黄干草丛、可砍取的低矮云杉下枝 | 地面隔热垫层（Bedding）来源 |
 | **地形与岩石** | `rock_ridge_A/B/C.glb` | 棱角分明的山脊裸岩（迎风面黑灰裸露，背风侧积雪覆盖） | 山脊线锚点、微地形避风掩体 |
 | | `probe_marker_flag.glb` | 插在雪地上的探针读数小标记杆 | 探雪后留下的持久化雪深地图锚点 |
-| **庇护所模块** | `shelter_snow_cave_cutaway.glb` | **核心亮点资产**：45° 正交剖面雪洞，拆分为外壁雪包、内腔拱顶、下沉冷气坑、高床雪台、入口隧道 | 配合 `cutaway.gdshader` 展现内部结构 |
+| **庇护所模块** | `shelter_snow_cave_cutaway.glb` | **核心亮点资产**：剖面雪洞（世界内分阶段模型）。HUD 剖面面板已由 `cutaway_sdf.gdshader` 程序化实现，此资产只在需要世界内显示时再做 | 世界内 5 阶建造显示 |
 | | `shelter_interior_props.glb` | 洞内陈设组：松针垫层网格、棕橙色睡袋、小烛灯（Lantern）、靠墙雪铲、背包卸下态、伸缩通风管（Telescopic Vent） | 5 阶建造逐步点亮“Cozy Inside” |
 | | `shelter_trench_stages.glb` | 雪沟分阶段模型（浅雪砌雪砖墙变体 / 标准深沟 + 树枝雪块封顶） | 快速雪庇护所方案 |
 | | `shelter_leanto_stages.glb` | 倒棚分阶段模型（A 字木架 → 云杉枝斜面覆顶 → 松针床 → 前方篝火坑 + 膝高原木反射墙） | 浅雪林区火庇护所方案 |
 
 ### 4.2 材质与 Shader 资源清单 (`shaders/`)
 
-达到参考图画质的关键不在高模，而在以下 **6 个核心 Shader**：
-
-| Shader 文件 | 核心技术实现 | 解决的视觉问题 |
-| :--- | :--- | :--- |
-| `snow_terrain.gdshader` | 基于法线与太阳夹角混合**暖金受光面**与**群青/钴蓝阴影面**；叠加视距高频闪点噪点（Sparkle Noise）；根据 `SnowField` 雪深微调柔和度 | 彻底摆脱“惨白塑料地面”，复刻参考图浓郁的冷暖色彩对比 |
-| `snow_footprints.gdshader` | 结合跟随玩家的局部正交俯视 `SubViewport` 轨迹贴图，在角色走过的雪面产生下陷法线与暗部凹坑 | 实现参考图角色身后那串极具生命力的深雪脚印 |
-| `cutaway_shelter.gdshader` | 朝向相机方向的平滑剖切平面 + 剖面边缘积雪质感描边 + 洞内 2700K 暖光在雪壁上的次表面散射近似（Subsurface Warmth） | 实现参考图右上角那种干净、通透又温暖的雪洞剖面图 |
-| `wind_sway.gdshader` | 顶点动画：读取全局 `WindData` 的风向与风速（含阵风脉冲），让针叶树冠与干草统一向东偏摆 | 让静态截图和动态画面都能“一眼读出风向” |
-| `sky_gradient.gdshader` | 渲染在背景 CanvasLayer 上：三段式夕阳渐变 + 太阳圆盘/星点 + 2~3 层远山剪影 + 地平线雾色同步 | 解决 45° 正交俯视看不到地平线和落日的问题 |
-| `cold_airflow_line.gdshader` | 简单的 UV 流动半透明带状 Shader（用于剖面视图里的蓝色冷气沉降箭头与白色通风管排湿气流） | 把无形的物理规律（冷空气下沉、热湿气上排）直接画给玩家看 |
+| Shader 文件 | 状态 | 核心技术实现 | 解决的视觉问题 |
+| :--- | :--- | :--- | :--- |
+| `snow_terrain.gdshader` | ✅ | 冷暖受光 / 阴影、风蚀雪纹法线扰动、闪点、朝太阳方向的逆光暖辉；陡坡露岩；太阳方向由 `sun_receivers` 推送 | 摆脱"惨白塑料地面"，复刻参考图冷暖对比 |
+| `snow_cover.gdshader` | ✅ | 按世界法线自动积雪（植被 / 岩石 / 外部 .glb 通用）；`occlusion_fade` 抖动镂空挡住玩家的物体 | 统一积雪观感；透视相机下玩家始终可见 |
+| `sky_backdrop.gdshader` | ✅ | 渐变天空 + 朝阳暖带 + 太阳圆盘 / 光晕 + 暮色 / 夜色；移轴镜头修正 | 天际线、落日与时间表达 |
+| `cutaway_sdf.gdshader` | ✅ | 雪丘 / 洞腔 / 冷气坑 / 隧道 / 睡台 / 通风井 / 陈设的 SDF 光线步进；平滑切口 + poché 描边 + 烛光透壁；写 DEPTH 与真实网格正确遮挡 | 参考图右上角雪洞剖面 |
+| `snow_footprints.gdshader` | 规划（V8） | 跟随玩家的俯视轨迹贴图，雪面下陷法线与暗部凹坑 | 角色身后的脚印 |
+| `wind_sway.gdshader` | 规划（T3.1） | 顶点动画读 `WindData`（含阵风），树冠与干草统一向下风偏摆 | 动态画面一眼读出风向 |
+| `cold_airflow_line.gdshader` | 不需要 | 剖面里的气流箭头已由 2D 叠加层绘制（与 shader 共用相机投影） | — |
 
 ### 4.3 粒子与音频资源清单 (`scenes/vfx/` & `assets/audio/`)
 
@@ -218,33 +209,53 @@ static func evaluate_shelter(
 
 ### 4.4 程序脚本模块全图 (`scripts/`)
 
+> ✅ = 已存在；其余为规划。
+
 ```text
 scripts/
-├── main.gd                           # 关卡生命周期、阶段切换、信号总装
+├── main.gd                           ✅ 关卡生命周期、信号总装（HUD 日落时刻由 WeatherController 注入）
 ├── resources/
-│   ├── tuning.gd                     # [SSOT] 唯一调参表 Resource（含 [REAL]/[GAME]/[TUNE] 标注）
-│   ├── wind_data.gd                  # 风向、基础风速、阵风参数
-│   └── shelter_preset.gd             # 4 种庇护所预设的工时、门槛、材料需求
+│   ├── tuning.gd                     ✅ [SSOT] 唯一调参表（含 Sun 组：纬度 / 赤纬 / 正午）
+│   ├── wind_data.gd                  ✅ 风的来向 direction；get_blow_direction_3d() = 下风方向
+│   └── shelter_preset.gd             ✅ 庇护所预设
+├── camera/
+│   └── isometric_camera_rig.gd       ✅ 移轴 / 正交双模式、滚轮推拉、镜头参数与遮挡焦点推送
 ├── world/
-│   ├── terrain_height.gd             # 纯函数高度场（西迎风坡→脊线→东背风深雪坡→林谷）
-│   ├── terrain_builder.gd            # 生成 ArrayMesh、碰撞体与场景资源分布
-│   ├── snow_field.gd                 # 雪深场 snow_at()、坡度 slope_at()、避风度 lee_factor()
-│   └── probe_marker.gd               # 地面持久化探针浮标管理
+│   ├── terrain_height.gd             ✅ 纯函数高度场
+│   ├── terrain_builder.gd            ✅ ArrayMesh + 碰撞；sun_receivers
+│   ├── snow_field.gd                 ✅ 雪深场
+│   ├── atmosphere_setup.gd           ✅ Environment / Sky；sun_receivers + lens_receivers
+│   ├── scenery_builder.gd            ✅ 生态小岛、交互枯木、脚印链
+│   ├── forest_scatter.gd             ✅ 密林 / 枯立木 / 岩石散布 + add_chunked() 分块 MultiMesh
+│   ├── far_terrain_builder.gd        ✅ 远景谷 / 远山 / 远景林
+│   ├── spruce_mesh.gd                ✅ 程序化云杉（风向偏冠）
+│   ├── prop_meshes.gd                ✅ 程序化枯立木 / 岩石
+│   ├── shelter_cutaway_rig.gd        ✅ SDF 剖面四边形 + 几何镜像函数（改 shader 几何须同步）
+│   ├── campfire_pot_rig.gd           ✅ 篝火与锅（视觉）
+│   ├── wind_particles.gd             ✅ 风雪粒子
+│   └── probe_marker.gd                  地面持久化探针标记（T1.6）
 ├── player/
-│   ├── player_controller.gd          # 45° ISO 移动、深雪/上坡阻尼、寒颤与背负视觉挂载
-│   ├── warmth_controller.gd          # 0-100 实时核心体温管理（寒冷下降/火源回升/庇护所保持或回升/衣物减缓）
-│   └── wind_exposure_sensor.gd       # 实时检测微地形挡风（树根/岩石/洞内）并驱动音频滤波与体感
+│   ├── player_controller.gd          ✅ 相机相对移动、探针（阻尼 T1.4 待做）
+│   ├── hiker_visual.gd               ✅ 拼装角色（V4 由 Blender .glb 替换）
+│   ├── warmth_controller.gd          ✅ 0–100 核心体温
+│   └── wind_exposure_sensor.gd          微地形挡风检测（T1.5）
 ├── components/
-│   └── interactable.gd               # 统一上下文交互组件（探雪/砍树/剥皮/护火/烧水/挖掘）
+│   └── interactable.gd                  统一交互组件（T2.1）
 ├── systems/
-│   ├── atmosphere_state.gd           # 时间、太阳高度角、光色、雾色唯一实时状态
-│   ├── weather_controller.gd         # 连续日落推进、阵风脉冲、作业效率衰减计算
-│   ├── inventory.gd                  # 极简背包（干柴/树皮/垫层/额外保暖层）与角色背包挂件同步
-│   ├── campfire_controller.gd        # 三步护火引燃、树冠落雪判定、小铝锅融雪烧水回升体温
-│   ├── shelter_builder.gd            # 45° 剖面 Ghost 选址校验（D5）、旋转、5 阶挖掘推进
-│   └── night_simulator.gd            # 6 维可解释结算模型（结合入夜初始体温与庇护所双分支）
+│   ├── sun_model.gd                  ✅ 真实日轨（纯函数，有测试）
+│   ├── weather_controller.gd         ✅ 时钟、太阳驱动、天气信号
+│   ├── shelter_builder.gd            ✅ 选址校验（D5）+ 5 阶推进（逻辑）
+│   ├── night_simulator.gd            ✅ 6 维可解释结算
+│   ├── atmosphere_state.gd              大气唯一数据源（V7）
+│   ├── graphics_settings.gd             画质档位（V2）
+│   ├── inventory.gd                     背包（T2.2）
+│   └── campfire_controller.gd           生火与融雪（T2.7）
 └── ui/
-    ├── hud_controller.gd             # 右上气象卡、右下风向罗盘、物资托盘、0-100 体温条与速率箭头 (▼/▲)
-    ├── world_label.gd                # 说明书风格引线标签（探针读数、Deeper snow、剖面 5 标注）
-    └── report_view.gd                # 6 维复盘报告卡与一键重开
+    ├── hud_controller.gd             ✅ 环境卡
+    ├── hud_warmth.gd                 ✅ 体温卡
+    ├── compass_rose.gd               ✅ 随相机旋转的风向罗盘
+    ├── world_callouts.gd             ✅ 世界空间引线标签
+    ├── shelter_cutaway_panel.gd      ✅ 剖面面板（标注、顶厚尺寸线、气流箭头）
+    ├── tips.gd                          上下文提示行，含影子时钟（V3 / T3.4）
+    └── report_view.gd                   复盘报告（T2.8 / T3.7）
 ```
