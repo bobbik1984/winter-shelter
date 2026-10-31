@@ -42,6 +42,8 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		elif min_axis == "heat":
 			lesson = "The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled." % [
 				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
+	elif min_axis == "air" and bool(input.get("vent_snow_clogged", false)):
+		lesson = "When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent."
 	elif preset == "None":
 		lesson = "Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing."
 	return {"title": title, "outcome": outcome, "rows": rows, "conclusion": conclusion, "lesson": lesson}

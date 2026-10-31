@@ -25,6 +25,8 @@ var fire: Campfire
 var quick_roof: bool = false
 var vent_count: int = 1
 var time_factor: float = 1.0
+## 通风管里插了木棍（夜里可捅开新雪）：防止降雪堵塞。
+var vent_stick: bool = false
 
 var _visual: Node3D
 var _snow: ShaderMaterial

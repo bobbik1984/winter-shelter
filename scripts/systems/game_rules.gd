@@ -98,6 +98,8 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 ##       missing: String（下一阶段缺的材料，空 = 不缺）, next_stage: String, minutes_to_sunset: float, preset: String}
 static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 	if bool(ctx.get("complete", false)):
+		if bool(ctx.get("needs_vent_stick", false)):
+			return "Snow is falling — hold [E] at your shelter: stick in the vent (1 wood)."
 		if String(ctx.get("preset", "")) == "LeanTo":
 			return "Shelter done. Stockpile dry wood for the fire, then rest [N]."
 		return "Shelter done. Warm up by a fire [F] + hot drink, then rest [N]."

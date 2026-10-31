@@ -506,6 +506,9 @@ extends Resource
 ## [GAME] 快速顶（顶厚 = roof_thickness_min_m）节省的施工时间比例。
 @export var quick_roof_time_factor: float = 0.8
 
+## [GAME] 入睡时降雪强度达到此值，单根且没插木棍的通风管会被新雪部分堵塞（报告里可解释、可预防）。
+@export var vent_clog_snowfall: float = 0.5
+
 @export_group("Campfire")
 ## [GAME] 生火按住秒数。
 @export var fire_hold_seconds: float = 2.0

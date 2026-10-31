@@ -63,7 +63,7 @@ phases:
   - id: M3
     name: "M3 Systems + UI"
     tasks:
-      - {id: T3.1, text: "天气：树摆 / 贴地吹雪 / 阵风 / 夜雪堵通风", status: written-unverified, note: "云杉风摆 + 阵风；傍晚降雪；贴地吹雪；夜雪堵通风未做"}
+      - {id: T3.1, text: "天气：树摆 / 贴地吹雪 / 阵风 / 夜雪堵通风", status: written-unverified, note: "云杉风摆 + 阵风；傍晚降雪；贴地吹雪；夜雪堵通风（可见降雪 + 目标行预警 + 对策：通风木棍 1 木 / 两根通风管；只封顶空气分不致命）"}
       - {id: T3.2, text: "连续日落 AtmosphereState", status: written-unverified, note: "太阳与光色已由 SunModel 连续驱动；统一数据源 = V7"}
       - {id: T3.3, text: "天空背景层（Canvas 方案）", status: superseded, note: "D1 修订：Sky shader + 远景地形（V0.3）"}
       - {id: T3.4-T3.5, text: "HUD / 世界标签", status: written-unverified, note: "环境卡、体温卡、随相机罗盘、世界引线标签已实机截图；tips.gd 上下文提示未做（V3）"}

@@ -54,6 +54,7 @@ func run() -> Dictionary:
 	_check(GameRules.next_objective({"has_site": true, "missing": "2 bedding"}, t).contains("2 bedding"), "缺材料时提示采集")
 	_check(GameRules.next_objective({"has_site": true, "next_stage": "Stage 4: Vent"}, t).contains("Vent"), "提示下一阶段")
 	_check(GameRules.next_objective({"has_site": true, "complete": true}, t).contains("[N]"), "完工后提示休息")
+	_check(GameRules.next_objective({"has_site": true, "complete": true, "needs_vent_stick": true}, t).contains("vent"), "降雪时提示插通风木棍")
 
 	# 效率
 	_check(is_equal_approx(GameRules.work_efficiency(1.0, 30.0, t), 1.0), "日落前满效率")

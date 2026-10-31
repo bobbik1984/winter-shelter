@@ -372,6 +372,7 @@ func _objective_ctx() -> Dictionary:
 		ctx["preset"] = site.preset_id
 		ctx["next_stage"] = site.next_stage_title()
 		ctx["missing"] = inventory.missing_text(site.next_stage_cost())
+		ctx["needs_vent_stick"] = _needs_vent_stick()
 	return ctx
 
 func _inside_site() -> bool:
@@ -580,7 +581,13 @@ func _place_site() -> void:
 	_exit_build()
 	ui.toast("Site marked. Hold [E] at the site to work: %s" % site.next_stage_title(), 6.0)
 
+func _needs_vent_stick() -> bool:
+	return site != null and site.is_complete() and site.is_snow_shelter() and site.vent_count == 1 \
+		and not site.vent_stick and weather.atmosphere.snowfall > 0.05
+
 func _site_prompt() -> String:
+	if _needs_vent_stick():
+		return "Push a stick through the vent (1 wood) — keeps it clear in falling snow"
 	if site == null or site.is_complete():
 		return ""
 	var cost := site.next_stage_cost()
@@ -596,6 +603,11 @@ func _efficiency() -> float:
 	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)
 
 func _on_build_stage() -> Dictionary:
+	if _needs_vent_stick():
+		if not inventory.spend({"wood": 1}):
+			return {"ok": false, "msg": "You need 1 dry wood for a vent stick."}
+		site.vent_stick = true
+		return {"ok": true, "minutes": 3.0, "msg": "Stick in the vent: you can poke it clear during the night."}
 	var cost := site.next_stage_cost()
 	if not inventory.has_all(cost):
 		return {"ok": false, "msg": "Not enough materials — still need %s." % inventory.missing_text(cost)}
@@ -731,6 +743,9 @@ func night_input() -> Dictionary:
 			input["roof_thickness_meters"] = minf(roof, float(input.get("snow_depth_meters", 0.0)) * 0.3)
 		if bool(input.get("has_vent", false)):
 			input["vent_count"] = site.vent_count
+			# 夜雪堵通风（T3.1）：降雪够大 + 只有一根 + 没插木棍 → 部分堵塞（空气分封顶，报告解释）
+			input["vent_snow_clogged"] = site.vent_count == 1 and not site.vent_stick \
+				and weather.atmosphere.snowfall >= tuning.vent_clog_snowfall
 		if site.preset_id == "LeanTo":
 			# 倒棚反射火在入夜时用备柴重新点燃：只要火塘完工且有干柴即可（白天火是否还在烧不影响夜里）
 			var lit := site.is_complete() and inventory.wood > 0
