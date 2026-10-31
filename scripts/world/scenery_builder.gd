@@ -28,6 +28,7 @@ var _mat_peak_snow: StandardMaterial3D
 var _mat_spruce: ShaderMaterial
 ## 场景立枯木位置（由 ResourceSpawner 挂采集点）。
 var deadwood_points: PackedVector2Array = PackedVector2Array()
+var spruce_points: PackedVector2Array = PackedVector2Array()
 var _spruce_meshes: Dictionary = {}
 
 const SPRUCE_VARIANTS := 4
@@ -47,6 +48,14 @@ func _ready() -> void:
 	_build_footprints()
 	if show_distant_peaks:
 		_build_distant_peaks()
+	# 碰撞：只挡树干（与 ForestScatter 一致）
+	var body := StaticBody3D.new()
+	body.name = "SceneryColliders"
+	add_child(body)
+	for p in spruce_points:
+		ForestScatter.add_trunk(body, p, 0.3)
+	for p in deadwood_points:
+		ForestScatter.add_trunk(body, p, 0.28)
 
 func _make_materials() -> void:
 	_mat_green = _make_material(Color(0.07, 0.16, 0.11), 0.92)
@@ -96,6 +105,7 @@ func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
 # -----------------------------------------------------------------------------
 
 func _spruce(pos: Vector3, scale_factor: float, tilt_deg: float, seed_idx: int) -> void:
+	spruce_points.append(Vector2(pos.x, pos.z))
 	var root := Node3D.new()
 	root.name = "Spruce"
 	root.position = Vector3(pos.x, TerrainHeight.height_at(pos.x, pos.z) - 0.12, pos.z)
