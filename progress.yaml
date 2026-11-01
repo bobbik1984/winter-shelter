@@ -112,7 +112,14 @@ phases:
       - {id: L5, text: "课题文案（简报一句 + 报告本关要点，EN/ZH）+ 如实表现", status: done, depends: [L4], evidence: "test_levels 175（课题中文、第 5 关目标随雪深、目标行 D5 分档且不写死方位、倒棚教训视本图雪深、本关要点引用实测值）；run_all 677；ci.sh 全量 PASS（机器人结果不变）；snapshots/l5_report_level_takeaway.png（中英）、snapshots/l5_thin_snow_representation.png", note: "用户定调：机制与正确表现优先。修复：目标行写死\"山脊东侧\"、开局 toast / 简报正文预设挖雪洞、湿衣提示未本地化、风蚀雪纹写死西风；新增薄雪露地"}
       - {id: L6, text: "关卡平衡：playtest_bot --level，4 山谷 × 3 种子；CI 回归", status: superseded, depends: [L2, L3, L4], note: "并入 S7（D13）"}
       - {id: L7, text: "关卡版试玩（并入 PT01/PT02）", status: superseded, depends: [L6], note: "并入 S8（D13）"}
-  - id: S
+  - id: N
+    name: "可玩的夜晚轨道（D14，PRODUCTION_PLAN §4.N）"
+    tasks:
+      - {id: N1, text: "夜间失温速率模型 + 冷醒事件 + A2 规则 + 曲线结局（纯逻辑）", status: todo}
+      - {id: N2, text: "夜晚播放：快进、体温曲线、黑暗与光源", status: todo, depends: [N1]}
+      - {id: N3, text: "夜间事件面板与行动（添柴、活动、清通风口、顶落积雪、烘袜子）", status: todo, depends: [N1]}
+      - {id: N4, text: "报告：曲线 + 时间线 + 失温来源 + 三样只受一样 + 早晨后果", status: todo, depends: [N1]}
+      - {id: N5, text: "机器人夜间策略与平衡（±10% 参数不翻转结局）", status: todo, depends: [N2, N3, N4]}
     name: "章节 / 庇护所 / 地形轨道（D13，PRODUCTION_PLAN §4.S）"
     tasks:
       - {id: S1, text: "地形配方 v2（形态 × 起伏 × 树密度；背风积雪沿真实风向）", status: done, evidence: "tests/test_terrain_recipe.gd 84（默认 = 旧地图参考值；盆地 / 湖岸 / 悬崖各 4 山谷的积雪与地形特征；全覆盖；湖随旋转）+ 47432 点逐位对比旧代码一致；改动默认脊线后测试失败；run_all 761；ci.sh 全量 PASS（机器人结果不变）；snapshots/s1_terrain_shapes_overview.png", note: "规范帧 + 整图旋转（未改为逐形态重算背风）。尚未接入章节（S3）；地物 / 出生点按规则摆放 = S2"}
@@ -121,7 +128,7 @@ phases:
       - {id: S4, text: "庇护所学习（熬过一夜即学会）", status: done, evidence: "test_loop_systems 学习规则 + 可用集合 + Tab 循环；smoke test：简报列出已会 / 本关新增，第 2 关 Tab 只出现雪沟 + 高床雪洞；run_all 988；ci.sh 全量 PASS", note: "引入表暂按现有 5 关，S3 换章节"}
       - {id: S5, text: "新庇护所：树井 → 雪堆屋 → 岩檐 → 倒木斜棚", status: written-unverified, depends: [S2, S4], note: "树井已完成（test_levels 树井断言、smoke：第 2 章 Tab = 雪沟 + 树井、机器人 treewell COLD、snapshots/s5_tree_well.png）；第 2 章改为老林 / 没有雪铲 / 目标树井。雪堆屋、岩檐、倒木斜棚未做"}
       - {id: S6, text: "按章装备配置（雪铲 / 保暖层 / 防潮垫 / 起始材料）", status: done, evidence: "test_levels 装备断言（默认 / 第 1 关全套 / 第 5 关无保暖层 / 无雪铲工时 ×3 / 防潮垫提高隔热分）；smoke：第 1 关开局 2 份桦皮 + 防潮垫；run_all 1005；ci.sh 全量 PASS", note: "第 2 关无雪铲待 S5 树井"}
-      - {id: S7, text: "平衡：机器人读地物位置，每章 1/5/10 阶", status: todo, depends: [S3, S5, S6]}
+      - {id: S7, text: "平衡：机器人读地物位置，每章 1/5/10 阶", status: todo, depends: [S3, S5, S6, N5], note: "D14 后再做：旧的一次性结算会被替换"}
       - {id: S8, text: "试玩（人工）", status: todo, depends: [S7]}
 
 polish:
