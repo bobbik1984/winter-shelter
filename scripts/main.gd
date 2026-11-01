@@ -23,6 +23,10 @@ func _init() -> void:
 		elif LevelState.auto_begin:
 			LevelState.begin(Records.default_level())
 	LevelState.apply_world()
+	# 开发参数（S1）：--shape=basin|lakeshore|cliff_band [--rough=x] [--trees=x] 覆盖地形配方
+	var dev_recipe := TerrainRecipe.from_args(OS.get_cmdline_user_args())
+	if dev_recipe:
+		TerrainHeight.RECIPE = dev_recipe
 
 func _ready() -> void:
 	if player:

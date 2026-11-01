@@ -29,7 +29,7 @@ static var _facts_key := ""
 static var _facts: Dictionary = {}
 
 static func map_facts(t: Tuning) -> Dictionary:
-	var key := "%d|%f|%f|%f" % [TerrainHeight.SEED, TerrainHeight.SNOW_SCALE, TerrainHeight.SNOW_PATCHINESS, TerrainHeight.ROTATION_DEG]
+	var key := "%d|%f|%f|%f|%s" % [TerrainHeight.SEED, TerrainHeight.SNOW_SCALE, TerrainHeight.SNOW_PATCHINESS, TerrainHeight.ROTATION_DEG, TerrainHeight.RECIPE.describe()]
 	if key == _facts_key:
 		return _facts
 	var n := 0

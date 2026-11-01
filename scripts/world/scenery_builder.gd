@@ -198,6 +198,8 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 func _build_clusters() -> void:
 	for cluster_idx in range(CLUSTERS.size()):
 		var center: Vector3 = TerrainHeight.to_world3(CLUSTERS[cluster_idx])
+		if TerrainHeight.is_lake_at(center.x, center.z):
+			continue   # 群落落在冰面上就不放（S1；S2 改为按规则摆放）
 		var main_type: String = MAIN_TYPES[cluster_idx]
 		var seed_idx := 100 + cluster_idx * 37
 

@@ -115,7 +115,7 @@ phases:
   - id: S
     name: "章节 / 庇护所 / 地形轨道（D13，PRODUCTION_PLAN §4.S）"
     tasks:
-      - {id: S1, text: "地形配方 v2（形态 × 起伏 × 树密度；背风积雪沿真实风向）", status: todo}
+      - {id: S1, text: "地形配方 v2（形态 × 起伏 × 树密度；背风积雪沿真实风向）", status: done, evidence: "tests/test_terrain_recipe.gd 84（默认 = 旧地图参考值；盆地 / 湖岸 / 悬崖各 4 山谷的积雪与地形特征；全覆盖；湖随旋转）+ 47432 点逐位对比旧代码一致；改动默认脊线后测试失败；run_all 761；ci.sh 全量 PASS（机器人结果不变）；snapshots/s1_terrain_shapes_overview.png", note: "规范帧 + 整图旋转（未改为逐形态重算背风）。尚未接入章节（S3）；地物 / 出生点按规则摆放 = S2"}
       - {id: S2, text: "地物按规则摆放（出生点、雪堆、老云杉、风倒区、岩体 / 悬崖、湖）", status: todo, depends: [S1]}
       - {id: S3, text: "5 章 × 10 阶结构 + 选择 + 解锁 + 存档迁移", status: todo, depends: [S2]}
       - {id: S4, text: "庇护所学习（熬过一夜即学会）", status: todo}

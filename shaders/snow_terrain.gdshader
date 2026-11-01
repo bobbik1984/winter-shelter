@@ -19,6 +19,7 @@ uniform float bare_full_m = 0.08;
 uniform float bare_none_m = 0.45;
 
 varying float snow_depth;
+varying float lake_mask;
 varying vec3 world_normal;
 varying vec3 world_pos;
 varying float slope_v;
@@ -55,6 +56,7 @@ float fbm(vec2 p) {
 
 void vertex() {
 	snow_depth = COLOR.r;
+	lake_mask = COLOR.g;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	slope_v = 1.0 - clamp(world_normal.y, 0.0, 1.0);
@@ -99,7 +101,7 @@ void fragment() {
 	// 3b. 薄雪露地：雪越薄，地面（深褐土 / 帚石楠）与枯草越多地露出来，斑块由噪声决定。
 	//     让"这里雪很薄"不用探针也能看出来（第 3 / 4 关、风蚀脊顶）。
 	float depth_m = snow_depth * 2.5;
-	float thin = 1.0 - smoothstep(bare_full_m, bare_none_m, depth_m);
+	float thin = (1.0 - smoothstep(bare_full_m, bare_none_m, depth_m)) * (1.0 - step(0.5, lake_mask));   // 冰面上不露地
 	float patch_n = low_quality ? vnoise(world_pos.xz * 0.9) : fbm(world_pos.xz * 0.9);
 	float bare = smoothstep(0.42, 0.72, thin * (0.35 + 0.9 * patch_n));
 	// 草丛：平滑值噪声的高值斑点（圆润、不规则；不能用 floor 网格，会出现方块像素）
@@ -121,6 +123,18 @@ void fragment() {
 	// 朝太阳方向看去的雪面：暖金逆光辉
 	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask) * (1.0 - bare * 0.7));
 
+	// 湖面（S1）：一月的冻湖大多覆着风压实的雪，只有被风扫开的几片明冰（大尺度斑块，蓝灰、光滑）
+	float ice = smoothstep(0.3, 0.7, lake_mask);
+	float clear_ice = 0.0;
+	if (ice > 0.0) {
+		float sweep = low_quality ? vnoise(wind_uv * 0.35) : fbm(wind_uv * 0.35);
+		clear_ice = smoothstep(0.50, 0.40, sweep) * ice;
+		vec3 packed_snow = mix(snow_mid_cool, snow_sunlit, smoothstep(0.10, 0.78, sun_face)) * 0.97;
+		vec3 ice_col = mix(vec3(0.40, 0.55, 0.68), vec3(0.55, 0.68, 0.80), smoothstep(0.3, 0.6, sweep));
+		vec3 lake_col = mix(packed_snow, ice_col + vec3(forward_scatter * 0.3), clear_ice);
+		base = mix(base, lake_col, ice);
+		rock_mask *= 1.0 - ice;
+	}
 	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
 	if (debug_depth) {
 		float m = snow_depth * 2.5;   // 还原为米
@@ -135,7 +149,7 @@ void fragment() {
 		line = max(line, 1.0 - smoothstep(0.0, 0.04, abs(m - 2.0)));
 		ALBEDO = mix(c, vec3(0.05), line);
 	}
-	ROUGHNESS = max(mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12, bare * 0.95);
+	ROUGHNESS = mix(max(mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12, bare * 0.95), 0.18, clear_ice);
 	SPECULAR = mix(0.28, 0.12, rock_mask);
 	AO = mix(0.72, 1.0, up) * mix(0.85, 1.0, drift_n);
 }

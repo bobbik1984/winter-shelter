@@ -91,5 +91,6 @@ func _build_terrain() -> void:
 func _add_vertex(st: SurfaceTool, p: Vector3) -> void:
 	st.set_normal(TerrainHeight.normal_at(p.x, p.z))
 	var snow_norm := clampf(TerrainHeight.snow_depth_at(p.x, p.z) / 2.5, 0.0, 1.0)
-	st.set_color(Color(snow_norm, 0.0, 0.0, 1.0))
+	# G 通道 = 湖面（冰）遮罩（S1）
+	st.set_color(Color(snow_norm, 1.0 if TerrainHeight.is_lake_at(p.x, p.z) else 0.0, 0.0, 1.0))
 	st.add_vertex(p)

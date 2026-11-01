@@ -82,6 +82,8 @@ func _scatter(count: int, rmin: float, rmax: float, seed_k: int, spawn_fn: Calla
 	return placed
 
 func _free(p: Vector2, min_d: float) -> bool:
+	if TerrainHeight.is_lake_at(p.x, p.y):
+		return false
 	if p.distance_to(TerrainHeight.to_world(SPAWN)) < 3.5 or p.distance_to(TerrainHeight.to_world(Vector2(20.5, 11.2))) < 3.0:
 		return false
 	for q in _placed:

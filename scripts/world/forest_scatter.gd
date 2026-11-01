@@ -125,6 +125,8 @@ static func add_trunk(body: StaticBody3D, p: Vector2, radius: float) -> void:
 
 
 func _blocked(x: float, z: float, extra: float = 0.0) -> bool:
+	if TerrainHeight.is_lake_at(x, z):
+		return true   # 冰面上不长树、不放石头（S1）
 	for k in KEEP_OUT:
 		var c := TerrainHeight.to_world(Vector2(k.x, k.y))
 		if Vector2(x - c.x, z - c.y).length() < k.z + extra:
@@ -170,7 +172,8 @@ func _scatter_spruce(blow: Vector3) -> void:
 			var z := -half_extent + (float(j) + 0.5 + jz * 0.9) * spruce_spacing
 			# 林分噪声：大块林地 + 林窗
 			var dens := TerrainHeight.fbm(x * 0.035 + 11.0, z * 0.035 - 4.0, seed_idx * 7, 3)
-			if dens < density_threshold:
+			# 地形配方的树木密度（S1）：密度 1 = 旧林分；越低林窗越大
+			if dens < density_threshold + (1.0 - TerrainHeight.RECIPE.tree_density) * 0.35:
 				continue
 			if _blocked(x, z):
 				continue
