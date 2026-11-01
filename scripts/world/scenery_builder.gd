@@ -5,6 +5,7 @@ extends Node3D
 ## 参考图 Box 2/3 的橙色交互圈 + 雪地脚印链、远景雪山剪影。
 ## 全部由 TerrainHeight 落地，不依赖外部资产；不修改地形/Shader 核心公式。
 
+## 以下坐标均为地图坐标（L3：用 TerrainHeight.to_world3 随地图旋转）。
 const CLUSTERS := [
 	Vector3(-16.0, 0.0, -8.0), Vector3(-11.0, 0.0, 14.0), Vector3(-23.0, 0.0, 2.0),
 	Vector3(13.0, 0.0, -18.0), Vector3(21.0, 0.0, 2.0), Vector3(17.0, 0.0, 16.0),
@@ -196,7 +197,7 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 
 func _build_clusters() -> void:
 	for cluster_idx in range(CLUSTERS.size()):
-		var center: Vector3 = CLUSTERS[cluster_idx]
+		var center: Vector3 = TerrainHeight.to_world3(CLUSTERS[cluster_idx])
 		var main_type: String = MAIN_TYPES[cluster_idx]
 		var seed_idx := 100 + cluster_idx * 37
 
@@ -266,8 +267,9 @@ func _dry_grass_tuft(pos: Vector3, seed_idx: int) -> void:
 # -----------------------------------------------------------------------------
 
 func _build_special_deadwood() -> void:
-	var ground_y := TerrainHeight.height_at(SPECIAL_DEADWOOD.x, SPECIAL_DEADWOOD.z)
-	_deadwood(SPECIAL_DEADWOOD, 1.18, 20.0, 777)
+	var sd := TerrainHeight.to_world3(SPECIAL_DEADWOOD)
+	var ground_y := TerrainHeight.height_at(sd.x, sd.z)
+	_deadwood(sd, 1.18, 20.0, 777)
 
 	var ring_mesh := TorusMesh.new()
 	ring_mesh.inner_radius = 1.05
@@ -278,7 +280,7 @@ func _build_special_deadwood() -> void:
 	ring.name = "DeadwoodInteractRing"
 	ring.mesh = ring_mesh
 	ring.material_override = _mat_ring
-	ring.position = Vector3(SPECIAL_DEADWOOD.x, ground_y + 0.05, SPECIAL_DEADWOOD.z)
+	ring.position = Vector3(sd.x, ground_y + 0.05, sd.z)
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ring)
 
@@ -287,16 +289,18 @@ func _build_special_deadwood() -> void:
 	light.light_color = Color(1.0, 0.52, 0.16)
 	light.light_energy = 1.1
 	light.omni_range = 3.2
-	light.position = Vector3(SPECIAL_DEADWOOD.x, ground_y + 1.0, SPECIAL_DEADWOOD.z)
+	light.position = Vector3(sd.x, ground_y + 1.0, sd.z)
 	add_child(light)
 
 func _build_footprints() -> void:
-	var dir := FOOTPRINT_END - FOOTPRINT_START
+	var fp_start := TerrainHeight.to_world3(FOOTPRINT_START)
+	var fp_end := TerrainHeight.to_world3(FOOTPRINT_END)
+	var dir := fp_end - fp_start
 	var path_angle := atan2(dir.x, dir.z)
 	var perp := Vector3(-dir.z, 0.0, dir.x).normalized()
 	for i in range(12):
 		var t := float(i) / 11.0
-		var p := FOOTPRINT_START.lerp(FOOTPRINT_END, t)
+		var p := fp_start.lerp(fp_end, t)
 		var side := 1.0 if i % 2 == 0 else -1.0
 		p += perp * 0.22 * side
 		var mesh := SphereMesh.new()

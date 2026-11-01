@@ -35,10 +35,12 @@ static func apply_world() -> void:
 	if not active():
 		TerrainHeight.SNOW_SCALE = 1.0
 		TerrainHeight.SNOW_PATCHINESS = 0.0
+		TerrainHeight.ROTATION_DEG = 0.0
 		return
 	TerrainHeight.SEED = int(roll.get("valley_seed", TerrainHeight.SEED))
 	TerrainHeight.SNOW_SCALE = float(roll.get("snow_depth_scale", 1.0))
 	TerrainHeight.SNOW_PATCHINESS = float(roll.get("snow_patchiness", 0.0))
+	TerrainHeight.ROTATION_DEG = float(roll.get("wind_rotation_deg", 0.0))
 
 ## 立枯木密度倍率（ForestScatter / ResourceSpawner 读取）。
 static func snag_density_scale() -> float:

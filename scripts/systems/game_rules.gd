@@ -68,8 +68,25 @@ static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool
 
 
 ## 上下文提示行（V3：影子就是时钟）。返回英文玩家文案。
+## 风的来向：罗盘缩写（HUD）与本地化方位词（文案）。octant 见 WindData.from_octant()。
+const WIND_ABBR := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+
+static func wind_abbr(octant: int) -> String:
+	return WIND_ABBR[posmod(octant, 8)]
+
+static func wind_word(octant: int) -> String:
+	match posmod(octant, 8):
+		0: return Loc.t("north")
+		1: return Loc.t("north-east")
+		2: return Loc.t("east")
+		3: return Loc.t("south-east")
+		4: return Loc.t("south")
+		5: return Loc.t("south-west")
+		6: return Loc.t("west")
+	return Loc.t("north-west")
+
 static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_warmth: float,
-		has_shelter: bool, shelter_complete: bool, t: Tuning) -> String:
+		has_shelter: bool, shelter_complete: bool, t: Tuning, wind_from_word: String = "") -> String:
 	if body_warmth < t.tip_cold_warmth:
 		return Loc.t("Getting cold — get out of the wind or light a fire.")
 	if minutes_to_sunset <= 0.0:
@@ -81,7 +98,7 @@ static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_war
 	if minutes_to_sunset < t.tip_plenty_minutes:
 		return Loc.t("Shadows lengthening — ~%d min of light left.") % int(round(minutes_to_sunset / 5.0) * 5.0)
 	if not has_shelter:
-		return Loc.t("Strong west wind. Probe [Space] leeward slopes.")
+		return Loc.t("Wind from the %s. Probe [Space] leeward slopes.") % (wind_from_word if wind_from_word != "" else wind_word(6))
 	return Loc.t("Sun %d° — shadows grow toward evening.") % int(round(sun_elevation_deg))
 
 

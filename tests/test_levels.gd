@@ -103,6 +103,7 @@ func run() -> Dictionary:
 	_check(same < 25, "不同关卡同种子的抽取应基本独立（重合 %d/50）" % same)
 
 	_check_snow_bands(defs, tuning)
+	_check_rotation()
 
 	# begin()
 	var r := LevelState.begin(3, 4242)
@@ -180,3 +181,45 @@ func _check_snow_bands(defs: Array[LevelDef], tuning: Tuning) -> void:
 	TerrainHeight.SEED = seed0
 	TerrainHeight.SNOW_SCALE = 1.0
 	TerrainHeight.SNOW_PATCHINESS = 0.0
+
+
+## L3：风向 = 整图旋转。旋转后在"同一个地图点"上的高度 / 雪深 / 背风度不变；风向随之转；
+## 地形结构相对风不变（迎风坡在上风侧、背风深雪在下风侧）。
+func _check_rotation() -> void:
+	var r0 := TerrainHeight.ROTATION_DEG
+	var wind := load("res://resources/default_wind.tres") as WindData
+	var samples: Array[Vector2] = []
+	for k in range(40):
+		samples.append(Vector2((TerrainHeight.hash2(k, 1, 991) - 0.5) * 92.0, (TerrainHeight.hash2(k, 2, 991) - 0.5) * 92.0))
+	TerrainHeight.ROTATION_DEG = 0.0
+	var base_h: Array[float] = []
+	var base_s: Array[float] = []
+	var base_l: Array[float] = []
+	for p in samples:
+		base_h.append(TerrainHeight.height_at(p.x, p.y))
+		base_s.append(TerrainHeight.snow_depth_at(p.x, p.y))
+		base_l.append(TerrainHeight.lee_factor_at(p.x, p.y))
+	_check(wind.from_octant() == 6, "不旋转时风来自西（W）")
+	var expected_octant := {0.0: 6, 90.0: 4, 180.0: 2, 270.0: 0}
+	for rot in [90.0, 180.0, 270.0]:
+		TerrainHeight.ROTATION_DEG = rot
+		var ok := true
+		for k in range(samples.size()):
+			var w := TerrainHeight.to_world(samples[k])
+			var back := TerrainHeight.to_map(w.x, w.y)
+			if not back.is_equal_approx(samples[k]) \
+					or absf(TerrainHeight.height_at(w.x, w.y) - base_h[k]) > 1e-3 \
+					or absf(TerrainHeight.snow_depth_at(w.x, w.y) - base_s[k]) > 1e-3 \
+					or absf(TerrainHeight.lee_factor_at(w.x, w.y) - base_l[k]) > 1e-3:
+				ok = false
+				break
+		_check(ok, "旋转 %d°：同一地图点的高度 / 雪深 / 背风度不变，坐标可往返" % int(rot))
+		_check(wind.from_octant() == int(expected_octant[rot]), "旋转 %d°：风向罗盘方位 = %s（实际 %s）" % [int(rot), GameRules.wind_abbr(int(expected_octant[rot])), GameRules.wind_abbr(wind.from_octant())])
+		# 结构相对风不变：从出生点往上风走 20 m 更高（迎风坡 / 脊线），出生点处背风度 > 0
+		var spawn := TerrainHeight.to_world(Vector2(18.0, 8.0))
+		var up := wind.get_wind_direction_3d()
+		var upwind := spawn + Vector2(up.x, up.z) * 20.0
+		_check(TerrainHeight.height_at(upwind.x, upwind.y) > TerrainHeight.height_at(spawn.x, spawn.y), "旋转 %d°：出生点上风方向是更高的迎风脊" % int(rot))
+	TerrainHeight.ROTATION_DEG = 0.0
+	_check(TerrainHeight.to_world(Vector2(3.0, 4.0)) == Vector2(3.0, 4.0), "不旋转时 to_world 是恒等")
+	TerrainHeight.ROTATION_DEG = r0

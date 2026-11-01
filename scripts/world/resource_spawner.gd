@@ -28,10 +28,11 @@ func _ready() -> void:
 	if tuning == null:
 		tuning = load("res://resources/tuning.tres") as Tuning
 	_make_materials()
+	# 固定点是地图坐标（L3：随地图旋转）
 	for p in FIXED_ROOTBALLS:
-		_spawn_rootball(p, _placed.size())
+		_spawn_rootball(TerrainHeight.to_world(p), _placed.size())
 	for p in FIXED_DEADWOOD:
-		_spawn_deadwood(p, 0)
+		_spawn_deadwood(TerrainHeight.to_world(p), 0)
 	var k := 0
 	k = _scatter(int(round((tuning.deadwood_spots - FIXED_DEADWOOD.size()) * LevelState.snag_density_scale())), 10.0, 38.0, 11, _spawn_deadwood)
 	k = _scatter(tuning.birch_spots, 8.0, 34.0, 23, _spawn_birch)
@@ -69,7 +70,7 @@ func _scatter(count: int, rmin: float, rmax: float, seed_k: int, spawn_fn: Calla
 		tries += 1
 		var a := TerrainHeight.hash2(tries, seed_k, 7) * TAU
 		var r := lerpf(rmin, rmax, sqrt(TerrainHeight.hash2(tries, seed_k, 13)))
-		var p := SPAWN + Vector2(cos(a), sin(a)) * r
+		var p := TerrainHeight.to_world(SPAWN) + Vector2(cos(a), sin(a)) * r
 		if absf(p.x) > 44.0 or absf(p.y) > 44.0:
 			continue
 		if TerrainHeight.slope_at(p.x, p.y) > 26.0:
@@ -81,7 +82,7 @@ func _scatter(count: int, rmin: float, rmax: float, seed_k: int, spawn_fn: Calla
 	return placed
 
 func _free(p: Vector2, min_d: float) -> bool:
-	if p.distance_to(SPAWN) < 3.5 or p.distance_to(Vector2(20.5, 11.2)) < 3.0:
+	if p.distance_to(TerrainHeight.to_world(SPAWN)) < 3.5 or p.distance_to(TerrainHeight.to_world(Vector2(20.5, 11.2))) < 3.0:
 		return false
 	for q in _placed:
 		if p.distance_to(q) < min_d:

@@ -28,11 +28,8 @@ var _sdf_material: ShaderMaterial
 
 func _ready() -> void:
 	if place_on_terrain:
-		global_position = Vector3(
-			world_origin.x,
-			TerrainHeight.height_at(world_origin.x, world_origin.z) - 0.10,
-			world_origin.z
-		)
+		var o := TerrainHeight.to_world3(world_origin)  # world_origin 是地图坐标（L3）
+		global_position = Vector3(o.x, TerrainHeight.height_at(o.x, o.z) - 0.10, o.z)
 	var tuning := load(TUNING_PATH) as Tuning
 	if tuning:
 		roof_built_m = tuning.roof_thickness_good_m

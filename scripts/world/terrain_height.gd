@@ -20,6 +20,32 @@ static var SADDLE: bool = false
 ## 只削不加：对称起伏会让深雪面积几乎不变（L2 实测）。
 static var SNOW_SCALE: float = 1.0
 static var SNOW_PATCHINESS: float = 0.0
+## D12 / L3 风向随机 = 整图布局绕 Y 轴旋转（度，取 90° 的倍数；地图是正方形，旋转后边界不变）。
+## 所有带世界坐标的公开采样函数先换回"地图坐标"再计算，所以迎风坡—脊线—背风坡与风一起转；
+## 地图坐标里风永远来自 -X（WindData.direction 的基础值）。由 LevelState.apply_world 设置。
+static var ROTATION_DEG: float = 0.0
+
+## 地图坐标 → 世界坐标（脚本里写死的出生点、树根、枯木等都是地图坐标）。
+static func to_world(map_xz: Vector2) -> Vector2:
+	if ROTATION_DEG == 0.0:
+		return map_xz
+	var v := Vector3(map_xz.x, 0.0, map_xz.y).rotated(Vector3.UP, deg_to_rad(ROTATION_DEG))
+	return Vector2(v.x, v.z)
+
+static func to_world3(map_pos: Vector3) -> Vector3:
+	var w := to_world(Vector2(map_pos.x, map_pos.z))
+	return Vector3(w.x, map_pos.y, w.y)
+
+## 世界坐标 → 地图坐标。
+static func to_map(x: float, z: float) -> Vector2:
+	if ROTATION_DEG == 0.0:
+		return Vector2(x, z)
+	var v := Vector3(x, 0.0, z).rotated(Vector3.UP, -deg_to_rad(ROTATION_DEG))
+	return Vector2(v.x, v.z)
+
+## 世界方向随地图旋转（风向用）。
+static func rotate_dir(map_dir: Vector3) -> Vector3:
+	return map_dir if ROTATION_DEG == 0.0 else map_dir.rotated(Vector3.UP, deg_to_rad(ROTATION_DEG))
 ## 斑驳噪声的空间尺度（网格单位，约 2 m/格 → 斑块约 10–15 m）与噪声值的拉伸系数（数学常量）。
 const PATCH_NOISE_SCALE := 5.0
 const PATCH_NOISE_STRETCH := 2.8
@@ -113,11 +139,13 @@ static func _height_from_grid(i: float, j: float) -> float:
 	return maxf(0.2, h)
 
 static func height_at(x: float, z: float) -> float:
-	return _height_from_grid(_grid_coord(x), _grid_coord(z))
+	var m := to_map(x, z)
+	return _height_from_grid(_grid_coord(m.x), _grid_coord(m.y))
 
 static func snow_depth_at(x: float, z: float) -> float:
-	var i := _grid_coord(x)
-	var j := _grid_coord(z)
+	var m := to_map(x, z)
+	var i := _grid_coord(m.x)
+	var j := _grid_coord(m.y)
 	var h := _height_from_grid(i, j)
 	var hw := _height_from_grid(maxf(0.0, i - 3.0), j)
 	var lee := clampf((hw - h) / 1.8, -1.2, 1.4)
@@ -147,8 +175,9 @@ static func normal_at(x: float, z: float) -> Vector3:
 	return Vector3(-g.x, 1.0, -g.y).normalized()
 
 static func lee_factor_at(x: float, z: float) -> float:
-	var i := _grid_coord(x)
-	var j := _grid_coord(z)
+	var m := to_map(x, z)
+	var i := _grid_coord(m.x)
+	var j := _grid_coord(m.y)
 	var h := _height_from_grid(i, j)
 	var hw := _height_from_grid(maxf(0.0, i - 3.0), j)
 	var lee := clampf((hw - h) / 1.8, -1.2, 1.4)

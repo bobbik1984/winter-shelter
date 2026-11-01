@@ -172,14 +172,14 @@ func show_build(visible_: bool, title: String = "", reason: String = "", ok: boo
 func set_fade(a: float) -> void:
 	_fade.color.a = a
 
-func show_briefing(on: bool, forecast: String = "") -> void:
+func show_briefing(on: bool, forecast: String = "", intro: String = "") -> void:
 	if on and _briefing == null:
-		_briefing = _make_briefing(forecast)
+		_briefing = _make_briefing(forecast, intro)
 		get_child(0).add_child(_briefing)
 	if _briefing:
 		_briefing.visible = on
 
-func _make_briefing(forecast: String = "") -> Control:
+func _make_briefing(forecast: String = "", intro: String = "") -> Control:
 	var shade := ColorRect.new()
 	shade.color = Color(0.02, 0.035, 0.06, 0.82)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -200,8 +200,7 @@ func _make_briefing(forecast: String = "") -> Control:
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(tag)
 	v.add_child(HSeparator.new())
-	var body := _label(Loc.t("January 14, 14:20. −17 °C, a strong west wind, and the sun sets at 16:18.\n") +
-		Loc.t("You have about two hours of light to find deep snow, gather what you need and build a shelter for the night.\n\n") +
+	var body := _label(intro +
 		Loc.t("Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ") +
 		Loc.t("and the shadows tell you how much daylight is left."), 15, MUTED)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

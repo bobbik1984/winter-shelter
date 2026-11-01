@@ -10,7 +10,7 @@ const SPRUCE_VARIANTS := 4
 const ROCK_VARIANTS := 3
 const SNAG_VARIANTS := 3
 
-## 避让圆：Vector3(x, z, 半径)
+## 避让圆：Vector3(x, z, 半径)，x / z 为地图坐标（L3 随地图旋转）
 const KEEP_OUT := [
 	Vector3(18.0, 8.0, 7.0),     # 出生点
 	Vector3(-4.2, 9.2, 5.0),     # 篝火
@@ -126,13 +126,15 @@ static func add_trunk(body: StaticBody3D, p: Vector2, radius: float) -> void:
 
 func _blocked(x: float, z: float, extra: float = 0.0) -> bool:
 	for k in KEEP_OUT:
-		if Vector2(x - k.x, z - k.y).length() < k.z + extra:
+		var c := TerrainHeight.to_world(Vector2(k.x, k.y))
+		if Vector2(x - c.x, z - c.y).length() < k.z + extra:
 			return true
 	return false
 
 
 func _in_vista(x: float, z: float) -> bool:
-	var d := Vector2(x, z) - VISTA_ORIGIN
+	# 走廊起点 = 出生点（随地图旋转）；方向 = 相机前方 / 落日（世界坐标，不旋转）
+	var d := Vector2(x, z) - TerrainHeight.to_world(VISTA_ORIGIN)
 	if d.length() < 6.0:
 		return false
 	# 前方视野走廊 + 出生点身后（相机一侧）25 m 内的空地

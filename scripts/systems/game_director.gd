@@ -174,7 +174,7 @@ func _enter_briefing() -> void:
 	interaction.enabled = false
 	_saved_time_scale = weather.time_scale
 	weather.time_scale = 0.0
-	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
+	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro())
 
 func start_game() -> void:
 	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
@@ -300,7 +300,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				start_game()
 			elif k == KEY_L:
 				_toggle_lang()
-				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
+				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro())
 		State.REPORT:
 			if k == KEY_R:
 				_restart()
@@ -338,6 +338,15 @@ func _restart() -> void:
 	var seeds: Array = TerrainHeight.VALLEY_SEEDS
 	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
 	get_tree().reload_current_scene()
+
+## 简报第一句：本局真实的开局时刻、气温、风向风速、日落与剩余天光（关卡会改这些）。
+func _briefing_intro() -> String:
+	var sm := int(weather.day_start_minutes)
+	var hours := maxi(int(round(weather.minutes_to_sunset() / 60.0)), 1)
+	return (Loc.t("January 14, %s. %d °C, wind from the %s at %d km/h; the sun sets at %s.\n") % [
+		"%02d:%02d" % [sm / 60, sm % 60], int(round(weather.current_temp_c())),
+		GameRules.wind_word(wind.from_octant()), int(round(weather.current_wind_kmh())), weather.sunset_clock()]) \
+		+ Loc.t("You have about %d hours of light to find deep snow, gather what you need and build a shelter for the night.\n\n") % hours
 
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]
@@ -459,7 +468,8 @@ func _tick_playing(delta: float) -> void:
 	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):
 		var hint := hud.get_node("TopRightCard/VBox/HintLabel") as Label
 		hint.text = GameRules.tip_for(weather.minutes_to_sunset(), weather.sun_elevation_deg,
-			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning)
+			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning,
+			GameRules.wind_word(wind.from_octant()))
 
 	_update_world_callouts()
 	var atm := weather.atmosphere

@@ -107,7 +107,7 @@ phases:
     tasks:
       - {id: L1, text: "LevelDef 资源 + 5 关 / 自由模式 .tres + LevelState + 种子", status: done, evidence: "tests/test_levels.gd 102 assertions；run_all 10 suites / 558 assertions 全绿；改坏 level_03 后测试按预期失败", note: "只有数据与纯函数，游戏尚未读取（L2 / L4 接入）"}
       - {id: L2, text: "环境旋钮接入（雪深倍率 / 斑驳度、枯木密度、天气池、开局时间、风速）", status: done, depends: [L1], evidence: "test_levels 135 assertions（含逐关逐山谷 D5 面积）；run_all 591 全绿；ci.sh --quick PASS；实机 --level=1..5 --seed=101 启动报告（开局时刻 / 天气 / 风速 / 枯木 43→63）；snapshots/l2_level_snow_heatmaps.png", note: "对比度改为只削不加的斑驳度（对称起伏不改变深雪面积）；默认（未进关卡）行为不变；风向旋转 = L3"}
-      - {id: L3, text: "风向随机 = 整图旋转（退路 ±30° 抖动）", status: todo, depends: [L1, L2]}
+      - {id: L3, text: "风向随机 = 整图旋转（退路 ±30° 抖动）", status: done, depends: [L1, L2], evidence: "test_levels 146 assertions（旋转 90/180/270：同一地图点高度 / 雪深 / 背风度不变、坐标往返、风向罗盘 W/S/E/N、出生点上风是迎风脊）；run_all 613 全绿；ci.sh --quick PASS；snapshots/l3_wind_rotation_0_90_180_270.png（HUD / 提示 / 罗盘随风向；太阳方位 214° 不变；GPU 48–53 ms 与旋转无关）", note: "退路未启用。简报第一句改为本局真实值（修正第 1 关 10:00 开局仍写 14:20 / 两小时）。机器人路线坐标写死，旋转关卡的平衡在 L6 处理"}
       - {id: L4, text: "简报页关卡选择 + 解锁（COLD/SAFE）+ 每关记录 + 自由模式", status: todo, depends: [L1]}
       - {id: L5, text: "课题文案（简报一句 + 报告本关要点，EN/ZH）", status: todo, depends: [L4]}
       - {id: L6, text: "关卡平衡：playtest_bot --level，4 山谷 × 3 种子；CI 回归", status: todo, depends: [L2, L3, L4]}

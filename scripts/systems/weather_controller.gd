@@ -156,5 +156,5 @@ func forecast_text() -> String:
 	return Loc.t("Forecast: clear and cold — long, sharp shadows to read the time by.")
 
 func _update_weather_signals() -> void:
-	var wind_str = "W %d km/h" % [int(current_wind_kmh() if tuning else wind_data.speed_kmh)]
+	var wind_str = "%s %d km/h" % [GameRules.wind_abbr(wind_data.from_octant()), int(current_wind_kmh() if tuning else wind_data.speed_kmh)]
 	weather_updated.emit(current_temp_c() if tuning else wind_data.temperature_celsius, wind_str)
