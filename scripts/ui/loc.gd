@@ -159,6 +159,8 @@ const ZH := {
 	"Ideal for shelter": "适合建庇护所",
 	# —— 流程 ——
 	"Sound off  [M]": "声音关  [M]",
+	"Hold assist ON — tap once to probe / work / light fire  [F9]": "按住辅助已开——轻点一次即可探雪 / 干活 / 生火  [F9]",
+	"Hold assist OFF  [F9]": "按住辅助已关  [F9]",
 	"UI size %d%%  [-] [=]": "界面大小 %d%%  [-] [=]",
 	"Sound on  [M]": "声音开  [M]",
 	"Graphics: %s  [F10]": "画质：%s  [F10]",

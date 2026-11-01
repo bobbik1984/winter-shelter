@@ -38,12 +38,14 @@ func _physics_process(delta: float) -> void:
 		return
 
 	# 探针：按住推进；松开取消
-	if Input.is_action_pressed("probe"):
+	HoldAssist.cancel_if_moving()
+	if HoldAssist.held("probe"):
 		_probe_t += delta
 		is_probing = true
 		probe_progress.emit(clampf(_probe_t / tuning.probe_seconds, 0.0, 1.0))
 		if _probe_t >= tuning.probe_seconds:
 			_probe_t = -INF   # 本次按住只读一次
+			HoldAssist.release("probe")
 			_finish_probe()
 		if visual_node and visual_node.has_method("set_motion"):
 			visual_node.set_motion(0.0, true, false)

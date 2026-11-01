@@ -53,7 +53,7 @@ godot --path . -s res://tools/fuzz_test.gd -- --seconds=90 --seed=1   # 随机�
 godot --path . -s res://tools/playtest_bot.gd -- --s=deep --valley=13  # 策略机器人（good/deep/quick/twovent/wind/late/trench/leanto_short/leanto_full/none）
 ```
 
-运行时按键：**Enter** 开始 · WASD 移动 · 按住 Space 探针 · 按住 **E** 采集 / 建造 / 喝热水 · **B** 建造模式（Tab 换类型、R 转入口、T 顶厚、2 通风管、E 放置）· **F** 生火 / 添柴 · **N** 睡觉 · **H** 野外手册 · **L** English / 中文 · **Esc** 暂停 · **V** 移轴 / 正交 · 滚轮 推拉 · **F10** 画质 · **F11** 全屏 · **M** 静音 · **-** / **=** 界面大小。
+运行时按键：**Enter** 开始 · WASD 移动 · 按住 Space 探针 · 按住 **E** 采集 / 建造 / 喝热水 · **B** 建造模式（Tab 换类型、R 转入口、T 顶厚、2 通风管、E 放置）· **F** 生火 / 添柴 · **N** 睡觉 · **H** 野外手册 · **L** English / 中文 · **Esc** 暂停 · **V** 移轴 / 正交 · 滚轮 推拉 · **F10** 画质 · **F11** 全屏 · **M** 静音 · **-** / **=** 界面大小 · **F9** 按住辅助（轻点即可探雪 / 干活 / 生火）。
 
 存档：画质与语言 `user://settings.cfg`，每种庇护所的最好一夜 `user://records.cfg`（Linux：`~/.local/share/godot/app_userdata/Snow Shelter Challenge/`）。
 

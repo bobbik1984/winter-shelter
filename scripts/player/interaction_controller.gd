@@ -38,15 +38,18 @@ func _process(delta: float) -> void:
 		_set_current(null)
 		return
 	_set_current(_find_nearest())
-	if current and Input.is_action_pressed("interact"):
+	if current and HoldAssist.held("interact"):
 		progress += delta / maxf(current.hold_seconds, 0.05)
 		if progress >= 1.0:
 			var target := current
 			progress = 0.0
+			HoldAssist.release("interact")
 			var result := target.trigger()
 			completed.emit(target, result)
 	else:
 		progress = 0.0
+		if current == null:
+			HoldAssist.release("interact")
 	if current:
 		var p := current.global_position
 		_ring.global_position = Vector3(p.x, SnowField.height_at(p.x, p.z) + 0.06, p.z)

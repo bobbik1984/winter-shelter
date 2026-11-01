@@ -73,6 +73,8 @@ func setup(p_main: Node3D, p_player: PlayerController, p_weather: WeatherControl
 
 func _ready() -> void:
 	Loc.ensure_cjk_font()
+	HoldAssist.load_setting()
+	HoldAssist.latched = ""
 	tuning = load("res://resources/tuning.tres") as Tuning
 	wind = load("res://resources/default_wind.tres") as WindData
 
@@ -241,6 +243,12 @@ func _joy_to_key(btn: JoyButton) -> Key:
 	return GameInput.joy_to_key(btn, state, build.active)
 
 func _unhandled_input(event: InputEvent) -> void:
+	# 按住辅助：轻点探针 / 交互即锁存（建造模式里 E 是放置，不锁存）
+	if HoldAssist.enabled and state == State.PLAYING and not build.active:
+		if event.is_action_pressed("probe"):
+			HoldAssist.on_pressed("probe")
+		elif event.is_action_pressed("interact"):
+			HoldAssist.on_pressed("interact")
 	var k: Key = KEY_NONE
 	if event is InputEventJoypadButton and event.pressed:
 		k = _joy_to_key((event as InputEventJoypadButton).button_index)
@@ -252,6 +260,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if k == KEY_F10:
 		graphics.cycle()
+		return
+	if k == KEY_F9:
+		ui.toast(Loc.t("Hold assist ON — tap once to probe / work / light fire  [F9]") if HoldAssist.toggle() else Loc.t("Hold assist OFF  [F9]"), 2.5)
 		return
 	if k == KEY_F11:
 		graphics.toggle_fullscreen()
@@ -783,12 +794,13 @@ func _begin_fire() -> void:
 		_try_fire()
 		return
 	_fire_hold = 0.0
+	HoldAssist.on_pressed("fire")
 	player.controls_enabled = false
 
 func _tick_fire_hold(delta: float) -> void:
 	if _fire_hold < 0.0:
 		return
-	var held := Input.is_key_pressed(KEY_F) or Input.is_joy_button_pressed(0, JOY_BUTTON_B)
+	var held := HoldAssist.held("fire")
 	if not held or state != State.PLAYING:
 		_fire_hold = -1.0
 		player.controls_enabled = state == State.PLAYING
@@ -797,6 +809,7 @@ func _tick_fire_hold(delta: float) -> void:
 	player.working = true
 	if _fire_hold >= tuning.fire_hold_seconds:
 		_fire_hold = -1.0
+		HoldAssist.release("fire")
 		player.controls_enabled = true
 		_try_fire()
 

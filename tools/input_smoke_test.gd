@@ -115,6 +115,24 @@ func _run() -> void:
 	Input.parse_input_event(fu)
 	await process_frame
 	check(d.inventory.bark < bark0 or get_nodes_in_group("campfires").size() > fires0, "holding F attempts a fire (lit or bark spent)")
+	# 按住辅助：F9 打开后，轻点 Space 一次即完成探针
+	await key(KEY_F9)
+	check(HoldAssist.enabled, "F9 turns hold assist on")
+	var pc0: int = d._probe_count
+	var sp := InputEventAction.new()
+	sp.action = "probe"
+	sp.pressed = true
+	Input.parse_input_event(sp)
+	await process_frame
+	var spu := sp.duplicate()
+	spu.pressed = false
+	Input.parse_input_event(spu)
+	var pt := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - pt < int((d.tuning.probe_seconds + 0.5) * 1000.0):
+		await process_frame
+	check(d._probe_count == pc0 + 1, "with hold assist a single tap completes a probe")
+	await key(KEY_F9)
+	check(not HoldAssist.enabled, "F9 turns hold assist off")
 	# 手册 / 暂停
 	await key(KEY_H)
 	check(d.ui._guide != null and d.ui._guide.visible, "H opens the field guide")
