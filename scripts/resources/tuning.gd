@@ -124,7 +124,7 @@ extends Resource
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var tilt_player_screen_y: float = 0.58
 ## [TUNE] 默认相机距离 28 m；滚轮缩放范围 0.45–2.6。
-@export var tilt_distance_m: float = 28.0
+@export var tilt_distance_m: float = 23.0
 @export var tilt_zoom_min: float = 0.45
 @export var tilt_zoom_max: float = 2.6
 

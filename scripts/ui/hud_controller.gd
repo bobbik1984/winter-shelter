@@ -18,6 +18,26 @@ func set_sunset_clock(clock: String) -> void:
 func _ready() -> void:
 	if probe_popup:
 		probe_popup.visible = false
+	# 参考图的天气卡图标：日落 / 气温 / 风前各加一个小图标（运行时把 Label 包进 HBox）
+	_add_icon(sunset_label, "sun", Color(0.96, 0.70, 0.30))
+	_add_icon(temp_label, "thermo", Color(0.85, 0.88, 0.95))
+	_add_icon(wind_label, "wind", Color(0.62, 0.78, 1.0))
+
+func _add_icon(label: Label, kind: String, color: Color) -> void:
+	if label == null:
+		return
+	var parent := label.get_parent()
+	var idx := label.get_index()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(row)
+	parent.move_child(row, idx)
+	var icon := HudIcon.new()
+	icon.kind = kind
+	icon.color = color
+	row.add_child(icon)
+	label.reparent(row)
 
 func _process(delta: float) -> void:
 	if popup_timer > 0.0:
