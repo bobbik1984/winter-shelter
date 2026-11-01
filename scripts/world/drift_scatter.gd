@@ -25,17 +25,12 @@ func _ready() -> void:
 			if depth < min_depth or lee < min_lee:
 				continue
 			var k := clampf((depth - min_depth) / 0.8, 0.3, 1.0)
-			var s := Vector3(1.8 + 1.2 * k, 0.6 + 0.5 * k, 3.0 + 1.8 * k)
+			var s := Vector3(2.2 + 1.4 * k, 1.0 + 0.8 * k, 2.2 + 1.4 * k)
 			var basis := Basis(Vector3.UP, yaw + (TerrainHeight.hash2(i, j, 617) - 0.5) * 0.5).scaled(s)
-			transforms.append(Transform3D(basis, Vector3(x, SnowField.height_at(x, z) - 0.12, z)))
+			transforms.append(Transform3D(basis, Vector3(x, SnowField.height_at(x, z) - 0.08, z)))
 	if transforms.is_empty():
 		return
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.5
-	mesh.height = 1.0
-	mesh.radial_segments = 14
-	mesh.rings = 6
-	mesh.is_hemisphere = true
+	var mesh := PropMeshes.snow_drift()
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/snow_cover.gdshader")
 	mat.set_shader_parameter("base_color", Color(0.80, 0.86, 0.96))

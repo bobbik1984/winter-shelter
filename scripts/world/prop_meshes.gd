@@ -136,6 +136,37 @@ static func grass_tuft(seed_idx: int) -> ArrayMesh:
 	return st.commit()
 
 
+## 风积雪舌：迎风端（-Z）圆钝高起，向下风（+Z）拉长变薄成尖，单位尺寸约 1×0.5×2。
+static func snow_drift() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nu := 16   # 沿长度
+	var nv := 12   # 横截面
+	var pts: Array = []
+	for i in range(nu + 1):
+		var u := float(i) / nu                       # 0 迎风 → 1 下风
+		var half_w := 0.5 * sin(pow(u, 0.35) * PI) * (1.0 - 0.6 * u)
+		var hgt := 0.5 * pow(sin(pow(u, 0.5) * PI), 1.2) * (1.0 - 0.7 * u) + 0.0
+		var z := -1.0 + 2.0 * u
+		var row: Array = []
+		for j in range(nv + 1):
+			var v := float(j) / nv                   # 0..1 横向
+			var x := (v * 2.0 - 1.0) * half_w
+			var y := hgt * (1.0 - pow(absf(v * 2.0 - 1.0), 2.0))
+			row.append(Vector3(x, y, z))
+		pts.append(row)
+	for i in range(nu):
+		for j in range(nv):
+			var a: Vector3 = pts[i][j]
+			var b: Vector3 = pts[i + 1][j]
+			var c: Vector3 = pts[i + 1][j + 1]
+			var d: Vector3 = pts[i][j + 1]
+			st.add_vertex(a); st.add_vertex(b); st.add_vertex(c)
+			st.add_vertex(a); st.add_vertex(c); st.add_vertex(d)
+	st.generate_normals()
+	return st.commit()
+
+
 static func _frustum(st: SurfaceTool, a: Vector3, ra: float, b: Vector3, rb: float, sides: int) -> void:
 	var axis := (b - a).normalized()
 	var ref := Vector3.UP if absf(axis.y) < 0.9 else Vector3.RIGHT
