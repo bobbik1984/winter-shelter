@@ -12,6 +12,12 @@ const HALF_SIZE := 50.0
 ## 默认 7（测试基准）；GameDirector 在重开时切换到下一个山谷（VALLEY_SEEDS）。
 const VALLEY_SEEDS := [7, 13, 29, 41]
 static var SEED: int = 7
+## T4.7 方案 A：迎风脊上的低垭口（出生点西南视线方向），露出远景山谷与冰湖。默认关闭；由 Tuning.ridge_saddle 打开。
+static var SADDLE: bool = false
+## 垭口中心（世界坐标 x, z）、半宽（m）、深度（m）。
+const SADDLE_CENTER := Vector2(-6.0, 32.0)
+const SADDLE_RADIUS := 9.0
+const SADDLE_DEPTH := 4.2
 
 static func hash2(x: int, y: int, seed: int) -> float:
 	var h: int = x * 374761393 + y * 668265263 + seed * 2246822519
@@ -80,6 +86,13 @@ static func _height_from_grid(i: float, j: float) -> float:
 	var h := maxf(slope, 0.0) + crest * (1.0 - windward * 0.18)
 	h = h * (1.0 - bench) + 2.10 * bench + lee_shelf * maxf(wx - 0.40, 0.0) * 0.42
 	h += rolling + drift_rib + gully - valley_vista + sin(wy * PI) * 0.18
+
+	# 3b. 垭口（可选）：沿脊线方向拉长的椭圆凹陷，只削低脊顶，不改两侧坡向
+	if SADDLE:
+		var wpos := Vector2(i / float(GRID - 1) * WORLD_SIZE - HALF_SIZE, j / float(GRID - 1) * WORLD_SIZE - HALF_SIZE)
+		var dq := (wpos - SADDLE_CENTER)
+		var e := pow(dq.x / (SADDLE_RADIUS * 0.8), 2.0) + pow(dq.y / (SADDLE_RADIUS * 1.6), 2.0)
+		h -= SADDLE_DEPTH * exp(-e) * clampf(h / 4.0, 0.0, 1.0)
 
 	# 4. 轻度阶梯化（保留参考图 Box 1 -> Box 2 的台地体块结构感，外覆厚雪柔化）
 	var step_size: float = 1.15

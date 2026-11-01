@@ -9,6 +9,11 @@ const SPAWN_POSITION := Vector3(18.0, 0.0, 8.0)
 @onready var hud: HUDController = $HUD/HUDController
 @onready var warmth: WarmthController = $Player/WarmthController
 
+## 在子节点（地形 / 森林）_ready 之前设置地形开关：_init 先于整棵子树执行。
+func _init() -> void:
+	var t := load("res://resources/tuning.tres") as Tuning
+	TerrainHeight.SADDLE = (t != null and t.ridge_saddle) or "--saddle" in OS.get_cmdline_user_args()
+
 func _ready() -> void:
 	if player:
 		player.global_position = Vector3(

@@ -538,6 +538,9 @@ extends Resource
 ## [GAME] 受潮 >= 0.5 时保暖层失去减缓效果（CORE_GAMEPLAY §4：只有干燥蓬松的纤维才锁住静止空气）。
 @export var damp_threshold: float = 0.5
 
+## [GAME] T4.7 方案 A：迎风脊开低垭口，出生点即可看到远景山谷 / 冰湖。默认关（方案 B：爬上脊线才看到）。
+@export var ridge_saddle: bool = false
+
 @export_group("Weather Variety")
 ## [GAME] 每局天气的抽取权重：晴 / 阴 / 暴风雪将至。
 @export var weather_weight_clear: float = 0.5
