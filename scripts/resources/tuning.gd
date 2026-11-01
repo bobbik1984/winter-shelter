@@ -71,6 +71,48 @@ extends Resource
 # 玩家动作
 # -----------------------------------------------------------------------------
 
+@export_group("Night (D14)")
+## CORE_GAMEPLAY §10。夜间体温 W 每游戏小时的变化 = −失温 + 热源。全部 [TUNE]，按 §10.2 标定表由机器人验证。
+## 基础失温（W/小时）：完全没有保护、在参考气温下。
+@export var night_base_loss_per_h: float = 32.0
+## 参考夜温（°C）与敏感度：每比参考温度冷 1 °C，失温 +4%。
+@export var night_temp_ref_c: float = -24.0
+@export var night_temp_sensitivity: float = 0.04
+## 保护度 → 失温的曲线指数：失温 = 基础 × (1 − 保护度)^γ（γ = 2：好庇护所几乎不掉，露天掉得很快）。
+@export var night_protection_gamma: float = 2.0
+## [REAL] 方向 / [TUNE] 数值：湿衣入睡额外失温（W/小时，按受潮程度），与庇护所好坏无关——湿衣服在雪洞里一样冷。
+@export var night_wet_loss_per_h: float = 4.0
+## 火：燃烧期间失温 × (1 − 火的作用)。有反射墙（倒棚）作用更大。
+@export var night_fire_factor_reflector: float = 0.85
+@export var night_fire_factor_open: float = 0.6
+## [OB] 入睡时火里只架得下约 2.5 小时的柴，其余是"备柴"，要醒来时往里添（每次最多添几根）。
+@export var night_fire_initial_hours: float = 2.5
+@export var night_add_wood_logs: int = 2
+## 睡前暖身 / 热饮：前几小时失温打折。
+@export var night_prewarm_hours: float = 2.0
+@export var night_prewarm_factor: float = 0.6
+## [OB] 冷醒阈值、"一定会醒"的极危阈值；两次醒来最少间隔（游戏分钟）；整夜最多醒几次（极危不计入上限）。
+@export var night_wake_cold_w: float = 40.0
+@export var night_wake_critical_w: float = 15.0
+@export var night_wake_spacing_min: float = 90.0
+@export var night_max_wakes: int = 5
+## 起来活动：体温 +W，出汗受潮 +，睡眠质量 −1。
+@export var night_exercise_warmth: float = 10.0
+@export var night_exercise_damp: float = 0.05
+## 事件时刻（入睡后多少游戏分钟）：脚冷（湿袜子）、没通风管闷醒、通风管被堵头痛、积雪压顶。
+@export var night_wet_feet_wake_min: float = 150.0
+@export var night_no_vent_wake_min: float = 120.0
+@export var night_no_vent_fatal_min: float = 240.0
+@export var night_clog_wake_min: float = 240.0
+@export var night_snow_load_wake_min: float = 180.0
+## 积雪压顶没处理：此后失温 × 倍数；夜间降雪达到多少算会压顶。
+@export var night_snow_load_penalty: float = 1.5
+@export var night_snow_load_snowfall: float = 0.7
+## 模拟步长（游戏分钟）与结局阈值。
+@export var night_step_min: float = 5.0
+@export var night_safe_min_w: float = 50.0
+@export var night_safe_max_wakes: int = 1
+
 @export_group("Gear")
 ## [TUNE] 没有雪铲、用随身的锅（billy pot）挖雪的工时倍数。`[OB]`：Outdoor Boys《Lost in Alaska》只带锯、打火棒、刀、锅、勺也熬过冬夜——靠的是换策略（树井 / 倒棚 / 火），不是硬挖雪洞。
 @export var no_shovel_dig_factor: float = 3.0

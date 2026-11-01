@@ -115,7 +115,7 @@ phases:
   - id: N
     name: "可玩的夜晚轨道（D14，PRODUCTION_PLAN §4.N）"
     tasks:
-      - {id: N1, text: "夜间失温速率模型 + 冷醒事件 + A2 规则 + 曲线结局（纯逻辑）", status: todo}
+      - {id: N1, text: "夜间失温速率模型 + 冷醒事件 + A2 规则 + 曲线结局（纯逻辑）", status: done, evidence: "tests/test_night_curve.gd 51（§10.2 标定 7 种情况 × 一直睡 / 醒来处理；A2：300 个随机夜晚冻死 / 窒息 / 跌破极危前都醒过；连续性：±10% 失温最低体温移动 ≤ 8 分、离分界线远的结局不变；事件与行动规则）；run_all 1179", note: "游戏尚未接入（N2–N4）"}
       - {id: N2, text: "夜晚播放：快进、体温曲线、黑暗与光源", status: todo, depends: [N1]}
       - {id: N3, text: "夜间事件面板与行动（添柴、活动、清通风口、顶落积雪、烘袜子）", status: todo, depends: [N1]}
       - {id: N4, text: "报告：曲线 + 时间线 + 失温来源 + 三样只受一样 + 早晨后果", status: todo, depends: [N1]}
