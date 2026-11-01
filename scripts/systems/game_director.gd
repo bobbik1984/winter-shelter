@@ -1107,6 +1107,13 @@ func _update_world_callouts() -> void:
 			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0))
 	elif callouts.has_callout("deadwood"):
 		callouts.remove_callout("deadwood")
+	# R3：完工的庇护所一直有标签——玩家在任何机位都能认出"这是我的庇护所、入口在哪"
+	if site != null and site.is_complete() and not _inside_site():
+		var entrance := site.global_position + site.entrance_dir * 1.8 + Vector3(0, 0.8, 0)
+		callouts.set_callout("my_shelter", entrance, Loc.t("Your %s") % Loc.t(site.builder.active_preset().display_name),
+			Loc.t("Entrance here · [N] rest when ready"), Color(1.0, 0.7, 0.35), Vector2(-150.0, -40.0))
+	elif callouts.has_callout("my_shelter"):
+		callouts.remove_callout("my_shelter")
 
 # ------------------------------------------------------------------ 入夜结算输入
 

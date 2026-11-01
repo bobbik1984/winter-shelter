@@ -29,6 +29,8 @@ var time_factor: float = 1.0
 var vent_stick: bool = false
 ## 世界内洞内视图（T4.4）：玩家进洞时雪丘半透明，露出洞腔、冷气坑、高床、垫层、烛灯。
 var _mound: MeshInstance3D
+## 完工雪洞的洞口灯（R3：黄昏后调亮，让玩家远远看到"我的洞在这"）。
+var _entrance_light: OmniLight3D
 var _interior: Node3D
 var _mound_ghost: StandardMaterial3D
 var _inside := false
@@ -119,6 +121,7 @@ func _snow_mat(base: Color, amount: float) -> ShaderMaterial:
 
 func _refresh() -> void:
 	_mound = null
+	_entrance_light = null
 	_interior = null
 	if _visual:
 		_visual.queue_free()
@@ -182,7 +185,14 @@ func _cave_visual(s: int) -> void:
 	# 雪丘（挖掘弃雪堆成的穹顶）+ 入口暗洞
 	_mound = _sphere(Vector3(0, -0.2, -1.0), 2.0, Vector3(1.3, 0.62 + 0.05 * s, 1.15), _snow)
 	_build_interior(s)
-	var hole := _sphere(Vector3(0, 0.38, 0.95), 0.55, Vector3(1.0, 0.75 + 0.08 * mini(s, 2), 0.35), _dark)
+	# 入口：必须突出雪丘表面（雪丘前缘在 z ≈ 1.30；原来洞口 z ≤ 1.14 整个埋在雪里，评审 R3）
+	var hole := _sphere(Vector3(0, 0.36, 1.22), 0.55, Vector3(1.0, 0.75 + 0.08 * mini(s, 2), 0.42), _dark)
+	# 入口前挖出的引道（从任何机位都看得出"这里挖进去了"）：下沉的暗色沟底 + 两侧弃雪埂
+	if s >= 2:
+		var trench_len := 1.2 + 0.25 * mini(s, 4)
+		_box(Vector3(0, 0.03, 1.3 + trench_len * 0.5), Vector3(0.95, 0.08, trench_len), _dark)
+		_sphere(Vector3(-0.85, 0.05, 1.35 + trench_len * 0.5), 0.5, Vector3(0.45, 0.42, trench_len * 1.1), _snow)
+		_sphere(Vector3(0.85, 0.05, 1.35 + trench_len * 0.5), 0.5, Vector3(0.45, 0.42, trench_len * 1.1), _snow)
 	# 弃雪堆
 	for i in range(mini(s, 3) + 1):
 		_sphere(Vector3(-1.4 + i * 0.9, 0.0, 1.6 + (i % 2) * 0.4), 0.45, Vector3(1, 0.5, 1), _snow)
@@ -194,12 +204,13 @@ func _cave_visual(s: int) -> void:
 			_cyl(Vector3(-0.45, 1.25, -1.5), 0.06, 0.6, _wood)
 	if s >= 5:
 		hole.material_override = _glow
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.6, 0.25)
-		l.omni_range = 3.5
-		l.light_energy = 1.4
-		l.position = Vector3(0, 0.5, 1.4)
-		_visual.add_child(l)
+		# 完工：洞口烛光照亮引道与周围雪面（黄昏后越来越显眼；_process 按日高调亮）
+		_entrance_light = OmniLight3D.new()
+		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
+		_entrance_light.omni_range = 5.0
+		_entrance_light.light_energy = 1.4
+		_entrance_light.position = Vector3(0, 0.6, 1.9)
+		_visual.add_child(_entrance_light)
 
 func _build_interior(s: int) -> void:
 	_interior = Node3D.new()
@@ -288,3 +299,13 @@ func _leanto_visual(s: int) -> void:
 		fire = Campfire.new()
 		fire.position = Vector3(0, 0, 1.6)
 		add_child(fire)
+
+
+## R3：洞口灯随天色变亮（白天 1.4 → 入夜 3.2），远处也能看到雪地上的暖光。
+func _process(_delta: float) -> void:
+	if _entrance_light == null:
+		return
+	var w := get_tree().get_first_node_in_group("weather")
+	if w:
+		var elev: float = w.sun_elevation_deg
+		_entrance_light.light_energy = lerpf(1.4, 3.2, clampf((6.0 - elev) / 8.0, 0.0, 1.0))

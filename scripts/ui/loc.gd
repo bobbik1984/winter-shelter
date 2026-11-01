@@ -258,6 +258,8 @@ const ZH := {
 	"Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.": "挖雪会弄湿保暖层。钻进去之前先在火边烘干——湿衣服几乎不保暖。",
 	"Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.": "庇护所选对了，但你从没在挖的地方探过雪——深度是碰巧的。先探，再挖。",
 	"Right shelter, but the entrance was only %d° away from the wind — face it fully downwind (120°+).": "庇护所选对了，但入口只偏离风向 %d°——让它完全背风（120° 以上）。",
+	"Your %s": "你的%s",
+	"Entrance here · [N] rest when ready": "入口在这里 · 准备好就 [N] 休息",
 	"Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ": "读懂大地：树冠背风倾斜，背风坡积雪最深，立枯木是干柴——",
 	"and the shadows tell you how much daylight is left.": "影子告诉你还剩多少天光。",
 	"[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n": "[WASD] 移动    [Space] 按住探雪    [E] 按住采集 / 施工    [F10] 画质    [L] English\n",
