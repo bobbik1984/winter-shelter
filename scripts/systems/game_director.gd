@@ -165,7 +165,7 @@ func _enter_briefing() -> void:
 	interaction.enabled = false
 	_saved_time_scale = weather.time_scale
 	weather.time_scale = 0.0
-	ui.show_briefing(true, weather.forecast_text())
+	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
 
 func start_game() -> void:
 	state = State.PLAYING
@@ -270,14 +270,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				start_game()
 			elif k == KEY_L:
 				_toggle_lang()
-				ui.show_briefing(true, weather.forecast_text())
+				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
 		State.REPORT:
 			if k == KEY_R:
-				get_tree().reload_current_scene()
+				_restart()
 		State.PAUSED:
 			match k:
 				KEY_ESCAPE, KEY_P: _set_paused(false)
-				KEY_R: get_tree().reload_current_scene()
+				KEY_R: _restart()
 				KEY_Q: get_tree().quit()
 		State.PLAYING:
 			if k == KEY_ESCAPE and not build.active:
@@ -297,6 +297,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_B: _enter_build()
 				KEY_F: _try_fire()
 				KEY_N: _request_sleep()
+
+## 重开：换到下一个山谷（同一结构、不同的起伏与雪深分布），再重载场景。
+func _restart() -> void:
+	var seeds: Array = TerrainHeight.VALLEY_SEEDS
+	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
+	get_tree().reload_current_scene()
+
+func valley_name() -> String:
+	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]
 
 func _set_paused(on: bool) -> void:
 	state = State.PAUSED if on else State.PLAYING

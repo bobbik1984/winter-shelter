@@ -49,7 +49,7 @@ godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png 
 tools/build.sh [linux|windows|all]                      # 导出独立版本到 build/（需先安装 4.3.stable 导出模板）
 godot --path . -s res://tools/input_smoke_test.gd          # 真实输入冒烟测试（15 项，开始 → 报告）
 godot --path . -s res://tools/fuzz_test.gd -- --seconds=90 --seed=1   # 随机输入模糊测试（不崩溃 / 状态机合法）
-godot --path . -s res://tools/playtest_bot.gd -- --s=deep  # 策略机器人（good/deep/quick/twovent/wind/late/trench/leanto_short/leanto_full/none）
+godot --path . -s res://tools/playtest_bot.gd -- --s=deep --valley=13  # 策略机器人（good/deep/quick/twovent/wind/late/trench/leanto_short/leanto_full/none）
 ```
 
 运行时按键：**Enter** 开始 · WASD 移动 · 按住 Space 探针 · 按住 **E** 采集 / 建造 / 喝热水 · **B** 建造模式（Tab 换类型、R 转入口、T 顶厚、2 通风管、E 放置）· **F** 生火 / 添柴 · **N** 睡觉 · **H** 野外手册 · **L** English / 中文 · **Esc** 暂停 · **V** 移轴 / 正交 · 滚轮 推拉 · **F10** 画质 · **F11** 全屏 · **M** 静音 · **-** / **=** 界面大小。
@@ -58,7 +58,7 @@ godot --path . -s res://tools/playtest_bot.gd -- --s=deep  # 策略机器人（g
 
 **手柄**：左摇杆移动 · A 交互 / 放置 · X 探针 · Y 建造 · B 生火（建造中 = 取消）· Start 开始 / 暂停 / 重开 · Back 手册 · LB / RB 旋转入口 / 换类型 · 十字键 ↑ 顶厚 ↓ 通风管 → 睡觉 ← 语言。
 
-**一局怎么玩**：简报页按 Enter（标准，14:20 开局）或 2（全天模式，10:00 开局，看影子先变短再变长）。标准模式 14:20 开局，16:18 日落（看影子长度判断剩余日照），17:50 强制入夜。探测深雪 → 收集干柴 / 桦树皮 / 垫层 → 选址建庇护所（高床雪洞 / 基础雪洞 / 雪沟 / 树根倒棚）→ 入夜后得到 6 维报告与"要记住的一件事"。
+**一局怎么玩**：简报页按 Enter（标准，14:20 开局）或 2（全天模式，10:00 开局，看影子先变短再变长）。每次重开换一个山谷（4 个：同样的迎风坡—脊线—背风坡结构，起伏与深雪分布不同）。标准模式 14:20 开局，16:18 日落（看影子长度判断剩余日照），17:50 强制入夜。探测深雪 → 收集干柴 / 桦树皮 / 垫层 → 选址建庇护所（高床雪洞 / 基础雪洞 / 雪沟 / 树根倒棚）→ 入夜后得到 6 维报告与"要记住的一件事"。
 
 ---
 

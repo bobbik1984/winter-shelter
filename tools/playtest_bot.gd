@@ -8,6 +8,8 @@ func _run() -> void:
 	var strat := "good"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--s="): strat = a.substr(4)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--valley="): TerrainHeight.SEED = int(a.substr(9))
 	var m = load("res://scenes/main.tscn").instantiate()
 	root.add_child(m)
 	for i in 15: await process_frame

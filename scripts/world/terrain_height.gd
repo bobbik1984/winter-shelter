@@ -8,7 +8,10 @@ extends RefCounted
 const GRID := 52
 const WORLD_SIZE := 100.0
 const HALF_SIZE := 50.0
-const SEED := 7
+## 噪声种子：只影响起伏 / 风积肋 / 雪深分布，不改迎风坡—脊线—背风坡的主结构。
+## 默认 7（测试基准）；GameDirector 在重开时切换到下一个山谷（VALLEY_SEEDS）。
+const VALLEY_SEEDS := [7, 13, 29, 41]
+static var SEED: int = 7
 
 static func hash2(x: int, y: int, seed: int) -> float:
 	var h: int = x * 374761393 + y * 668265263 + seed * 2246822519
