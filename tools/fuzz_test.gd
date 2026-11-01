@@ -4,7 +4,7 @@ extends SceneTree
 ## 运行：godot --path . -s res://tools/fuzz_test.gd -- --seconds=90 --seed=1
 ## 退出码非 0 = 失败（Godot 的 SCRIPT ERROR 也会打印在日志里，CI 中 grep 即可）。
 
-var KEYS := [KEY_B, KEY_TAB, KEY_R, KEY_T, KEY_2, KEY_F, KEY_H, KEY_ESCAPE, KEY_N, KEY_F10, KEY_M, KEY_L, KEY_ENTER, KEY_MINUS, KEY_EQUAL]
+var KEYS := [KEY_B, KEY_TAB, KEY_R, KEY_T, KEY_2, KEY_F, KEY_H, KEY_ESCAPE, KEY_N, KEY_F10, KEY_M, KEY_L, KEY_ENTER, KEY_MINUS, KEY_EQUAL, KEY_LEFT, KEY_RIGHT]
 var ACTIONS := ["move_left", "move_right", "move_up", "move_down", "probe", "interact"]
 
 func _initialize() -> void:
@@ -17,6 +17,12 @@ func _run() -> void:
 		if a.begins_with("--seconds="): seconds = float(a.substr(10))
 		if a.begins_with("--seed="): seed_ = int(a.substr(7))
 	seed(seed_)
+	# 关卡模式（D12）：关卡与本局抽取由 --seed 决定（可复现）；测试记录文件里全部解锁，让 ←/→ 换关也被覆盖
+	Records.path = "user://fuzz_records.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Records.path))
+	for i in range(1, LevelState.LEVEL_COUNT + 1):
+		Records.record_level_result(i, "SAFE")
+	LevelState.begin(LevelState.ORDER[seed_ % LevelState.ORDER.size()], seed_)
 	var m = load("res://scenes/main.tscn").instantiate()
 	root.add_child(m)
 	current_scene = m

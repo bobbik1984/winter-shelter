@@ -12,11 +12,21 @@ Requires **Godot 4.3 stable** (Forward+, Vulkan).
 godot --path .            # play (or open the project in the Godot editor and press F5)
 ```
 
-The game starts on a briefing screen: **Enter** = standard day (14:20 start), **2** = full day (10:00 start), **L** = English / 中文.
+The game starts on a briefing screen. There are **5 levels** of rising difficulty, then free play; each level teaches one thing and draws its own valley, wind direction and weather every time. **←/→** (gamepad LB/RB) = choose an unlocked level, **Enter** = begin, **L** = English / 中文; in free play, **2** = full day (10:00 start). A night that ends **COLD** or **SAFE** unlocks the next level; on the report, **Enter** = next level, **R** = retry with new conditions.
+
+| Level | Lesson |
+| :-- | :-- |
+| 1 | Read the wind and dig a snow cave (deep snow, light wind, whole day from 10:00) |
+| 2 | Deep snow hides in a few places: probe before you dig |
+| 3 | Thin snow: no cave fits, dig a trench |
+| 4 | Barely any snow: lean-to by a root plate, gather wood for an all-night fire |
+| 5 | A storm is coming: read the land and pick the shelter it allows |
+
+Developer flags (after `--`): `--level=N|free`, `--seed=S`, `--unlock-all`.
 
 ## How a game goes
 
-It is January 14, −17 °C with a strong west wind; the sun sets at 16:18 and night is forced at 17:50.
+It is January 14, −17 °C (free play and most levels: 14:20 start, wind from the west in the base layout — levels turn the whole map so the wind can come from any side); the sun sets at 16:18 and night is forced at 17:50.
 
 1. **Find deep snow.** Hold **Space** to probe. Leeward (east) slopes collect the deepest snow; wind-shaped snow tongues mark the deepest spots. "Deeper snow" labels appear only where you have probed.
 2. **Gather.** Hold **E** near: standing dead trees (dry wood), birches (bark = tinder), dry grass and low spruce boughs (bedding). Fallen logs are wet and won't burn.

@@ -14,11 +14,14 @@ const SPAWN_POSITION := Vector3(18.0, 0.0, 8.0)
 func _init() -> void:
 	var t := load("res://resources/tuning.tres") as Tuning
 	TerrainHeight.SADDLE = (t != null and t.ridge_saddle) or "--saddle" in OS.get_cmdline_user_args()
-	# D12：命令行 --level=N [--seed=S] 进入关卡模式（只在首次加载时；重开由 GameDirector 重新抽取）
+	# D12：首次加载时进入关卡模式——命令行 --level=N [--seed=S] 优先，否则上次选的关 / 已解锁最高关。
+	# 之后的重开 / 换关由 GameDirector 先 LevelState.begin 再重载场景。测试工具关掉 auto_begin 保留旧基准。
 	if not LevelState.active():
 		var a := LevelState.parse_args(OS.get_cmdline_user_args())
 		if int(a["level"]) >= 0:
 			LevelState.begin(int(a["level"]), int(a["seed"]))
+		elif LevelState.auto_begin:
+			LevelState.begin(Records.default_level())
 	LevelState.apply_world()
 
 func _ready() -> void:

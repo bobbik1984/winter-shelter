@@ -6,6 +6,10 @@ extends SceneTree
 var fails: Array[String] = []
 
 func _initialize() -> void:
+	# 第一部分用旧基准（不进关卡模式）；第二部分单独测关卡选择与解锁。记录写到测试文件。
+	LevelState.auto_begin = false
+	Records.path = "user://test_records.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Records.path))
 	_run()
 
 func key(k: Key) -> void:
@@ -165,5 +169,74 @@ func _run() -> void:
 	var m2 = current_scene
 	var d2 = m2.get_node_or_null("GameDirector") if m2 else null
 	check(m2 != m and d2 != null and d2.state == d2.State.BRIEFING, "R on the report restarts at a fresh briefing")
+	await _levels_part()
+	check(levels_done, "level selection section ran to the end (a script error would stop it early)")
 	printerr("RESULT ", "PASS" if fails.is_empty() else "FAIL %d" % fails.size())
 	quit(0 if fails.is_empty() else 1)
+
+
+var levels_done := false
+
+## 等场景重载完成。用实例 id 比较：旧场景对象此时已被释放。
+func _scene_after_reload(prev_id: int) -> Node:
+	for i in 60:
+		await process_frame
+		if current_scene != null and current_scene.get_instance_id() != prev_id and current_scene.is_inside_tree():
+			break
+	for i in 20: await process_frame
+	return current_scene
+
+## D12 / L4：关卡选择与解锁（真实按键）。存档是测试文件，开始时只有第 1 关解锁。
+func _levels_part() -> void:
+	LevelState.begin(1, 11)
+	var prev_id := current_scene.get_instance_id()
+	reload_current_scene()
+	var m = await _scene_after_reload(prev_id)
+	var d = m.get_node("GameDirector")
+	check(d.state == d.State.BRIEFING and LevelState.level.index == 1, "level mode boots on a briefing for level 1")
+	var lesson: Label = m.find_child("LevelLesson", true, false)
+	check(lesson != null and lesson.text == LevelState.level.lesson, "briefing shows the level lesson")
+	check(m.find_child("LevelChip_1", true, false) != null and m.find_child("LevelChip_Free", true, false) != null, "briefing shows the level row")
+	await key(KEY_RIGHT)
+	for i in 10: await process_frame
+	check(current_scene == m and LevelState.level.index == 1, "→ does nothing while only level 1 is unlocked")
+	check(int(d.weather.current_time_minutes) == 600, "level 1 starts at 10:00")
+	Records.record_level_result(1, "COLD")
+	var id_KEY_RIGHT_1 := m.get_instance_id()
+	await key(KEY_RIGHT)
+	m = await _scene_after_reload(id_KEY_RIGHT_1)
+	d = m.get_node("GameDirector")
+	check(LevelState.level.index == 2 and d.state == d.State.BRIEFING, "after unlocking, → switches to level 2 (fresh briefing)")
+	check(Records.last_level() == 2, "the chosen level is remembered")
+	await key(KEY_2)
+	check(d.state == d.State.BRIEFING and not d.full_day, "[2] full day is free-mode only")
+	var id_KEY_LEFT_2 := m.get_instance_id()
+	await key(KEY_LEFT)
+	m = await _scene_after_reload(id_KEY_LEFT_2)
+	d = m.get_node("GameDirector")
+	check(LevelState.level.index == 1, "← goes back to level 1")
+	var id_KEY_RIGHT_3 := m.get_instance_id()
+	await key(KEY_RIGHT)
+	m = await _scene_after_reload(id_KEY_RIGHT_3)
+	d = m.get_node("GameDirector")
+	await key(KEY_ENTER)
+	check(d.state == d.State.PLAYING and int(d.weather.current_time_minutes) == d.tuning.start_minutes, "level 2 starts at 14:20")
+	await key(KEY_N)
+	await key(KEY_N)
+	var t0 := Time.get_ticks_msec()
+	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 12000:
+		await process_frame
+	check(d.state == d.State.REPORT, "level 2 night ends in the report")
+	check(Records.highest_unlocked() == 2, "sleeping in the open (DANGEROUS) does not unlock level 3")
+	await key(KEY_ENTER)
+	for i in 10: await process_frame
+	check(current_scene == m and d.state == d.State.REPORT, "[Enter] on the report does nothing when the next level is locked")
+	d._unlock_after_report(2, "COLD")   # 冒烟测试打不出 COLD：直接走解锁分支
+	check(Records.highest_unlocked() == 3, "COLD on level 2 unlocks level 3")
+	var id_KEY_ENTER_4 := m.get_instance_id()
+	await key(KEY_ENTER)
+	m = await _scene_after_reload(id_KEY_ENTER_4)
+	d = m.get_node("GameDirector")
+	check(LevelState.level.index == 3 and d.state == d.State.BRIEFING, "[Enter] on the report goes to the next level")
+	check(d._joy_to_key(JOY_BUTTON_RIGHT_SHOULDER) == KEY_RIGHT and d._joy_to_key(JOY_BUTTON_LEFT_SHOULDER) == KEY_LEFT, "gamepad LB / RB choose the level on the briefing")
+	levels_done = true

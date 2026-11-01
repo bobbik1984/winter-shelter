@@ -174,7 +174,8 @@ func _enter_briefing() -> void:
 	interaction.enabled = false
 	_saved_time_scale = weather.time_scale
 	weather.time_scale = 0.0
-	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro())
+	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
+	_update_hint()
 
 func start_game() -> void:
 	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
@@ -240,7 +241,9 @@ func _show_report() -> void:
 	ui.show_report(data, name_)
 	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "warmth": int(warmth.body_warmth)})
 	SessionLog.close()
-	Records.save(String(input.get("shelter_type", "None")) + ("@day" if full_day else ""), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	var lvl := LevelState.level.index if LevelState.active() else 0
+	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	_unlock_after_report(lvl, String(data["outcome"]))
 
 
 # ------------------------------------------------------------------ 输入
@@ -298,12 +301,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				weather.advance_minutes(0.0)
 				_last_minutes = weather.current_time_minutes
 				start_game()
+			elif k == KEY_LEFT or k == KEY_RIGHT:
+				_switch_level(-1 if k == KEY_LEFT else 1)
 			elif k == KEY_L:
 				_toggle_lang()
-				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro())
+				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
 		State.REPORT:
 			if k == KEY_R:
 				_restart()
+			elif (k == KEY_ENTER or k == KEY_KP_ENTER) and _next_level() >= 0:
+				_go_to_level(_next_level())
 		State.PAUSED:
 			match k:
 				KEY_ESCAPE, KEY_P: _set_paused(false)
@@ -338,6 +345,64 @@ func _restart() -> void:
 	var seeds: Array = TerrainHeight.VALLEY_SEEDS
 	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
 	get_tree().reload_current_scene()
+
+## 环境卡提示行（V3）。简报时也刷新一次，否则显示的是 hud.tscn 的空默认值。
+func _update_hint() -> void:
+	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):
+		var hint := hud.get_node("TopRightCard/VBox/HintLabel") as Label
+		hint.text = GameRules.tip_for(weather.minutes_to_sunset(), weather.sun_elevation_deg,
+			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning,
+			GameRules.wind_word(wind.from_octant()))
+
+# ------------------------------------------------------------------ 关卡（D12 / L4）
+
+## 简报页的关卡信息（GameUI 渲染）；不在关卡模式时为空。
+func _level_info() -> Dictionary:
+	if not LevelState.active():
+		return {}
+	var hi := Records.highest_unlocked()
+	var chips: Array = []
+	for idx in LevelState.ORDER:
+		chips.append({"label": Loc.t("Free") if idx == 0 else str(idx), "current": idx == LevelState.level.index,
+			"unlocked": LevelState.is_unlocked(idx, hi)})
+	var locked_hint := ""
+	if hi <= LevelState.LEVEL_COUNT:
+		locked_hint = Loc.t("Reach COLD or SAFE on level %d to unlock the next.") % hi
+	return {"index": LevelState.level.index, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed,
+		"chips": chips, "best": Records.level_best(LevelState.level.index) if not LevelState.level.is_free() else Records.text(),
+		"locked_hint": locked_hint, "full_day_option": LevelState.level.is_free()}
+
+## 简报页 ←/→：换到相邻的已解锁关，重新抽取并重载场景（地形 / 雪 / 风在 _ready 时构建）。
+func _switch_level(step: int) -> void:
+	if not LevelState.active():
+		return
+	var idx := LevelState.step_unlocked(LevelState.level.index, step, Records.highest_unlocked())
+	if idx != LevelState.level.index:
+		_go_to_level(idx)
+
+func _go_to_level(idx: int) -> void:
+	Records.set_last_level(idx)
+	LevelState.begin(idx)
+	get_tree().reload_current_scene()
+
+## 报告页 [Enter]：下一关（已解锁才有；第 5 关之后 = 自由模式 0）。−1 = 没有。
+func _next_level() -> int:
+	if not LevelState.active() or LevelState.level.is_free():
+		return -1
+	var nxt := LevelState.level.index + 1 if LevelState.level.index < LevelState.LEVEL_COUNT else 0
+	return nxt if LevelState.is_unlocked(nxt, Records.highest_unlocked()) else -1
+
+func _unlock_after_report(lvl: int, outcome: String) -> void:
+	if lvl < 1:
+		return
+	var before := Records.highest_unlocked()
+	var after := Records.record_level_result(lvl, outcome)
+	if after > before:
+		ui.toast(Loc.t("Free play unlocked!") if after > LevelState.LEVEL_COUNT else Loc.t("Level %d unlocked!") % after, 6.0)
+	if LevelState.unlocks_next(outcome):
+		ui.add_report_line(Loc.t("[Enter] next: free play") if lvl == LevelState.LEVEL_COUNT else Loc.t("[Enter] next level"))
+	else:
+		ui.add_report_line(Loc.t("Reach COLD or SAFE to unlock the next level.  [R] try again (new conditions)"))
 
 ## 简报第一句：本局真实的开局时刻、气温、风向风速、日落与剩余天光（关卡会改这些）。
 func _briefing_intro() -> String:
@@ -465,11 +530,7 @@ func _tick_playing(delta: float) -> void:
 			_cutaway_panel.set_progress(site.stage() if site != null and not build.active else -1)
 
 	# 提示行：影子就是时钟（V3）
-	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):
-		var hint := hud.get_node("TopRightCard/VBox/HintLabel") as Label
-		hint.text = GameRules.tip_for(weather.minutes_to_sunset(), weather.sun_elevation_deg,
-			warmth.body_warmth, site != null and site.stage() > 0, site != null and site.is_complete(), tuning,
-			GameRules.wind_word(wind.from_octant()))
+	_update_hint()
 
 	_update_world_callouts()
 	var atm := weather.atmosphere

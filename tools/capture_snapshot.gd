@@ -13,6 +13,7 @@ const WARMUP_FRAMES := 8
 
 
 func _initialize() -> void:
+	LevelState.auto_begin = false  # 截图用固定基准（山谷 7、不旋转），便于前后对比
 	# _run_capture() 是协程：它自己 await 渲染帧，成功或失败都会 quit()。
 	_run_capture()
 

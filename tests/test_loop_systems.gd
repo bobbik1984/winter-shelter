@@ -36,8 +36,10 @@ func run() -> Dictionary:
 	_check(String(zh["rows"][0]["note"]).contains("迎风"), "中文报告应使用中文归因")
 	Loc.lang = "en"
 
-	# Records：结局优先
-	var path := Records.RECORDS
+	# Records：结局优先（写临时文件，绝不碰玩家的 user://records.cfg）
+	var real_path := Records.path
+	Records.path = "user://test_records_loop.cfg"
+	var path := Records.path
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Records.save("TestPreset", "COLD", 90)
 	Records.save("TestPreset", "SAFE", 60)
@@ -47,6 +49,32 @@ func run() -> Dictionary:
 	_check(cfg.get_value("TestPreset", "outcome", "") == "SAFE", "更好的结局应覆盖更高的分数")
 	_check(int(cfg.get_value("TestPreset", "nights", 0)) == 3, "夜数应累计")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+	# 关卡进度（D12 / L4）
+	_check(Records.key_for("SnowTrench", 3, false) == "L3:SnowTrench" and Records.key_for("LeanTo", 0, true) == "LeanTo@day"
+		and Records.key_for("None", 0, false) == "None", "记录键：关卡 L<N>:，自由模式沿用旧键")
+	_check(Records.highest_unlocked() == 1 and Records.default_level() == 1, "新存档只开第 1 关，默认第 1 关")
+	_check(Records.record_level_result(1, "DANGEROUS") == 1, "第 1 关 DANGEROUS 不解锁")
+	_check(Records.record_level_result(1, "COLD") == 2 and Records.highest_unlocked() == 2, "第 1 关 COLD 解锁第 2 关并写盘")
+	Records.set_last_level(1)
+	_check(Records.default_level() == 1, "默认 = 上次选的关（仍解锁）")
+	Records.set_last_level(4)
+	_check(Records.default_level() == 2, "上次选的关未解锁时 = 已解锁最高关")
+	_check(Records.record_level_result(1, "SAFE") == 2, "重玩旧关不降低进度")
+	for i in range(2, 6):
+		Records.record_level_result(i, "COLD")
+	_check(Records.highest_unlocked() == 6 and LevelState.is_unlocked(0, Records.highest_unlocked()), "通过第 5 关开放自由模式")
+	Records.set_last_level(0)
+	_check(Records.default_level() == 0, "自由模式解锁后可作为默认")
+	Records.save(Records.key_for("SnowTrench", 3, false), "COLD", 55)
+	Records.save(Records.key_for("BasicCave", 3, false), "DANGEROUS", 80)
+	_check(Records.level_best(3).contains("COLD") and Records.level_best(3).contains("Trench"), "本关最好：结局优先（%s）" % Records.level_best(3))
+	_check(Records.level_best(4) == "", "没玩过的关没有最好记录")
+	_check(LevelState.step_unlocked(1, 1, 2) == 2 and LevelState.step_unlocked(2, 1, 2) == 1 and LevelState.step_unlocked(1, -1, 2) == 2, "←/→ 只在已解锁的关之间循环")
+	_check(LevelState.step_unlocked(1, 1, 1) == 1, "只有第 1 关时 ←/→ 不动")
+	_check(LevelState.step_unlocked(5, 1, 6) == 0 and LevelState.step_unlocked(0, 1, 6) == 1, "第 5 关之后是自由模式，再之后回到第 1 关")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	Records.path = real_path
 
 	# AtmosphereState 昼夜系数
 	var a := AtmosphereState.new()

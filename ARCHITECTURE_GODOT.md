@@ -172,12 +172,13 @@ static func evaluate_shelter(
 - **致谢与许可**：暂停菜单 [C]，Godot MIT 文本来自 `Engine.get_license_text()`；随包字体许可在 `assets/fonts/`。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
-### 3.9 关卡阶梯（D12，L 轨道：L1–L3 已实现）
+### 3.9 关卡阶梯（D12，L 轨道：L1–L4 已实现）
 
 - **`LevelDef`**（`scripts/resources/level_def.gd`，`Resource`）：`id`、课题文案键、`start_minutes`、天气池（权重）、`wind_speed_offset_kmh`、`snow_depth_scale` / `snow_contrast`、`snag_density_scale`、`wind_rotation_choices`（或抖动范围）、`target_presets`（只给机器人与报告文案用，不限制玩家）。实例在 `resources/levels/level_01.tres … level_05.tres`；自由模式 = `level_free.tres`（全部为现有默认值）。
 - **`LevelState`**（静态，同 `TerrainHeight.SEED` 的生命周期）：当前 `LevelDef` + 本局种子 + 抽取结果（山谷、风向旋转、天气、第 5 关雪深档位）。**必须在重载 `main.tscn` 之前设置**，因为地形、雪深场、森林、雪枕、资源都在 `_ready` 时构建。
 - **读取方**：`TerrainHeight.snow_depth_at`（静态 `SNOW_SCALE` / `SNOW_PATCHINESS`，`SnowField` 与所有调用者自动跟随；值为 1 / 0 时原样返回）、`TerrainHeight` 与所有散布器（布局旋转：统一在"地图坐标 ↔ 世界坐标"处转换，不在各脚本里各自旋转）、`WeatherController`（天气池、开局时间、风速）、`ResourceSpawner`（枯木密度）、`GameDirector`（解锁、记录、简报 / 报告文案）。
 - **入口**：`MainLevel._init` 读 `--level=N [--seed=S]` 调 `LevelState.begin`，再 `LevelState.apply_world()`；未进入关卡时一切保持旧行为（山谷按重开轮换、天气按 Tuning 抽取）。关卡模式下 R 重开 = 同一关新种子。`WeatherController.day_start_minutes` 是本局开局时刻（报告时间线读它）；`wind_offset_kmh` 叠加在风速上。
+- **进度与选择（L4）**：`Records`（`static var path`，默认 `user://records.cfg`）存 `[progress] highest_unlocked / last_level` 与每关最好记录；`Records.default_level()` 决定开局关。`LevelState.auto_begin`（默认 true）让真实游戏总在关卡模式；**测试工具（playtest_bot / input_smoke_test / capture_snapshot）设为 false 保留固定基准，且把 `Records.path` 改到测试文件**——任何新工具 / 测试都不得写玩家的 `records.cfg`。fuzz_test 走关卡模式（关卡与种子来自 `--seed`）。换关 = `LevelState.begin` + `reload_current_scene`（`GameDirector._go_to_level`）。
 - **地图坐标 vs 世界坐标（L3）**：`TerrainHeight.ROTATION_DEG`（90° 倍数）。`height_at` / `snow_depth_at` / `lee_factor_at` 先 `to_map()` 再算，所以地形网格、探针、散布、雪枕、远景边缘自动跟随；`gradient_at` / `normal_at` / `slope_at` 由 `height_at` 差分得到，也自动正确。**脚本里写死的坐标一律是地图坐标**，使用时 `TerrainHeight.to_world()` / `to_world3()`：出生点、固定枯木、树根、场景群落、脚印链、`KEEP_OUT`、剖面雪洞原点。视野走廊起点随出生点旋转，方向（相机前方 / 落日）不转。新加写死坐标时必须遵守，否则旋转后会落在错误的坡上。
 - **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。
 - **测试**：`tests/test_levels.gd`（种子可复现、抽取在范围内、解锁规则）；`tools/playtest_bot.gd -- --level=N --seed=S`。

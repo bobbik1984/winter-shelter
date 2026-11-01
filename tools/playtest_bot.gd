@@ -3,6 +3,9 @@ extends SceneTree
 ## 直接调用 GameDirector API 走完一局，打印结局与 6 维分数；用于平衡回归（见 PRODUCTION_PLAN §4.V / T3.9）。
 ## 策略机器人：直接调用 GameDirector API 走完一局，打印结局与 6 维分数。
 func _initialize() -> void:
+	# 固定基准：不进关卡模式（山谷 7 / 不旋转 / 天气按 Tuning），记录写到测试文件，不碰玩家存档
+	LevelState.auto_begin = false
+	Records.path = "user://test_records.cfg"
 	_run()
 func _run() -> void:
 	var strat := "good"

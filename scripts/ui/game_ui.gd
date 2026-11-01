@@ -23,6 +23,7 @@ var _build_info: Label
 var _briefing: Control
 var _fade: ColorRect
 var _report: Control
+var _report_box: VBoxContainer
 var _pause: Control
 var _guide: Control
 var _credits: Control
@@ -172,14 +173,14 @@ func show_build(visible_: bool, title: String = "", reason: String = "", ok: boo
 func set_fade(a: float) -> void:
 	_fade.color.a = a
 
-func show_briefing(on: bool, forecast: String = "", intro: String = "") -> void:
+func show_briefing(on: bool, forecast: String = "", intro: String = "", level: Dictionary = {}) -> void:
 	if on and _briefing == null:
-		_briefing = _make_briefing(forecast, intro)
+		_briefing = _make_briefing(forecast, intro, level)
 		get_child(0).add_child(_briefing)
 	if _briefing:
 		_briefing.visible = on
 
-func _make_briefing(forecast: String = "", intro: String = "") -> Control:
+func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary = {}) -> Control:
 	var shade := ColorRect.new()
 	shade.color = Color(0.02, 0.035, 0.06, 0.82)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -200,6 +201,8 @@ func _make_briefing(forecast: String = "", intro: String = "") -> Control:
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(tag)
 	v.add_child(HSeparator.new())
+	if not level.is_empty():
+		_add_level_row(v, level)
 	var body := _label(intro +
 		Loc.t("Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ") +
 		Loc.t("and the shadows tell you how much daylight is left."), 15, MUTED)
@@ -213,18 +216,48 @@ func _make_briefing(forecast: String = "", intro: String = "") -> Control:
 		Loc.t("[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom"), 13, CREAM)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(keys)
-	var rec := Records.text()
+	var rec := Records.text() if level.is_empty() else String(level.get("best", ""))
 	if rec != "":
 		var rl := _label(rec, 13, MUTED)
 		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(rl)
 	var go := _label(Loc.t("Press  ENTER  to begin"), 18, AMBER)
-	var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
-	alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(go)
-	v.add_child(alt)
+	if level.is_empty() or bool(level.get("full_day_option", false)):
+		var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
+		alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(alt)
 	return shade
+
+## 关卡行（D12 / L4）：1 2 3 4 5 Free，当前关高亮、未解锁变暗；下面是本关课题与种子。
+func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	var head := _label(Loc.t("[←] LEVEL [→]"), 14, MUTED)
+	row.add_child(head)
+	for chip in level.get("chips", []):
+		var cur := bool(chip["current"])
+		var open := bool(chip["unlocked"])
+		var text := ("[ %s ]" % chip["label"]) if cur else String(chip["label"])
+		var col := AMBER if cur else (CREAM if open else Color(MUTED, 0.35))
+		var l := _label(text, 20 if cur else 16, col)
+		l.name = "LevelChip_%s" % chip["label"]
+		row.add_child(l)
+	row.name = "LevelRow"
+	v.add_child(row)
+	var lesson := _label(String(level.get("lesson", "")), 17, CREAM)
+	lesson.name = "LevelLesson"
+	lesson.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(lesson)
+	var meta := Loc.t("Seed %d") % int(level.get("seed", 0))
+	if String(level.get("locked_hint", "")) != "":
+		meta += "   ·   " + String(level["locked_hint"])
+	var ml := _label(meta, 12, MUTED)
+	ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(ml)
 
 ## 野外手册（参考图右侧 KEY RESOURCES / READ THE LAND 两块）：[H] 开关。
 func toggle_guide() -> void:
@@ -361,6 +394,13 @@ func show_vignette(tex: Texture2D, caption: String, alpha: float) -> void:
 	_vignette_tex.texture = tex
 	(_vignette.find_child("Caption", true, false) as Label).text = caption
 
+## 报告页底部追加一行（关卡解锁 / 下一关提示，D12 / L4）。
+func add_report_line(text: String) -> void:
+	if _report_box:
+		var l := _label(text, 15, AMBER)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_report_box.add_child(l)
+
 func show_report(data: Dictionary, shelter_name: String) -> void:
 	if _vignette:
 		_vignette.visible = false
@@ -423,5 +463,6 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	v.add_child(lesson)
 	var foot := _label(Loc.t("Survival starts with understanding.          [R] try again"), 13, MUTED)
 	v.add_child(foot)
+	_report_box = v
 	_report = shade
 	get_child(0).add_child(shade)

@@ -35,8 +35,13 @@ static func joy_to_key(btn: JoyButton, state: int, building: bool) -> Key:
 		JOY_BUTTON_BACK: return KEY_H
 		JOY_BUTTON_Y: return KEY_R if state == GameDirector.State.PAUSED else KEY_B
 		JOY_BUTTON_B: return KEY_B if building else (KEY_ESCAPE if state == GameDirector.State.PAUSED else KEY_F)
-		JOY_BUTTON_LEFT_SHOULDER: return KEY_R if building else KEY_NONE
-		JOY_BUTTON_RIGHT_SHOULDER: return KEY_TAB if building else KEY_NONE
+		JOY_BUTTON_LEFT_SHOULDER:
+			if state == GameDirector.State.BRIEFING: return KEY_LEFT
+			return KEY_R if building else KEY_NONE
+		JOY_BUTTON_RIGHT_SHOULDER:
+			if state == GameDirector.State.BRIEFING: return KEY_RIGHT
+			if state == GameDirector.State.REPORT: return KEY_ENTER
+			return KEY_TAB if building else KEY_NONE
 		JOY_BUTTON_DPAD_UP: return KEY_T
 		JOY_BUTTON_DPAD_DOWN: return KEY_2
 		JOY_BUTTON_DPAD_RIGHT: return KEY_N

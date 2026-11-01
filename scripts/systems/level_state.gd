@@ -20,6 +20,11 @@ const UNLOCK_OUTCOMES := ["SAFE", "COLD"]
 ## 种子范围：6 位以内，方便玩家抄写复现。
 const SEED_MAX := 999999
 
+## 真实游戏启动时自动进入关卡模式（MainLevel._init）。测试工具设为 false 以保留固定基准（山谷 7、不旋转、天气按 Tuning）。
+static var auto_begin: bool = true
+## 关卡选择顺序（自由模式排最后）。
+const ORDER := [1, 2, 3, 4, 5, 0]
+
 static var level: LevelDef
 static var game_seed: int = 0
 ## 本局抽取：valley_seed / wind_rotation_deg / weather / snow_depth_scale / start_minutes / wind_speed_offset_kmh / snow_patchiness / snag_density_scale
@@ -128,6 +133,17 @@ static func unlocked_after(highest_unlocked: int, played_index: int, outcome: St
 	if played_index <= 0 or not unlocks_next(outcome):
 		return highest_unlocked
 	return maxi(highest_unlocked, played_index + 1)
+
+## 关卡选择：从 current 沿 ORDER 走 step（±1）找下一个已解锁的关；没有别的可选时返回 current。
+static func step_unlocked(current: int, step: int, highest_unlocked: int) -> int:
+	var pos := ORDER.find(current)
+	if pos < 0:
+		pos = 0
+	for k in range(1, ORDER.size()):
+		var idx: int = ORDER[posmod(pos + step * k, ORDER.size())]
+		if is_unlocked(idx, highest_unlocked):
+			return idx
+	return current
 
 static func is_unlocked(index: int, highest_unlocked: int) -> bool:
 	if index == 0:
