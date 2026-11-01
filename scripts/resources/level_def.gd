@@ -38,6 +38,8 @@ extends Resource
 @export_group("Difficulty (stage 10)")
 ## D13 §9.6：同一章内第 1 阶 = 上面各字段的值，第 10 阶 = 下面的值，中间线性插值。[TUNE]
 @export var start_minutes_hard: int = 860
+## [TUNE] 第 2 阶的开局时刻（-1 = 第 1 → 10 阶直接线性）。第 1 章用它让教程第 1 阶宽裕、第 2 阶起时间压力立刻回来（第一次评审 R4）。
+@export var start_minutes_stage2: int = -1
 @export var wind_speed_offset_kmh_hard: float = 0.0
 @export var snag_density_scale_hard: float = 1.0
 @export var snow_patchiness_hard: float = 0.0

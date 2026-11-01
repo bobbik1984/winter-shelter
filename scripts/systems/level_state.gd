@@ -171,13 +171,21 @@ static func roll_for(def: LevelDef, p_seed: int, d: float = 0.0) -> Dictionary:
 		"snow_depth_scale": depth_scale,
 		"snow_patchiness": lerpf(def.snow_patchiness, def.snow_patchiness_hard, d),
 		"snag_density_scale": lerpf(def.snag_density_scale, def.snag_density_scale_hard, d),
-		"start_minutes": int(round(lerpf(float(def.start_minutes), float(def.start_minutes_hard), d))),
+		"start_minutes": start_minutes_for(def, d),
 		"wind_speed_offset_kmh": lerpf(def.wind_speed_offset_kmh, def.wind_speed_offset_kmh_hard, d),
 		"night_temp_offset_c": lerpf(def.night_temp_offset_c, def.night_temp_offset_c_hard, d),
 		"rootball_bonus": int(round(lerpf(float(def.rootball_bonus), float(def.rootball_bonus_hard), d))),
 		"difficulty": d,
 		"recipe": recipe,
 	}
+
+## 开局时刻：第 1 阶 = start_minutes；若设了 start_minutes_stage2，则第 2 → 10 阶从它线性到 start_minutes_hard。
+static func start_minutes_for(def: LevelDef, d: float) -> int:
+	var d2 := difficulty_of(2)
+	if def.start_minutes_stage2 >= 0 and d >= d2 - 0.0001:
+		var k := clampf((d - d2) / (1.0 - d2), 0.0, 1.0)
+		return int(round(lerpf(float(def.start_minutes_stage2), float(def.start_minutes_hard), k)))
+	return int(round(lerpf(float(def.start_minutes), float(def.start_minutes_hard), d)))
 
 static func _pick_weather(def: LevelDef, r01: float, d: float = 0.0) -> String:
 	var c := maxf(def.weather_weight_clear, 0.0)

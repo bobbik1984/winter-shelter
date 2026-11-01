@@ -50,6 +50,16 @@ func run() -> Dictionary:
 		and defs[4].theme == "open_flat" and defs[5].theme == "storm_mix", "五章主题按 §9.5 排列")
 	_check(defs[1].start_minutes == tuning.full_day_start_minutes and defs[1].start_minutes_hard > defs[1].start_minutes, "第 1 章第 1 阶 10:00 开局，第 10 阶更晚")
 	_check(defs[1].wind_speed_offset_kmh < 0.0 and defs[1].snow_depth_scale_choices[0] > 1.0, "第 1 章风偏弱、深雪")
+	# R4：第 1 阶是宽裕的教程（10:00），第 2 阶起时间压力立刻回来（13:00 → 第 10 阶 15:00）
+	var ch1_starts: Array[int] = []
+	for st in range(1, 11):
+		ch1_starts.append(LevelState.start_minutes_for(defs[1], LevelState.difficulty_of(st)))
+	_check(ch1_starts[0] == 600 and ch1_starts[1] == 780 and ch1_starts[9] == 900, "第 1 章开局：第 1 阶 10:00、第 2 阶 13:00、第 10 阶 15:00（%s）" % str(ch1_starts))
+	var mono := true
+	for i in range(1, 10):
+		mono = mono and ch1_starts[i] >= ch1_starts[i - 1]
+	_check(mono, "第 1 章开局时刻逐阶不提前")
+	_check(LevelState.start_minutes_for(defs[2], 0.5) == int(round(lerpf(float(defs[2].start_minutes), float(defs[2].start_minutes_hard), 0.5))), "没设第 2 阶开局的章节仍线性")
 	_check(defs[2].snow_patchiness > 0.0 and defs[2].snow_patchiness_hard >= defs[2].snow_patchiness, "第 2 章雪深斑驳，越往后越斑驳")
 	_check(defs[3].start_minutes > tuning.start_minutes and defs[3].rootball_bonus > 0 and defs[3].target_presets == PackedStringArray(["LeanTo"]), "第 3 章：开工晚、树根盘多、目标倒棚")
 	_check(not ("ridge_valley" in defs[4].shape_choices) and defs[4].target_presets == PackedStringArray(["SnowTrench"]), "第 4 章：盆地 / 湖岸，目标雪沟")
