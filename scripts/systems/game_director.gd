@@ -34,7 +34,7 @@ var prewarmed := false
 ## 全天模式（简报页按 2）：10:00 开局。记录与标准模式分开保存。
 var full_day := false
 ## 本局装备（S6，来自 LevelState.gear()）。
-var gear: Dictionary = {"shovel": true, "layer": true, "pad": false, "wood": 0, "bark": 0, "bedding": 0}
+var gear: Dictionary = {"shovel": true, "pot": true, "layer": true, "pad": false, "hides": false, "wood": 0, "bark": 0, "bedding": 0}
 ## 一天的时间线（报告里回顾时间花在哪）：事件 -> 时刻字符串。
 var _timeline: Array = []
 
@@ -383,10 +383,15 @@ func _update_hint() -> void:
 ## 简报页装备一行（S6）。
 func _gear_text() -> String:
 	var items: Array[String] = []
-	items.append(Loc.t("snow shovel") if bool(gear["shovel"]) else Loc.t("NO shovel — digging snow takes %dx longer") % int(round(tuning.no_shovel_dig_factor)))
+	match GameRules.dig_tool(gear):
+		"shovel": items.append(Loc.t("snow shovel"))
+		"pot": items.append(Loc.t("NO shovel — dig with your pot, %dx slower") % int(round(tuning.no_shovel_dig_factor)))
+		_: items.append(Loc.t("NO shovel or pot — dig by hand, %dx slower and wetter") % int(round(tuning.bare_hands_dig_factor)))
 	items.append(Loc.t("extra warm layer") if bool(gear["layer"]) else Loc.t("NO extra layer"))
 	if bool(gear["pad"]):
 		items.append(Loc.t("sleeping pad"))
+	if bool(gear.get("hides", false)):
+		items.append(Loc.t("caribou hides"))
 	var carried: Array[String] = []
 	if int(gear["bark"]) > 0: carried.append(Loc.t("%d birch bark") % int(gear["bark"]))
 	if int(gear["wood"]) > 0: carried.append(Loc.t("%d dry wood") % int(gear["wood"]))
@@ -963,7 +968,7 @@ func _site_prompt() -> String:
 ## 本阶段工时（含装备：没有雪铲挖雪庇护所更慢，S6）。
 func _stage_minutes() -> float:
 	# 树井的坑大多是现成的、浮雪用手就能掏：不靠雪铲（S5）
-	return GameRules.dig_minutes(site.stage_minutes(), site.is_snow_shelter() and site.preset_id != "TreeWell", bool(gear["shovel"]), tuning)
+	return GameRules.dig_minutes(site.stage_minutes(), site.is_snow_shelter() and site.preset_id != "TreeWell", GameRules.dig_tool(gear), tuning)
 
 func _efficiency() -> float:
 	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)
@@ -982,7 +987,7 @@ func _on_build_stage() -> Dictionary:
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
 	_skip(minutes, 1 if site.is_snow_shelter() else 0)
 	if site.is_snow_shelter():
-		dampness = minf(1.0, dampness + tuning.damp_per_dig_stage)
+		dampness = minf(1.0, dampness + GameRules.dig_dampness(GameRules.dig_tool(gear), tuning))
 		_update_cloth_label()
 	var r := site.advance()
 	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
@@ -1205,7 +1210,9 @@ func night_input() -> Dictionary:
 	input["prewarmed"] = prewarmed
 	input["dampness"] = dampness   # R1：入睡时受潮进入过夜结算
 	# 装备（S6）：防潮垫加到地面隔热
-	input["bedding_quality"] = GameRules.bedding_with_pad(float(input.get("bedding_quality", 0.0)), bool(gear["pad"]), tuning)
+	# 地面隔热：枝条地板底子 + 睡前多铺的枝条捆（背包里剩下的垫层）+ 防潮垫 + 兽皮
+	input["bedding_quality"] = GameRules.ground_insulation(float(input.get("bedding_quality", 0.0)) > 0.5, inventory.bedding,
+		bool(gear["pad"]), bool(gear.get("hides", false)), tuning)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()
 	return input

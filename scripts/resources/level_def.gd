@@ -76,6 +76,10 @@ extends Resource
 @export var has_shovel: bool = true
 @export var has_extra_layer: bool = true
 @export var has_sleeping_pad: bool = false
+## [GAME] 随身的锅（没有雪铲时用它挖雪，×3）；没有锅就只能徒手（×5、更湿）。
+@export var has_pot: bool = true
+## [GAME] 兽皮（驯鹿皮等）：地面隔热加成，与防潮垫同级。
+@export var has_hides: bool = false
 ## [GAME] 开局背包里已有的材料。
 @export var start_wood: int = 0
 @export var start_bark: int = 0

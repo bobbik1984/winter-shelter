@@ -355,21 +355,31 @@ func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 ## S6：装备是关卡的固定条件；没有雪铲挖雪更慢；防潮垫加地面隔热；非关卡模式 = 旧默认。
 func _check_gear(defs: Array[LevelDef], t: Tuning) -> void:
 	LevelState.reset()
-	_check(LevelState.gear() == {"shovel": true, "layer": true, "pad": false, "wood": 0, "bark": 0, "bedding": 0}, "非关卡模式装备 = 旧默认")
+	_check(LevelState.gear() == {"shovel": true, "pot": true, "layer": true, "pad": false, "hides": false, "wood": 0, "bark": 0, "bedding": 0}, "非关卡模式装备 = 旧默认")
 	LevelState.begin(1, 1)
 	var g1 := LevelState.gear()
 	_check(bool(g1["shovel"]) and bool(g1["layer"]) and bool(g1["pad"]) and int(g1["bark"]) == 2, "第 1 关全套装备 + 2 份桦皮")
 	LevelState.begin(5, 1)
 	_check(not bool(LevelState.gear()["layer"]) and bool(LevelState.gear()["shovel"]), "第 5 关减配：没有额外保暖层")
 	LevelState.reset()
-	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, false, t), 30.0 * t.no_shovel_dig_factor) and t.no_shovel_dig_factor > 1.5, "没有雪铲：挖雪庇护所工时 × %.1f" % t.no_shovel_dig_factor)
-	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, true, t), 30.0), "有雪铲：工时不变")
-	_check(is_equal_approx(GameRules.dig_minutes(30.0, false, false, t), 30.0), "倒棚不靠雪铲：工时不变")
-	_check(GameRules.bedding_with_pad(0.2, true, t) > 0.2 and GameRules.bedding_with_pad(0.9, true, t) <= 1.0 and is_equal_approx(GameRules.bedding_with_pad(0.2, false, t), 0.2), "防潮垫加地面隔热，封顶 1")
+	# 挖雪工具（用户确认：雪铲不是必需品）
+	_check(GameRules.dig_tool({"shovel": true}) == "shovel" and GameRules.dig_tool({"shovel": false, "pot": true}) == "pot" and GameRules.dig_tool({"shovel": false, "pot": false}) == "hands", "挖雪工具：雪铲 → 锅 → 徒手")
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, "pot", t), 30.0 * t.no_shovel_dig_factor) and t.no_shovel_dig_factor > 1.5, "用锅挖：工时 × %.1f" % t.no_shovel_dig_factor)
+	_check(GameRules.dig_minutes(30.0, true, "hands", t) > GameRules.dig_minutes(30.0, true, "pot", t), "徒手比用锅更慢")
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, "shovel", t), 30.0), "有雪铲：工时不变")
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, false, "hands", t), 30.0), "不挖雪的庇护所（倒棚 / 树井）不受影响")
+	_check(GameRules.dig_dampness("hands", t) > GameRules.dig_dampness("shovel", t), "徒手挖更湿")
+	# 地面隔热叠加（用户确认：垫子 / 兽皮是可选加成，枝条随时可用）
+	_check(is_equal_approx(GameRules.ground_insulation(true, 0, false, false, t), t.bedding_base_quality), "只有枝条地板：底子 %.2f" % t.bedding_base_quality)
+	_check(is_equal_approx(GameRules.ground_insulation(true, 4, false, false, t), 1.0), "不带垫子，多铺 4 捆枝条也能满分")
+	_check(is_equal_approx(GameRules.ground_insulation(true, 99, false, false, t), minf(1.0, t.bedding_base_quality + t.bedding_extra_max)), "多铺枝条有上限")
+	_check(GameRules.ground_insulation(true, 0, true, false, t) > GameRules.ground_insulation(true, 0, false, false, t), "防潮垫是加成")
+	_check(GameRules.ground_insulation(true, 0, false, true, t) > GameRules.ground_insulation(true, 0, false, false, t), "兽皮是加成")
+	_check(GameRules.ground_insulation(false, 0, false, false, t) == 0.0 and GameRules.ground_insulation(false, 2, false, false, t) > 0.0, "露天也能铺枝条")
 	# 机制如实：防潮垫让隔热分更高（NightSimulator 同一套规则）
 	var base := {"shelter_type": "SnowTrench", "snow_depth_meters": 1.0, "terrain_shelter": 0.6, "completion_ratio": 1.0, "bedding_quality": 0.2}
 	var with_pad := base.duplicate()
-	with_pad["bedding_quality"] = GameRules.bedding_with_pad(0.2, true, t)
+	with_pad["bedding_quality"] = clampf(0.2 + t.sleeping_pad_bedding_bonus, 0.0, 1.0)
 	_check(float(NightSimulator.evaluate(with_pad, t)["scores"]["insulation"]) > float(NightSimulator.evaluate(base, t)["scores"]["insulation"]), "带防潮垫的一夜隔热分更高")
 
 
@@ -409,7 +419,7 @@ func _check_tree_well(t: Tuning) -> void:
 	var tw: ShelterPreset = ShelterPreset.create_all_presets()["TreeWell"]
 	_check(bool(tw.validate_site(t.tree_well_min_snow_m + 0.1, 10.0)["ok"]) and not bool(tw.validate_site(t.tree_well_min_snow_m - 0.1, 10.0)["ok"]), "树井：周围积雪 ≥ %.1f m 才能建" % t.tree_well_min_snow_m)
 	_check(tw.build_minutes_total < (ShelterPreset.create_all_presets()["SnowTrench"] as ShelterPreset).build_minutes_total, "树井比雪沟省工（地物做了大部分工作）")
-	_check(is_equal_approx(GameRules.dig_minutes(tw.build_minutes_total, false, false, t), tw.build_minutes_total), "树井不靠雪铲：没有雪铲也不加工时")
+	_check(is_equal_approx(GameRules.dig_minutes(tw.build_minutes_total, false, "pot", t), tw.build_minutes_total), "树井不靠雪铲：没有雪铲也不加工时")
 	var night := {"shelter_type": "TreeWell", "snow_depth_meters": 1.6, "terrain_shelter": 0.8, "completion_ratio": 1.0, "wind_angle_diff": 160.0,
 		"bedding_quality": 1.0, "starting_warmth": 90.0, "prewarmed": false, "roof_thickness_meters": 0.35, "vent_count": 0, "vent_snow_clogged": true}
 	var rep := NightSimulator.evaluate(night, t)

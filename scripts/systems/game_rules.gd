@@ -126,13 +126,34 @@ static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_war
 
 
 ## 作业效率：体温档 × 暮色衰减（非硬切换）。
-## 装备（S6）：没有雪铲时，挖雪庇护所的工时 × no_shovel_dig_factor；倒棚不受影响。
-static func dig_minutes(base_minutes: float, is_snow_shelter: bool, has_shovel: bool, t: Tuning) -> float:
-	return base_minutes * (t.no_shovel_dig_factor if is_snow_shelter and not has_shovel else 1.0)
+## 装备：挖雪工具 = 雪铲 / 锅 / 徒手（用户确认：雪铲不是必需品，没有它就换策略）。
+static func dig_tool(gear: Dictionary) -> String:
+	if bool(gear.get("shovel", true)):
+		return "shovel"
+	return "pot" if bool(gear.get("pot", true)) else "hands"
 
-## 装备（S6）：防潮垫加到地面隔热上（封顶 1）。
-static func bedding_with_pad(bedding_quality: float, has_pad: bool, t: Tuning) -> float:
-	return clampf(bedding_quality + (t.sleeping_pad_bedding_bonus if has_pad else 0.0), 0.0, 1.0)
+## 挖雪庇护所的工时：雪铲 ×1、锅 ×no_shovel_dig_factor、徒手 ×bare_hands_dig_factor；不挖雪的庇护所（倒棚、树井）不受影响。
+static func dig_minutes(base_minutes: float, digs_snow: bool, tool: String, t: Tuning) -> float:
+	if not digs_snow:
+		return base_minutes
+	match tool:
+		"pot": return base_minutes * t.no_shovel_dig_factor
+		"hands": return base_minutes * t.bare_hands_dig_factor
+	return base_minutes
+
+## 每挖一阶的受潮：徒手时手套袖口湿得更快。
+static func dig_dampness(tool: String, t: Tuning) -> float:
+	return t.damp_per_dig_stage * (t.bare_hands_damp_factor if tool == "hands" else 1.0)
+
+## 地面隔热 0..1 = 庇护所枝条地板底子 + 多铺的枝条捆（每捆 +step，最多 +max）+ 防潮垫 + 兽皮。
+static func ground_insulation(floor_built: bool, extra_bundles: int, pad: bool, hides: bool, t: Tuning) -> float:
+	var q := t.bedding_base_quality if floor_built else 0.0
+	q += minf(float(maxi(extra_bundles, 0)) * t.bedding_extra_step, t.bedding_extra_max)
+	if pad:
+		q += t.sleeping_pad_bedding_bonus
+	if hides:
+		q += t.hides_bedding_bonus
+	return clampf(q, 0.0, 1.0)
 
 static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuning) -> float:
 	var dusk := 1.0

@@ -72,10 +72,19 @@ extends Resource
 # -----------------------------------------------------------------------------
 
 @export_group("Gear")
-## [TUNE] 没有雪铲时挖雪庇护所的工时倍数（用手 / 锅 / 木板挖；现实中慢好几倍，具体值待 research/ 核实）。D13 §9.6。
+## [TUNE] 没有雪铲、用随身的锅（billy pot）挖雪的工时倍数。`[OB]`：Outdoor Boys《Lost in Alaska》只带锯、打火棒、刀、锅、勺也熬过冬夜——靠的是换策略（树井 / 倒棚 / 火），不是硬挖雪洞。
 @export var no_shovel_dig_factor: float = 3.0
-## [TUNE] 防潮垫对地面隔热（bedding_quality 0..1）的加成。
+## [TUNE] 连锅都没有、徒手挖的工时倍数；徒手挖时手套袖口湿得更快（受潮倍数）。
+@export var bare_hands_dig_factor: float = 5.0
+@export var bare_hands_damp_factor: float = 1.5
+## [GAME] 地面隔热（bedding_quality 0..1）由几层叠起来：庇护所的枝条地板阶段给底子；
+## 每多带一捆枝条 / 干草铺上去 +step（最多 +max）；防潮垫、兽皮各是一份可选加成。没有垫子也能靠多铺枝条做到满分，只是更花时间。
+@export var bedding_base_quality: float = 0.65
+@export var bedding_extra_step: float = 0.1
+@export var bedding_extra_max: float = 0.35
+## [TUNE] 防潮垫 / 兽皮对地面隔热的加成。`[OB]`：驯鹿皮空心毛发隔热极好。
 @export var sleeping_pad_bedding_bonus: float = 0.35
+@export var hides_bedding_bonus: float = 0.35
 
 @export_group("Player Actions")
 ## [TUNE] 基础移动速度，3.6 m/s。

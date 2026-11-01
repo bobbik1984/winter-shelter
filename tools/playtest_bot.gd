@@ -50,6 +50,9 @@ func _run() -> void:
 					best = dq
 					spot = Vector3(q.x, 0, q.y)
 			printerr("  tree well spruce at %s (%.0f m from spawn, %d old spruces on the map)" % [str(spot), best, OldSpruces.points.size()])
+	# 好的策略睡前多铺 3 捆枝条（地面隔热：没有防潮垫就靠多铺，CORE_GAMEPLAY §9.5b）
+	if not strat in ["none", "late", "wind", "leanto_short"]:
+		bedding_need += 3
 	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
 	while d.inventory.bedding < bedding_need:
 		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
