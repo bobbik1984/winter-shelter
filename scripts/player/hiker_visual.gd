@@ -51,7 +51,7 @@ func _build_from_glb() -> void:
 	_anim = inst.find_children("*", "AnimationPlayer", true, false).front() as AnimationPlayer if not inst.find_children("*", "AnimationPlayer", true, false).is_empty() else null
 	if _anim:
 		# Godot 导入时会去掉 "-loop" 后缀；这里显式设置循环
-		for name_ in ["Idle", "Walk", "Dig"]:
+		for name_ in ["Idle", "Walk", "Dig", "Chop"]:
 			if _anim.has_animation(name_):
 				_anim.get_animation(name_).loop_mode = Animation.LOOP_LINEAR
 		_play("Idle")
@@ -130,11 +130,11 @@ func _play(name_: String, blend: float = 0.2) -> void:
 	_anim.play(name_, blend)
 
 ## 由 PlayerController 每帧调用：速度 → 走 / 站；探针 → Probe；施工 / 采集 → Dig。
-func set_motion(speed: float, probing: bool, working: bool) -> void:
+func set_motion(speed: float, probing: bool, working: bool, work_anim: String = "Dig") -> void:
 	if probing:
 		_play("Probe", 0.12)
 	elif working:
-		_play("Dig")
+		_play(work_anim if _anim and _anim.has_animation(work_anim) else "Dig")
 	elif speed > 0.3:
 		_play("Walk")
 		if _anim:

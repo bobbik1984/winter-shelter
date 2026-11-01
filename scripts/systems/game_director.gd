@@ -409,6 +409,7 @@ func _tick_playing(delta: float) -> void:
 
 	_update_warmth(delta, 1.0)
 	player.working = interaction.progress > 0.0
+	player.work_anim = "Chop" if interaction.current and interaction.current.kind in ["deadwood", "wet_log"] else "Dig"
 	_tick_fire_hold(delta)
 	if player.visual_node is HikerVisual:
 		(player.visual_node as HikerVisual).set_body_state(warmth.body_warmth, player.current_speed > 0.3 or player.working)

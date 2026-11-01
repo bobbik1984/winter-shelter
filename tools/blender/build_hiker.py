@@ -228,10 +228,24 @@ def dig(f):
     pb["shin.R"].rotation_euler = (R(20), 0, 0)
     pb["hips"].location = (0, -0.10, 0)
 
+def chop(f):
+    # 双手举过头顶向前下劈（斧 / 断枝），30 帧一循环
+    t = f / 30.0 * 2 * math.pi
+    swing = 0.5 - 0.5 * math.cos(t)          # 0 举起 → 1 劈下
+    pb["chest"].rotation_euler = (R(-8) + R(30) * swing, 0, 0)
+    pb["upper_arm.R"].rotation_euler = (R(-150) + R(120) * swing, 0, R(-6))
+    pb["upper_arm.L"].rotation_euler = (R(-150) + R(120) * swing, 0, R(6))
+    pb["forearm.R"].rotation_euler = (R(-20) * (1 - swing), 0, 0)
+    pb["forearm.L"].rotation_euler = (R(-20) * (1 - swing), 0, 0)
+    pb["thigh.L"].rotation_euler = (R(-15), 0, 0)
+    pb["shin.L"].rotation_euler = (R(15), 0, 0)
+    pb["hips"].location = (0, -0.04 * swing, 0)
+
 key("Idle-loop", [0, 15, 30, 45, 60], idle)
 key("Walk-loop", list(range(0, 31, 5)), walk)
 key("Probe", [0, 5, 10, 15, 20, 25], probe, loop=False)
 key("Dig-loop", list(range(0, 31, 5)), dig)
+key("Chop-loop", list(range(0, 31, 5)), chop)
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="SELECT")
@@ -257,10 +271,10 @@ if "--preview" in sys.argv:
     for view, loc in (("side", (3.2, 0, 1.0)), ("front", (0.6, -3.2, 1.0))):
         cam.location = loc
         cam.rotation_euler = (Vector((0, 0, 0.9)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
-        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 8), ("Probe", 10), ("Dig-loop", 8)):
+        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 8), ("Probe", 10), ("Dig-loop", 8), ("Chop-loop", 0), ("Chop-loop", 15)):
             rig.animation_data.action = bpy.data.actions[act_name]
             for tr in rig.animation_data.nla_tracks:
                 tr.mute = True
             scene.frame_set(frame)
-            scene.render.filepath = f"{outdir}/b_{view}_{act_name}.png"
+            scene.render.filepath = f"{outdir}/b_{view}_{act_name}_{frame}.png"
             bpy.ops.render.render(write_still=True)

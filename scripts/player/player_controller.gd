@@ -19,6 +19,8 @@ var controls_enabled: bool = true
 var is_probing: bool = false
 ## 由 GameDirector 写入：正在按住交互（施工 / 采集）时播放劳作动画。
 var working: bool = false
+## 劳作动画："Dig"（挖雪 / 施工 / 采集）或 "Chop"（砍柴）。
+var work_anim: String = "Dig"
 var current_speed: float = 0.0
 var _probe_t: float = 0.0
 
@@ -81,7 +83,7 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	if visual_node and visual_node.has_method("set_motion"):
-		visual_node.set_motion(current_speed, false, working)
+		visual_node.set_motion(current_speed, false, working, work_anim)
 	# 地图边界（山谷外是远景，不可行走）
 	global_position.x = clampf(global_position.x, -48.5, 48.5)
 	global_position.z = clampf(global_position.z, -48.5, 48.5)

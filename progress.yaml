@@ -96,7 +96,7 @@ phases:
       - {id: V1, text: "人工 F5 验证 + 合并分支", status: todo, note: "人工"}
       - {id: V2, text: "画质档位（D11）", status: written-unverified, note: "F10 低/中/高并持久化；UHD 620 @1080p：低 ~25 / 中 ~15 / 高 ~10 FPS；空场景上限 69 FPS"}
       - {id: V3, text: "影子时钟教学文案", status: written-unverified, note: "GameRules.tip_for：按剩余日照 / 体温切换，阈值在 Tuning Tips 组；报告教训引用开工时间"}
-      - {id: V4, text: "Blender 角色 + 动画", status: written-unverified, note: "tools/blender/build_hiker.py → assets/models/char_survivor.glb（~900 三角面）；Idle/Walk/Probe/Dig；snapshots/v4_hiker_poses.png"}
+      - {id: V4, text: "Blender 角色 + 动画", status: written-unverified, note: "tools/blender/build_hiker.py → assets/models/char_survivor.glb（~900 三角面）；Idle/Walk/Probe/Dig/Chop（砍柴时自动切换）；snapshots/v4_hiker_poses.png"}
       - {id: V5, text: "枯立木 / 岩石可读性", status: written-unverified, note: "snow_cover RIM 边缘光 + 更亮树皮色"}
       - {id: V6, text: "远景冰湖 / 河谷", status: written-unverified, note: "远景谷底冰湖；出生点视角被迎风脊挡住，需走到西侧才看得到"}
       - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: written-unverified, note: "WeatherController 唯一写入；天空 / 雪面 / 罗盘 / 降雪 / 头灯订阅；每局天气：晴 / 阴（云量）/ 暴风雪将至（风 +20 km/h、早雪、夜 -5 °C），简报预报"}
