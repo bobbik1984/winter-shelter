@@ -58,8 +58,43 @@ func _ready() -> void:
 	_scatter_spruce(blow)
 	_scatter_snags()
 	_scatter_rocks()
+	_place_outcrops()
 	_build_colliders()
 
+
+## 大型棱角岩体（T4.7 差距 2）：Blender 生成的 rock_outcrop_A/B/C.glb，放在脊线与陡坡上。
+const OUTCROPS := ["res://assets/models/rock_outcrop_A.glb", "res://assets/models/rock_outcrop_B.glb", "res://assets/models/rock_outcrop_C.glb"]
+@export var outcrop_count: int = 10
+
+func _place_outcrops() -> void:
+	var meshes: Array[Mesh] = []
+	for path in OUTCROPS:
+		if not ResourceLoader.exists(path):
+			return
+		var inst := (load(path) as PackedScene).instantiate()
+		var mi := inst.find_children("*", "MeshInstance3D", true, false).front() as MeshInstance3D
+		meshes.append(mi.mesh)
+		inst.free()
+	var mat := _material(Color(0.17, 0.17, 0.20), 0.38, 0.07)
+	mat.set_shader_parameter("rim_amount", 0.35)
+	var buckets: Array = [[], [], []]
+	var placed := 0
+	var k := 0
+	while placed < outcrop_count and k < 600:
+		k += 1
+		var x := (TerrainHeight.hash2(k, 71, seed_idx * 31) - 0.5) * half_extent * 2.0
+		var z := (TerrainHeight.hash2(k, 73, seed_idx * 31) - 0.5) * half_extent * 2.0
+		if _blocked(x, z, 3.0) or _in_vista(x, z):
+			continue
+		if TerrainHeight.slope_at(x, z) < 14.0 and TerrainHeight.height_at(x, z) < 4.0:
+			continue
+		var s := lerpf(1.6, 3.2, TerrainHeight.hash2(k, 2, 77))
+		var basis := Basis(Vector3.UP, TerrainHeight.hash2(k, 3, 77) * TAU).scaled(Vector3(s * 1.2, s, s))
+		buckets[k % 3].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - s * 0.25, z)))
+		rock_spheres.append(Vector3(x, z, s * 0.9))
+		placed += 1
+	for v in range(3):
+		_add_multimesh("Outcrop%d" % v, meshes[v], mat, buckets[v], true)
 
 ## 碰撞（只挡树干与岩石，林间仍可穿行）：一个 StaticBody3D 挂所有形状。
 func _build_colliders() -> void:
