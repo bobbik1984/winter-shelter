@@ -433,6 +433,8 @@ func _tick_playing(delta: float) -> void:
 		var show := build.active and build.preset_id in ["RaisedCave", "BasicCave"]
 		show = show or (site != null and site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
 		_cutaway_panel.visible = show
+		if show and _cutaway_panel.has_method("set_progress"):
+			_cutaway_panel.set_progress(site.stage() if site != null and not build.active else -1)
 
 	# 提示行：影子就是时钟（V3）
 	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):

@@ -22,7 +22,7 @@ const LABELS := [
 		"local": Vector3(1.18, 0.54, -0.65),
 		"title": "Raised sleeping platform",
 		"sub": "Stay above cold air",
-		"pos": Vector2(328.0, 140.0),
+		"pos": Vector2(300.0, 140.0),
 		"accent": Color(0.96, 0.78, 0.42),
 	},
 	{
@@ -41,6 +41,16 @@ const LABELS := [
 	},
 ]
 const ROOF_LABEL_INDEX := 1
+## 每个标注对应的高床雪洞阶段（RaisedCave 阶段表）：通风 4、顶厚 1、高床 3、隧道 1、冷气坑 2。
+const LABEL_STAGE := [4, 1, 3, 1, 2]
+## -1 = 设计图模式（全部正常显示）；0..5 = 玩家当前施工阶段。
+var built_stage := -1
+
+func set_progress(stage: int) -> void:
+	if stage == built_stage:
+		return
+	built_stage = stage
+	_lang = ""   # 触发重刷
 
 ## 气流示意线（rig 局部坐标，z = 0 剖切面内），与 shader 共用同一相机投影。
 const VENT_ARROW := [Vector3(0.25, 2.12, 0.0), Vector3(0.25, 2.86, 0.0)]
@@ -98,8 +108,17 @@ func _relabel() -> void:
 	_lang = Loc.lang
 	for i in range(LABELS.size()):
 		var box := _cards[i].get_child(0)
-		(box.get_child(0) as Label).text = Loc.t(String(LABELS[i]["title"]))
-		(box.get_child(1) as Label).text = Loc.t(String(LABELS[i]["sub"]))
+		var title := Loc.t(String(LABELS[i]["title"]))
+		var done := built_stage < 0 or built_stage >= int(LABEL_STAGE[i])
+		if built_stage >= 0 and done:
+			title = "✓ " + title
+		(box.get_child(0) as Label).text = title
+		_cards[i].modulate.a = 1.0 if done else 0.45
+		_lines[i].modulate.a = 1.0 if done else 0.35
+		var sub := Loc.t(String(LABELS[i]["sub"]))
+		if not done:
+			sub = Loc.t("stage %d") % int(LABEL_STAGE[i]) + " · " + sub
+		(box.get_child(1) as Label).text = sub
 	_roof_sub.text = Loc.t("≥ %.2f m · built %.2f m") % [rig.roof_min_m, rig.roof_built_m]
 	var title := find_child("TitleLabel", true, false) as Label
 	if title:

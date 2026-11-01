@@ -244,6 +244,7 @@ const ZH := {
 	"Entrance tunnel": "入口隧道",
 	"Slopes slightly down": "略向下倾",
 	"Cold-air pit": "冷气坑",
+	"stage %d": "第 %d 阶段",
 	"Traps cold air (lower)": "把冷空气留在低处",
 	"≥ %.2f m · built %.2f m": "≥ %.2f m · 实建 %.2f m",
 	"SHELTER DESIGN (SNOW CAVE)": "庇护所设计（雪洞）",
