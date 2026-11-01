@@ -25,6 +25,7 @@ var site: ShelterSite
 var graphics: GraphicsSettings
 var audio: AmbientAudio
 var snowfall: Snowfall
+var prints: Footprints
 var spindrift: Spindrift
 var headlamp: SpotLight3D
 var state: State = State.BRIEFING
@@ -109,7 +110,7 @@ func _ready() -> void:
 	add_child(graphics)
 	graphics.cycled.connect(func(l: int) -> void: if ui: ui.toast(Loc.t("Graphics: %s  [F10]") % graphics.level_name(), 2.5))
 
-	var prints := Footprints.new()
+	prints = Footprints.new()
 	prints.name = "Footprints"
 	prints.player = player
 	main.add_child(prints)
@@ -689,6 +690,8 @@ func _on_inventory_changed() -> void:
 		ui.set_inventory(inventory.wood, inventory.bark, inventory.bedding)
 	if player and player.visual_node is HikerVisual:
 		(player.visual_node as HikerVisual).set_load(inventory.wood, inventory.bedding)
+	if prints:
+		prints.heavy = inventory.wood >= 6
 
 # ------------------------------------------------------------------ 建造（T2.4–T2.6）
 
