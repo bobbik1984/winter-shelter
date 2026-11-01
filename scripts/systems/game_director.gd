@@ -57,6 +57,8 @@ var _startup_frames := 0
 ## 保暖层受潮 0..1（CORE_GAMEPLAY §4）。
 var dampness := 0.0
 var _cloth_label: Label
+## 生火仪式：按住 F（Tuning.fire_hold_seconds）——打火棒擦火星、引燃桦树皮；松手取消。
+var _fire_hold := -1.0
 
 const MAX_MARKERS := 24
 const MAX_DEEPER_LABELS := 3
@@ -299,7 +301,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_L: _toggle_lang()
 				KEY_H: ui.toggle_guide()
 				KEY_B: _enter_build()
-				KEY_F: _try_fire()
+				KEY_F: _begin_fire()
 				KEY_N: _request_sleep()
 
 ## 重开：换到下一个山谷（同一结构、不同的起伏与雪深分布），再重载场景。
@@ -388,6 +390,7 @@ func _tick_playing(delta: float) -> void:
 
 	_update_warmth(delta, 1.0)
 	player.working = interaction.progress > 0.0
+	_tick_fire_hold(delta)
 	if player.visual_node is HikerVisual:
 		(player.visual_node as HikerVisual).set_body_state(warmth.body_warmth, player.current_speed > 0.3 or player.working)
 
@@ -403,6 +406,8 @@ func _tick_playing(delta: float) -> void:
 		var p := interaction.prompt_text()
 		if player.is_probing:
 			ui.set_prompt(Loc.t("Probing snow depth…"), player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
+		elif _fire_hold >= 0.0:
+			ui.set_prompt(Loc.t("Striking the ferro rod… keep holding [F]"), _fire_hold / tuning.fire_hold_seconds)
 		elif p != "":
 			ui.set_prompt("[E]  " + p, interaction.progress)
 		else:
@@ -771,6 +776,29 @@ func _under_canopy(p: Vector3) -> bool:
 		if q.distance_to(Vector2(p.x, p.z)) < tuning.canopy_radius_m:
 			return true
 	return false
+
+## F 按下：附近有火 = 立即添柴；否则开始按住生火。
+func _begin_fire() -> void:
+	if _nearest_fire(2.6):
+		_try_fire()
+		return
+	_fire_hold = 0.0
+	player.controls_enabled = false
+
+func _tick_fire_hold(delta: float) -> void:
+	if _fire_hold < 0.0:
+		return
+	var held := Input.is_key_pressed(KEY_F) or Input.is_joy_button_pressed(0, JOY_BUTTON_B)
+	if not held or state != State.PLAYING:
+		_fire_hold = -1.0
+		player.controls_enabled = state == State.PLAYING
+		return
+	_fire_hold += delta
+	player.working = true
+	if _fire_hold >= tuning.fire_hold_seconds:
+		_fire_hold = -1.0
+		player.controls_enabled = true
+		_try_fire()
 
 func _try_fire() -> void:
 	var near := _nearest_fire(2.6)

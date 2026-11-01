@@ -93,6 +93,28 @@ func _run() -> void:
 		for i in 5: await physics_frame
 		await hold("interact", d.tuning.stage_hold_seconds + 0.6)
 		check(d.site.stage() >= 1, "holding E at the site advances a stage")
+	# 生火：轻点 F 不生火；按住 F 才尝试（成功或因风 / 树冠消耗桦树皮）
+	p.global_position = Vector3(10.0, TerrainHeight.height_at(10, 2) + 0.5, 2.0)
+	for i in 5: await physics_frame
+	d.inventory.add("wood", 4); d.inventory.add("bark", 2)
+	var bark0: int = d.inventory.bark
+	var fires0 := get_nodes_in_group("campfires").size()
+	await key(KEY_F)
+	for i in 5: await process_frame
+	check(d.inventory.bark == bark0 and get_nodes_in_group("campfires").size() == fires0, "tapping F does not light a fire")
+	var fe := InputEventKey.new()
+	fe.keycode = KEY_F
+	fe.physical_keycode = KEY_F
+	fe.pressed = true
+	Input.parse_input_event(fe)   # 走 Input 单例（与真实按键一致），is_key_pressed 才能读到
+	var ft := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - ft < int((d.tuning.fire_hold_seconds + 0.6) * 1000.0):
+		await process_frame
+	var fu := fe.duplicate()
+	fu.pressed = false
+	Input.parse_input_event(fu)
+	await process_frame
+	check(d.inventory.bark < bark0 or get_nodes_in_group("campfires").size() > fires0, "holding F attempts a fire (lit or bark spent)")
 	# 手册 / 暂停
 	await key(KEY_H)
 	check(d.ui._guide != null and d.ui._guide.visible, "H opens the field guide")

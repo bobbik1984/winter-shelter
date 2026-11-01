@@ -63,6 +63,7 @@ const ZH := {
 	"Fire put out by snow falling from the branches above. Move out from under the tree.": "树枝上的积雪落下，把火压灭了。离开树冠下方再生火。",
 	"The wind blew the flame out. Find a leeward spot or a rootball to shelter it.": "火苗被风吹灭了。找背风处或树根盘挡风。",
 	"Fire lit.": "火生起来了。",
+	"Striking the ferro rod… keep holding [F]": "擦打火棒……按住 [F] 别松",
 	"Fire lit. Warm up, dry off, and melt snow for a hot drink [E].": "火生起来了。烤暖、烘干，再融雪烧点热水 [E]。",
 	"No dry wood left to add.": "没有干柴可添了。",
 	"Added a log (+%d min of fire).": "添了一根柴（火多烧 %d 分钟）。",
