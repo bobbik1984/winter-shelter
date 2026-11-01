@@ -68,6 +68,12 @@ func run() -> Dictionary:
 		GameInput.ensure_joypad()
 		_check(InputMap.action_get_events("interact").size() == n1, "重复调用 ensure_joypad 不应叠加绑定")
 
+	# 受潮
+	_check(GameRules.clothing_effective(true, 0.2, t), "干燥保暖层有效")
+	_check(not GameRules.clothing_effective(true, t.damp_threshold, t), "湿透的保暖层无效")
+	_check(GameRules.clothing_state(0.0, t) == "dry" and GameRules.clothing_state(t.damp_threshold * 0.7, t) == "damp" and GameRules.clothing_state(0.9, t) == "wet", "受潮三档")
+	_check(GameRules.next_objective({"clothes_wet": true, "has_site": true}, t).contains("dry"), "湿透时目标行提示烘干")
+
 	# 效率
 	_check(is_equal_approx(GameRules.work_efficiency(1.0, 30.0, t), 1.0), "日落前满效率")
 	_check(GameRules.work_efficiency(1.0, -60.0, t) <= t.dusk_efficiency_floor + 0.001, "日落 1 小时后降到下限")

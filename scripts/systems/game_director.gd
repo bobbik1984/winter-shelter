@@ -54,6 +54,9 @@ var _probe_count := 0
 var _best_depth := 0.0
 var _zero_t := 0.0
 var _startup_frames := 0
+## 保暖层受潮 0..1（CORE_GAMEPLAY §4）。
+var dampness := 0.0
+var _cloth_label: Label
 
 const MAX_MARKERS := 24
 const MAX_DEEPER_LABELS := 3
@@ -452,6 +455,7 @@ func _objective_ctx() -> Dictionary:
 		ctx["next_stage"] = site.next_stage_title()
 		ctx["missing"] = inventory.missing_text(site.next_stage_cost())
 		ctx["needs_vent_stick"] = _needs_vent_stick()
+	ctx["clothes_wet"] = GameRules.clothing_state(dampness, tuning) == "wet"
 	return ctx
 
 func _inside_site() -> bool:
@@ -474,6 +478,25 @@ func _warmth_inputs() -> Dictionary:
 	var after_sunset := -weather.minutes_to_sunset()
 	var env := 1.0 + 0.6 * clampf(after_sunset / 60.0, 0.0, 1.0)
 	return {"windbreak": windbreak, "level": level, "fire": fire, "env": env}
+
+func _update_cloth_label() -> void:
+	if _cloth_label == null:
+		var warm := hud.get_parent().get_node_or_null("HUDWarmth")
+		if warm:
+			_cloth_label = warm.find_child("ClothingLabel", true, false) as Label
+	if _cloth_label == null:
+		return
+	_cloth_label.visible = true
+	match GameRules.clothing_state(dampness, tuning):
+		"dry":
+			_cloth_label.text = Loc.t("▣ CLOTHING · DRY LAYER")
+			_cloth_label.add_theme_color_override("font_color", Color(0.72, 0.52, 0.24))
+		"damp":
+			_cloth_label.text = Loc.t("▣ CLOTHING · DAMP — dry it by a fire")
+			_cloth_label.add_theme_color_override("font_color", Color(0.45, 0.55, 0.75))
+		_:
+			_cloth_label.text = Loc.t("▣ CLOTHING · WET — no longer warm")
+			_cloth_label.add_theme_color_override("font_color", Color(0.75, 0.25, 0.2))
 
 func _tree_cover(p: Vector3) -> float:
 	var forest := get_tree().get_first_node_in_group("forest")
@@ -501,6 +524,14 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 		w["level"], w["fire"], w["env"])
 	if float(w["fire"]) > 0.3 and weather.minutes_to_sunset() < 60.0:
 		prewarmed = true
+	# 受潮 / 烘干（劳作跳时也按等效现实秒结算）
+	var secs := real_seconds * factor if min_level == 0 else 0.0
+	if float(w["fire"]) > 0.05:
+		dampness = maxf(0.0, dampness - tuning.dry_rate_fire * float(w["fire"]) * real_seconds)
+	elif weather.atmosphere.snowfall > 0.5 and int(w["level"]) == 0:
+		dampness = minf(1.0, dampness + tuning.damp_snowfall_rate * secs)
+	warmth.has_extra_clothing = GameRules.clothing_effective(true, dampness, tuning)
+	_update_cloth_label()
 
 ## 动作消耗游戏时间：时钟跳进；按"劳作中"的暴露率结算体温；火堆燃烧。
 ## min_level：劳作时所处的庇护等级（例如在雪洞里挖掘 = 1，避开风吹）。
@@ -702,6 +733,9 @@ func _on_build_stage() -> Dictionary:
 	var minutes := site.stage_minutes() / _efficiency()
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
 	_skip(minutes, 1 if site.is_snow_shelter() else 0)
+	if site.is_snow_shelter():
+		dampness = minf(1.0, dampness + tuning.damp_per_dig_stage)
+		_update_cloth_label()
 	var r := site.advance()
 	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
 		# 阶段完成时才点燃（工时已流逝）；之后由玩家 [F] 添柴维持
@@ -784,6 +818,7 @@ func _attach_fire_interactable(fire: Campfire) -> void:
 	it.handler = func() -> Dictionary:
 		var gained := warmth.apply_hot_drink()
 		prewarmed = true
+		dampness = maxf(0.0, dampness - 0.5)   # 喝热水的同时烤干衣物（CORE_GAMEPLAY §4）
 		return {"ok": true, "minutes": tuning.melt_snow_minutes, "msg": Loc.t("Hot water: +%d warmth.") % int(gained)}
 	fire.add_child(it)
 

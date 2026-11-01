@@ -192,6 +192,9 @@ const ZH := {
 	"Exposed Ridge": "迎风暴露",
 	"BODY WARMTH": "核心体温",
 	"▣ CLOTHING · DRY LAYER": "▣ 衣物 · 干燥保暖层",
+	"▣ CLOTHING · DAMP — dry it by a fire": "▣ 衣物 · 受潮——去火边烘干",
+	"▣ CLOTHING · WET — no longer warm": "▣ 衣物 · 湿透——已不保暖",
+	"Your layers are wet and no longer warm — dry them by a fire [F].": "保暖层湿透了，不再保暖——去火边烘干 [F]。",
 	"Dry wood  %d     Birch bark  %d     Bedding  %d": "干柴  %d     桦树皮  %d     垫层  %d",
 	# —— 简报 / 手册 / 暂停 ——
 	"SNOW SHELTER": "雪 夜 庇 护",

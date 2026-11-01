@@ -97,6 +97,8 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 ## ctx: {probed: bool, best_depth: float, has_site: bool, stage: int, complete: bool,
 ##       missing: String（下一阶段缺的材料，空 = 不缺）, next_stage: String, minutes_to_sunset: float, preset: String}
 static func next_objective(ctx: Dictionary, t: Tuning) -> String:
+	if bool(ctx.get("clothes_wet", false)):
+		return "Your layers are wet and no longer warm — dry them by a fire [F]."
 	if bool(ctx.get("complete", false)):
 		if bool(ctx.get("needs_vent_stick", false)):
 			return Loc.t("Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).")
@@ -113,3 +115,17 @@ static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 	if missing != "":
 		return Loc.t("Gather %s — then hold [E] at your site.") % missing
 	return Loc.t("Hold [E] at your site: %s") % String(ctx.get("next_stage", ""))
+
+
+## 保暖层是否仍有效（CORE_GAMEPLAY §4）：带了保暖层且受潮未超过阈值。
+static func clothing_effective(has_layer: bool, dampness: float, t: Tuning) -> bool:
+	return has_layer and dampness < t.damp_threshold
+
+
+## 保暖层状态文字键：dry / damp / wet。
+static func clothing_state(dampness: float, t: Tuning) -> String:
+	if dampness < t.damp_threshold * 0.5:
+		return "dry"
+	if dampness < t.damp_threshold:
+		return "damp"
+	return "wet"

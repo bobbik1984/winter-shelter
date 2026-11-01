@@ -33,4 +33,4 @@ func _refresh() -> void:
 	warmth_bar.value = value
 	rate_label.text = "%s  %s" % [warmth.get_rate_indicator(), warmth.get_context_label()]
 	efficiency_label.text = "EFF %d%%" % int(round(warmth.get_action_efficiency() * 100.0))
-	clothing_label.visible = warmth.has_extra_clothing
+	# 文字与颜色由 GameDirector 按受潮程度写入（DRY / DAMP / WET）

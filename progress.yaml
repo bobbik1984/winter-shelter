@@ -118,4 +118,6 @@ polish:
   - {id: P14, text: "报告时间线（你的一天）", status: written-unverified}
   - {id: P15, text: "随机输入模糊测试 + 偶发原生崩溃缓解", status: written-unverified, note: "fuzz_test.gd；启动 30 帧后才应用画质 / 界面缩放：崩溃率约 3/36 → 约 2/70；残余发生在游戏中途，可能与全天模式上午有关（样本小）；需带符号 Godot 排查"}
   - {id: P16, text: "4 个山谷轮换（重开时换噪声种子）", status: written-unverified, note: "机器人 12 局：每个山谷 深雪洞+木棍 SAFE / 雪沟 COLD / 倒棚 COLD，结果一致"}
+  - {id: P17, text: "致谢与许可面板 [C]", status: written-unverified}
+  - {id: P18, text: "保暖层受潮 / 烘干（CORE_GAMEPLAY §4）", status: written-unverified, note: "挖洞与大雪受潮，火旁烘干；机器人平衡结果不变"}
   - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}

@@ -512,6 +512,16 @@ extends Resource
 ## [GAME] 全天模式的开局时刻（10:00）：影子先变短、正午最短、再变长；时间更宽裕。
 @export var full_day_start_minutes: int = 600
 
+@export_group("Clothing Dampness")
+## [GAME] 挖一个雪庇护所阶段，保暖层受潮 +0.22（趴在雪里干活）。
+@export var damp_per_dig_stage: float = 0.22
+## [GAME] 暴露在大雪中（降雪 > 0.5）每现实秒受潮 +0.004。
+@export var damp_snowfall_rate: float = 0.004
+## [GAME] 站在燃烧的火旁每现实秒烘干 0.05 × 火势。
+@export var dry_rate_fire: float = 0.05
+## [GAME] 受潮 >= 0.5 时保暖层失去减缓效果（CORE_GAMEPLAY §4：只有干燥蓬松的纤维才锁住静止空气）。
+@export var damp_threshold: float = 0.5
+
 @export_group("Weather Variety")
 ## [GAME] 每局天气的抽取权重：晴 / 阴 / 暴风雪将至。
 @export var weather_weight_clear: float = 0.5
