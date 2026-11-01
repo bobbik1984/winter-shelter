@@ -148,3 +148,5 @@ warmth_shelter_cozy_gain_rate = 0.55
 warmth_tier_warm = 70.0
 warmth_tier_chilled = 35.0
 warmth_night_heat_penalty = 0.35
+no_shovel_dig_factor = 3.0
+sleeping_pad_bedding_bonus = 0.35

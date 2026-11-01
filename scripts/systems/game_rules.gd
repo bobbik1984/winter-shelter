@@ -103,6 +103,14 @@ static func tip_for(minutes_to_sunset: float, sun_elevation_deg: float, body_war
 
 
 ## 作业效率：体温档 × 暮色衰减（非硬切换）。
+## 装备（S6）：没有雪铲时，挖雪庇护所的工时 × no_shovel_dig_factor；倒棚不受影响。
+static func dig_minutes(base_minutes: float, is_snow_shelter: bool, has_shovel: bool, t: Tuning) -> float:
+	return base_minutes * (t.no_shovel_dig_factor if is_snow_shelter and not has_shovel else 1.0)
+
+## 装备（S6）：防潮垫加到地面隔热上（封顶 1）。
+static func bedding_with_pad(bedding_quality: float, has_pad: bool, t: Tuning) -> float:
+	return clampf(bedding_quality + (t.sleeping_pad_bedding_bonus if has_pad else 0.0), 0.0, 1.0)
+
 static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuning) -> float:
 	var dusk := 1.0
 	if minutes_to_sunset < 0.0:

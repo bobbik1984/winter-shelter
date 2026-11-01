@@ -75,6 +75,13 @@ static func available_presets(learned: PackedStringArray) -> PackedStringArray:
 			out.append(p)
 	return out
 
+## 本局装备。不在关卡模式时 = 旧默认（雪铲 + 保暖层，无防潮垫，空背包）。
+static func gear() -> Dictionary:
+	if not active():
+		return {"shovel": true, "layer": true, "pad": false, "wood": 0, "bark": 0, "bedding": 0}
+	return {"shovel": level.has_shovel, "layer": level.has_extra_layer, "pad": level.has_sleeping_pad,
+		"wood": level.start_wood, "bark": level.start_bark, "bedding": level.start_bedding}
+
 ## 退出关卡模式（测试用；回到旧行为）。
 static func reset() -> void:
 	level = null

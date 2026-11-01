@@ -19,3 +19,5 @@ wind_rotation_choices_deg = PackedFloat32Array(0, 90, 180, 270)
 wind_jitter_deg = 0.0
 target_presets = PackedStringArray("RaisedCave", "BasicCave")
 introduced_presets = PackedStringArray("BasicCave", "RaisedCave")
+has_sleeping_pad = true
+start_bark = 2

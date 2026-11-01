@@ -41,6 +41,16 @@ extends Resource
 ## [GAME] 在所选旋转角上再加的随机抖动（± 度）。L3 退路：旋转候选只留 0、抖动 30。
 @export var wind_jitter_deg: float = 0.0
 
+@export_group("Gear")
+## [GAME] 本关装备（D13 §9.5：装备是关卡的固定条件，越往后越少，不是奖励）。
+@export var has_shovel: bool = true
+@export var has_extra_layer: bool = true
+@export var has_sleeping_pad: bool = false
+## [GAME] 开局背包里已有的材料。
+@export var start_wood: int = 0
+@export var start_bark: int = 0
+@export var start_bedding: int = 0
+
 @export_group("Shelters")
 ## [GAME] 本关引入（可用）的庇护所，即使还没学会（D13 §9.2）。学会 = 用它熬过一夜。
 @export var introduced_presets: PackedStringArray = PackedStringArray()

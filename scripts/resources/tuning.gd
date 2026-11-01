@@ -71,6 +71,12 @@ extends Resource
 # 玩家动作
 # -----------------------------------------------------------------------------
 
+@export_group("Gear")
+## [TUNE] 没有雪铲时挖雪庇护所的工时倍数（用手 / 锅 / 木板挖；现实中慢好几倍，具体值待 research/ 核实）。D13 §9.6。
+@export var no_shovel_dig_factor: float = 3.0
+## [TUNE] 防潮垫对地面隔热（bedding_quality 0..1）的加成。
+@export var sleeping_pad_bedding_bonus: float = 0.35
+
 @export_group("Player Actions")
 ## [TUNE] 基础移动速度，3.6 m/s。
 @export var move_speed_mps: float = 3.6

@@ -105,6 +105,7 @@ func run() -> Dictionary:
 	_check_snow_bands(defs, tuning)
 	_check_rotation()
 	_check_texts(defs, tuning)
+	_check_gear(defs, tuning)
 
 	# begin()
 	var r := LevelState.begin(3, 4242)
@@ -287,3 +288,24 @@ func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 	_check(float(f3["max_depth"]) < t.snow_depth_cave_min_m and float(f3["frac_cave"]) == 0.0, "第 3 关实测：没有能挖雪洞的地方（最深 %.2f m）" % float(f3["max_depth"]))
 	LevelState.reset()
 	_check(SnowField.map_facts(t)["max_depth"] > t.snow_depth_raised_cave_min_m, "复位后缓存失效：基础地图有高床雪洞深度")
+
+
+## S6：装备是关卡的固定条件；没有雪铲挖雪更慢；防潮垫加地面隔热；非关卡模式 = 旧默认。
+func _check_gear(defs: Array[LevelDef], t: Tuning) -> void:
+	LevelState.reset()
+	_check(LevelState.gear() == {"shovel": true, "layer": true, "pad": false, "wood": 0, "bark": 0, "bedding": 0}, "非关卡模式装备 = 旧默认")
+	LevelState.begin(1, 1)
+	var g1 := LevelState.gear()
+	_check(bool(g1["shovel"]) and bool(g1["layer"]) and bool(g1["pad"]) and int(g1["bark"]) == 2, "第 1 关全套装备 + 2 份桦皮")
+	LevelState.begin(5, 1)
+	_check(not bool(LevelState.gear()["layer"]) and bool(LevelState.gear()["shovel"]), "第 5 关减配：没有额外保暖层")
+	LevelState.reset()
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, false, t), 30.0 * t.no_shovel_dig_factor) and t.no_shovel_dig_factor > 1.5, "没有雪铲：挖雪庇护所工时 × %.1f" % t.no_shovel_dig_factor)
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, true, true, t), 30.0), "有雪铲：工时不变")
+	_check(is_equal_approx(GameRules.dig_minutes(30.0, false, false, t), 30.0), "倒棚不靠雪铲：工时不变")
+	_check(GameRules.bedding_with_pad(0.2, true, t) > 0.2 and GameRules.bedding_with_pad(0.9, true, t) <= 1.0 and is_equal_approx(GameRules.bedding_with_pad(0.2, false, t), 0.2), "防潮垫加地面隔热，封顶 1")
+	# 机制如实：防潮垫让隔热分更高（NightSimulator 同一套规则）
+	var base := {"shelter_type": "SnowTrench", "snow_depth_meters": 1.0, "terrain_shelter": 0.6, "completion_ratio": 1.0, "bedding_quality": 0.2}
+	var with_pad := base.duplicate()
+	with_pad["bedding_quality"] = GameRules.bedding_with_pad(0.2, true, t)
+	_check(float(NightSimulator.evaluate(with_pad, t)["scores"]["insulation"]) > float(NightSimulator.evaluate(base, t)["scores"]["insulation"]), "带防潮垫的一夜隔热分更高")

@@ -33,6 +33,8 @@ var state: State = State.BRIEFING
 var prewarmed := false
 ## 全天模式（简报页按 2）：10:00 开局。记录与标准模式分开保存。
 var full_day := false
+## 本局装备（S6，来自 LevelState.gear()）。
+var gear: Dictionary = {"shovel": true, "layer": true, "pad": false, "wood": 0, "bark": 0, "bedding": 0}
 ## 一天的时间线（报告里回顾时间花在哪）：事件 -> 时刻字符串。
 var _timeline: Array = []
 
@@ -82,9 +84,14 @@ func _ready() -> void:
 
 	inventory = Inventory.new()
 	inventory.max_wood = tuning.max_wood
-	inventory.has_extra_clothing = true
+	gear = LevelState.gear()
+	inventory.has_extra_clothing = bool(gear["layer"])
+	inventory.wood = int(gear["wood"])
+	inventory.bark = int(gear["bark"])
+	inventory.bedding = int(gear["bedding"])
 	add_child(inventory)
 	inventory.changed.connect(_on_inventory_changed)
+	_on_inventory_changed.call_deferred()   # 开局自带的材料（S6）也要显示在托盘里
 
 	interaction = InteractionController.new()
 	interaction.player = player
@@ -160,7 +167,7 @@ func _ready() -> void:
 	_apply_static_labels()
 	GameInput.ensure_joypad()
 	warmth.auto_update = false
-	warmth.has_extra_clothing = true
+	warmth.has_extra_clothing = bool(gear["layer"])
 	warmth.set_body_warmth(tuning.warmth_max * 0.92)
 	player.probe_activated.connect(_on_probe)
 	_last_minutes = weather.current_time_minutes
@@ -388,11 +395,27 @@ func _level_info() -> Dictionary:
 		else:
 			new_here.append(String(names.get(p, p)))
 	var shelters := Loc.t("Shelters you know: %s") % ", ".join(known)
+	shelters += "\n" + _gear_text()
 	if not new_here.is_empty():
 		shelters += "   ·   " + Loc.t("New here: %s") % ", ".join(new_here)
 	return {"index": LevelState.level.index, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed, "shelters": shelters,
 		"chips": chips, "best": Records.level_best(LevelState.level.index) if not LevelState.level.is_free() else Records.text(),
 		"locked_hint": locked_hint, "full_day_option": LevelState.level.is_free()}
+
+## 简报页装备一行（S6）。
+func _gear_text() -> String:
+	var items: Array[String] = []
+	items.append(Loc.t("snow shovel") if bool(gear["shovel"]) else Loc.t("NO shovel — digging snow takes %dx longer") % int(round(tuning.no_shovel_dig_factor)))
+	items.append(Loc.t("extra warm layer") if bool(gear["layer"]) else Loc.t("NO extra layer"))
+	if bool(gear["pad"]):
+		items.append(Loc.t("sleeping pad"))
+	var carried: Array[String] = []
+	if int(gear["bark"]) > 0: carried.append(Loc.t("%d birch bark") % int(gear["bark"]))
+	if int(gear["wood"]) > 0: carried.append(Loc.t("%d dry wood") % int(gear["wood"]))
+	if int(gear["bedding"]) > 0: carried.append(Loc.t("%d bedding") % int(gear["bedding"]))
+	if not carried.is_empty():
+		items.append(", ".join(carried))
+	return Loc.t("Gear: %s") % " · ".join(items)
 
 ## 简报页 ←/→：换到相邻的已解锁关，重新抽取并重载场景（地形 / 雪 / 风在 _ready 时构建）。
 func _switch_level(step: int) -> void:
@@ -669,7 +692,7 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 		dampness = maxf(0.0, dampness - tuning.dry_rate_fire * float(w["fire"]) * real_seconds)
 	elif weather.atmosphere.snowfall > 0.5 and int(w["level"]) == 0:
 		dampness = minf(1.0, dampness + tuning.damp_snowfall_rate * secs)
-	warmth.has_extra_clothing = GameRules.clothing_effective(true, dampness, tuning)
+	warmth.has_extra_clothing = GameRules.clothing_effective(bool(gear["layer"]), dampness, tuning)
 	_update_cloth_label()
 
 ## 动作消耗游戏时间：时钟跳进；按"劳作中"的暴露率结算体温；火堆燃烧。
@@ -861,7 +884,11 @@ func _site_prompt() -> String:
 		for k in cost:
 			parts.append("%d %s" % [cost[k], k])
 		need = Loc.t("  (needs ") + ", ".join(parts) + ")"
-	return Loc.t("%s%s  ·  ~%d min") % [site.next_stage_title(), need, int(site.stage_minutes() / _efficiency())]
+	return Loc.t("%s%s  ·  ~%d min") % [site.next_stage_title(), need, int(_stage_minutes() / _efficiency())]
+
+## 本阶段工时（含装备：没有雪铲挖雪庇护所更慢，S6）。
+func _stage_minutes() -> float:
+	return GameRules.dig_minutes(site.stage_minutes(), site.is_snow_shelter(), bool(gear["shovel"]), tuning)
 
 func _efficiency() -> float:
 	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)
@@ -876,7 +903,7 @@ func _on_build_stage() -> Dictionary:
 	if not inventory.has_all(cost):
 		return {"ok": false, "msg": Loc.t("Not enough materials — still need %s.") % inventory.missing_text(cost)}
 	inventory.spend(cost)
-	var minutes := site.stage_minutes() / _efficiency()
+	var minutes := _stage_minutes() / _efficiency()
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
 	_skip(minutes, 1 if site.is_snow_shelter() else 0)
 	if site.is_snow_shelter():
@@ -1055,6 +1082,8 @@ func night_input() -> Dictionary:
 			input["fire_exposure"] = GameRules.fire_exposure(lee, site.near_windbreak, _tree_cover(sp))
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
+	# 装备（S6）：防潮垫加到地面隔热
+	input["bedding_quality"] = GameRules.bedding_with_pad(float(input.get("bedding_quality", 0.0)), bool(gear["pad"]), tuning)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()
 	return input

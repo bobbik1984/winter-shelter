@@ -201,6 +201,7 @@ func _levels_part() -> void:
 	for i in 10: await process_frame
 	check(current_scene == m and LevelState.level.index == 1, "→ does nothing while only level 1 is unlocked")
 	check(int(d.weather.current_time_minutes) == 600, "level 1 starts at 10:00")
+	check(d.inventory.bark == 2 and d.gear["pad"] == true, "level 1 starts with its gear: 2 birch bark and a sleeping pad")
 	var sh_label: Label = m.find_child("LevelShelters", true, false)
 	check(sh_label != null and sh_label.text.contains("Trench") and sh_label.text.contains("New here"), "briefing lists known shelters and what is new on this level")
 	Records.record_level_result(1, "COLD")
