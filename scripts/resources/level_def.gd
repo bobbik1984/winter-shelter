@@ -41,6 +41,10 @@ extends Resource
 ## [GAME] 在所选旋转角上再加的随机抖动（± 度）。L3 退路：旋转候选只留 0、抖动 30。
 @export var wind_jitter_deg: float = 0.0
 
+@export_group("Shelters")
+## [GAME] 本关引入（可用）的庇护所，即使还没学会（D13 §9.2）。学会 = 用它熬过一夜。
+@export var introduced_presets: PackedStringArray = PackedStringArray()
+
 @export_group("Intent")
 ## [GAME] 本关目标路线（ShelterPreset.preset_id）。只给机器人平衡与报告文案用，不限制玩家。
 @export var target_presets: PackedStringArray = PackedStringArray()

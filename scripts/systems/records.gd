@@ -68,6 +68,29 @@ static func default_level() -> int:
 		return last
 	return clampi(hi, 1, LevelState.LEVEL_COUNT)
 
+# ------------------------------------------------------------------ 庇护所学习（D13 §9.2）
+
+## [GAME] 新存档就会的庇护所：雪沟（现实中有雪铲时最快、对地形要求最低的应急雪庇护所）。
+const STARTING_SHELTERS := ["SnowTrench"]
+
+static func learned_shelters() -> PackedStringArray:
+	if "--unlock-all" in OS.get_cmdline_user_args():
+		return PackedStringArray(BuildMode.PRESETS)
+	return PackedStringArray(_cfg().get_value(PROGRESS, "learned_shelters", STARTING_SHELTERS))
+
+## 用某种庇护所熬过一夜（COLD / SAFE）= 学会它。返回 true = 这次新学会。
+static func learn_shelter(preset: String, outcome: String) -> bool:
+	if not LevelState.unlocks_next(outcome) or not (preset in BuildMode.PRESETS):
+		return false
+	var cfg := _cfg()
+	var have := PackedStringArray(cfg.get_value(PROGRESS, "learned_shelters", STARTING_SHELTERS))
+	if preset in have:
+		return false
+	have.append(preset)
+	cfg.set_value(PROGRESS, "learned_shelters", have)
+	cfg.save(path)
+	return true
+
 # ------------------------------------------------------------------ 显示
 
 static func preset_names() -> Dictionary:

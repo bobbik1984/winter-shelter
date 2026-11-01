@@ -13,6 +13,8 @@ var tuning: Tuning
 var wind_from: Vector3 = Vector3.LEFT
 var active: bool = false
 var preset_id: String = "RaisedCave"
+## 本局可用的庇护所（D13 §9.2：已学会 ∪ 本关引入；GameDirector 设置）。
+var available: PackedStringArray = PackedStringArray(PRESETS)
 var entrance_dir: Vector3 = Vector3.RIGHT
 ## 内部细节（MVP 清单第 9 项，仅雪庇护所）：快速薄顶 / 结实顶；通风管 1 或 2 根。
 var quick_roof: bool = false
@@ -68,6 +70,13 @@ func enter() -> void:
 	_update_site()
 	var rec := _builder.recommend_preset_for_site(depth, slope, near_windbreak)
 	preset_id = rec if rec != "None" else "LeanTo"
+	if not (preset_id in available) and not available.is_empty():
+		# 推荐的庇护所还没学会：先给一个在这里能建的已学会类型，没有就给第一个
+		preset_id = available[0]
+		for p in available:
+			if _builder.validate_site(p, depth, slope, near_windbreak).get("ok", false):
+				preset_id = p
+				break
 	_ghost.visible = true
 
 func exit() -> void:
@@ -75,7 +84,10 @@ func exit() -> void:
 	_ghost.visible = false
 
 func cycle_preset() -> void:
-	preset_id = PRESETS[(PRESETS.find(preset_id) + 1) % PRESETS.size()]
+	if available.is_empty():
+		return
+	var i := available.find(preset_id)
+	preset_id = available[(i + 1) % available.size()]
 
 func toggle_roof() -> void:
 	quick_roof = not quick_roof

@@ -65,6 +65,16 @@ static func target_presets() -> PackedStringArray:
 			return PackedStringArray([t[i]])
 	return t
 
+## 建造面板可用的庇护所 = 已学会 ∪ 本关引入（按 BuildMode.PRESETS 顺序）。不在关卡模式（测试 / 机器人基准）时全部可用。
+static func available_presets(learned: PackedStringArray) -> PackedStringArray:
+	if not active():
+		return PackedStringArray(BuildMode.PRESETS)
+	var out := PackedStringArray()
+	for p in BuildMode.PRESETS:
+		if p in learned or p in level.introduced_presets:
+			out.append(p)
+	return out
+
 ## 退出关卡模式（测试用；回到旧行为）。
 static func reset() -> void:
 	level = null

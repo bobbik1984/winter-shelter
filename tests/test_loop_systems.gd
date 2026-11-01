@@ -73,6 +73,30 @@ func run() -> Dictionary:
 	_check(LevelState.step_unlocked(1, 1, 2) == 2 and LevelState.step_unlocked(2, 1, 2) == 1 and LevelState.step_unlocked(1, -1, 2) == 2, "←/→ 只在已解锁的关之间循环")
 	_check(LevelState.step_unlocked(1, 1, 1) == 1, "只有第 1 关时 ←/→ 不动")
 	_check(LevelState.step_unlocked(5, 1, 6) == 0 and LevelState.step_unlocked(0, 1, 6) == 1, "第 5 关之后是自由模式，再之后回到第 1 关")
+	# 庇护所学习（D13 §9.2）
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	_check(Records.learned_shelters() == PackedStringArray(["SnowTrench"]), "新存档只会雪沟")
+	_check(not Records.learn_shelter("BasicCave", "DANGEROUS"), "DANGEROUS 的一夜学不会")
+	_check(not Records.learn_shelter("None", "SAFE") and not Records.learn_shelter("SnowTrench", "SAFE"), "露天 / 已会的不算新学会")
+	_check(Records.learn_shelter("BasicCave", "COLD") and "BasicCave" in Records.learned_shelters(), "雪洞 COLD 熬过一夜 → 学会雪洞并写盘")
+	_check(not Records.learn_shelter("BasicCave", "SAFE"), "学会后不再重复提示")
+	LevelState.begin(3, 1)
+	var av := LevelState.available_presets(Records.learned_shelters())
+	_check(av == PackedStringArray(["BasicCave", "SnowTrench"]), "第 3 关可用 = 已会（雪沟、雪洞）∪ 本关引入（雪沟）：%s" % str(av))
+	LevelState.begin(4, 1)
+	_check("LeanTo" in LevelState.available_presets(Records.learned_shelters()) and not ("RaisedCave" in LevelState.available_presets(Records.learned_shelters())), "第 4 关引入倒棚；没学过的高床雪洞不可用")
+	LevelState.begin(1, 1)
+	_check(LevelState.available_presets(PackedStringArray(["SnowTrench"])) == PackedStringArray(["RaisedCave", "BasicCave", "SnowTrench"]), "第 1 关引入两种雪洞")
+	LevelState.reset()
+	_check(LevelState.available_presets(PackedStringArray()) == PackedStringArray(BuildMode.PRESETS), "非关卡模式（测试 / 机器人）全部可用")
+	var bm := BuildMode.new()
+	bm.available = PackedStringArray(["BasicCave", "SnowTrench"])
+	bm.preset_id = "BasicCave"
+	bm.cycle_preset()
+	var c1 := bm.preset_id
+	bm.cycle_preset()
+	_check(c1 == "SnowTrench" and bm.preset_id == "BasicCave", "Tab 只在可用的庇护所之间循环")
+	bm.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Records.path = real_path
 

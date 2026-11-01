@@ -201,6 +201,8 @@ func _levels_part() -> void:
 	for i in 10: await process_frame
 	check(current_scene == m and LevelState.level.index == 1, "→ does nothing while only level 1 is unlocked")
 	check(int(d.weather.current_time_minutes) == 600, "level 1 starts at 10:00")
+	var sh_label: Label = m.find_child("LevelShelters", true, false)
+	check(sh_label != null and sh_label.text.contains("Trench") and sh_label.text.contains("New here"), "briefing lists known shelters and what is new on this level")
 	Records.record_level_result(1, "COLD")
 	var id_KEY_RIGHT_1 := m.get_instance_id()
 	await key(KEY_RIGHT)
@@ -221,6 +223,13 @@ func _levels_part() -> void:
 	d = m.get_node("GameDirector")
 	await key(KEY_ENTER)
 	check(d.state == d.State.PLAYING and int(d.weather.current_time_minutes) == d.tuning.start_minutes, "level 2 starts at 14:20")
+	await key(KEY_B)
+	var seen := {}
+	for i in 6:
+		seen[d.build.preset_id] = true
+		await key(KEY_TAB)
+	check(not seen.has("LeanTo") and not seen.has("BasicCave") and seen.has("RaisedCave") and seen.has("SnowTrench"), "level 2 build mode only offers known + introduced shelters (%s)" % str(seen.keys()))
+	await key(KEY_B)
 	await key(KEY_N)
 	await key(KEY_N)
 	var t0 := Time.get_ticks_msec()

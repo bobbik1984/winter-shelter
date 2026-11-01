@@ -253,6 +253,7 @@ func _show_report() -> void:
 	var lvl := LevelState.level.index if LevelState.active() else 0
 	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 	_unlock_after_report(lvl, String(data["outcome"]))
+	_learn_after_report(String(input.get("shelter_type", "None")), String(data["outcome"]))
 
 
 # ------------------------------------------------------------------ 输入
@@ -377,7 +378,19 @@ func _level_info() -> Dictionary:
 	var locked_hint := ""
 	if hi <= LevelState.LEVEL_COUNT:
 		locked_hint = Loc.t("Reach COLD or SAFE on level %d to unlock the next.") % hi
-	return {"index": LevelState.level.index, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed,
+	var names := Records.preset_names()
+	var learned := Records.learned_shelters()
+	var known: Array[String] = []
+	var new_here: Array[String] = []
+	for p in LevelState.available_presets(learned):
+		if p in learned:
+			known.append(String(names.get(p, p)))
+		else:
+			new_here.append(String(names.get(p, p)))
+	var shelters := Loc.t("Shelters you know: %s") % ", ".join(known)
+	if not new_here.is_empty():
+		shelters += "   ·   " + Loc.t("New here: %s") % ", ".join(new_here)
+	return {"index": LevelState.level.index, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed, "shelters": shelters,
 		"chips": chips, "best": Records.level_best(LevelState.level.index) if not LevelState.level.is_free() else Records.text(),
 		"locked_hint": locked_hint, "full_day_option": LevelState.level.is_free()}
 
@@ -400,6 +413,15 @@ func _next_level() -> int:
 		return -1
 	var nxt := LevelState.level.index + 1 if LevelState.level.index < LevelState.LEVEL_COUNT else 0
 	return nxt if LevelState.is_unlocked(nxt, Records.highest_unlocked()) else -1
+
+## D13 §9.2：用某种庇护所熬过一夜 = 学会它（只在关卡模式里记；测试 / 机器人基准不写）。
+func _learn_after_report(preset: String, outcome: String) -> void:
+	if not LevelState.active():
+		return
+	if Records.learn_shelter(preset, outcome):
+		var name_ := String(Records.preset_names().get(preset, preset))
+		ui.toast(Loc.t("You've learned the %s — you can use it on any level now.") % name_, 7.0)
+		ui.add_report_line(Loc.t("Learned: %s") % name_)
 
 func _unlock_after_report(lvl: int, outcome: String) -> void:
 	if lvl < 1:
@@ -792,6 +814,7 @@ func _enter_build() -> void:
 		ui.toast(Loc.t("You're already building a %s. Hold [E] at the site to continue.") % Loc.t(site.builder.active_preset().display_name))
 		return
 	interaction.enabled = false
+	build.available = LevelState.available_presets(Records.learned_shelters())
 	build.enter()
 
 func _exit_build() -> void:

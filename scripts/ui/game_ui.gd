@@ -252,6 +252,11 @@ func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
 	lesson.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(lesson)
+	if String(level.get("shelters", "")) != "":
+		var sh := _label(String(level["shelters"]), 14, AMBER)
+		sh.name = "LevelShelters"
+		sh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(sh)
 	var meta := Loc.t("Seed %d") % int(level.get("seed", 0))
 	if String(level.get("locked_hint", "")) != "":
 		meta += "   ·   " + String(level["locked_hint"])
