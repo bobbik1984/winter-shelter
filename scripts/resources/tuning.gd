@@ -40,10 +40,13 @@ extends Resource
 ## [REAL] 默认风速 32 km/h（Web 原型 9 m/s ≈ 32.4 km/h，取整与 HUD/default_wind 一致）。
 @export var wind_speed_kmh: float = 32.0
 ## [TUNE] 主风向角度（度）。0 = 西风（自西向东吹），角度顺时针增加。
+## [LEGACY] 未使用：风向角（风向 SSOT 是 WindData.direction）。
 @export var wind_angle_deg: float = 0.0
 ## [TUNE] 阵风振幅 12.6 km/h（Web 原型 3.5 m/s × 3.6）。
+## [LEGACY] 未使用：阵风幅度（尚未接入；阵风目前只影响树摆与音频包络）。
 @export var gust_amplitude_kmh: float = 12.6
 ## [TUNE] 降雪粒子密度（相对强度，不换算物理降雪率）。
+## [LEGACY] 未使用：降雪密度（已由 AtmosphereState.snowfall 时间曲线取代）。
 @export var snowfall_density: float = 240.0
 ## [TUNE] 风速达到此值时节风影响封顶，72 km/h（Web 原型 20 m/s）。
 @export var wind_full_effect_kmh: float = 72.0
@@ -57,8 +60,8 @@ extends Resource
 # -----------------------------------------------------------------------------
 
 @export_group("Temperature")
-## [TUNE] 开局气温 -8 °C（Web 原型 tempAtStart）。
-@export var temp_at_start_c: float = -8.0
+## [TUNE] 开局气温 -17 °C（与简报 / HUD 一致；Web 原型为 -8）。气温随时间线性降到 temp_at_night_c。
+@export var temp_at_start_c: float = -17.0
 ## [TUNE] 夜间最低气温 -24 °C（Web 原型 tempAtNight）。
 @export var temp_at_night_c: float = -24.0
 ## [GAME] 每 km/h 风速带来的风寒降温，0.25 °C/(km/h)（Web 原型 0.9 °C/(m/s) 换算）。
@@ -78,10 +81,12 @@ extends Resource
 ## [TUNE] 单次采集动作时长 1.35 s。
 @export var gather_seconds: float = 1.35
 ## [TUNE] 每秒建造工作量 8.2。
+## [LEGACY] 未使用：Web 原型工作量模型（已由 ShelterPreset.build_minutes_total 取代）。
 @export var build_work_per_second: float = 8.2
 ## [TUNE] 黄昏效率下限 0.45（非硬切换）。
 @export var dusk_efficiency_floor: float = 0.45
 ## [TUNE] 每点寒冷锁定带来的效率惩罚 0.012。
+## [LEGACY] 未使用：寒冷效率惩罚（已由 WarmthController 体温档效率取代）。
 @export var cold_efficiency_penalty: float = 0.012
 ## [TUNE] 最大可建造坡度 22°。
 @export var max_build_slope_deg: float = 22.0
@@ -92,12 +97,16 @@ extends Resource
 
 @export_group("Camera")
 ## [TUNE] Camera3D 在 rig 内沿本地 +Z 的后移距离，40 m（AGENTS §4.1 / T0.2）。
+## [LEGACY] 未使用：正交相机参数（正交为备用模式，参数在 IsometricCameraRig @export）。
 @export var camera_distance_m: float = 40.0
 ## [GAME] 正交相机俯仰，35.264° 为真等距。
+## [LEGACY] 未使用：同上。
 @export var camera_pitch_deg: float = 35.264
 ## [GAME] 正交相机绕 Y 轴偏航 45°（AGENTS §4.1）。
+## [LEGACY] 未使用：同上。
 @export var camera_yaw_deg: float = 45.0
 ## [TUNE] 默认正交 size 18.0（VISUAL_LANGUAGE 相机章节）。
+## [LEGACY] 未使用：同上。
 @export var camera_size_default: float = 18.0
 ## [TUNE] 最小缩放 0.3（Web 原型 minZoom）。
 @export var zoom_min: float = 0.3
@@ -125,8 +134,10 @@ extends Resource
 
 @export_group("Resources")
 ## [TUNE] 地图可采集立枯木数量 7。
+## [LEGACY] 未使用：Web 原型资源数（已由 deadwood_spots / birch_spots / bedding_spots 取代）。
 @export var wood_count: int = 7
 ## [TUNE] 地图可采集桦树皮/引火物点位 7。
+## [LEGACY] 未使用：同上。
 @export var tinder_count: int = 7
 
 # -----------------------------------------------------------------------------
@@ -369,6 +380,7 @@ extends Resource
 
 @export_group("Preset: Raised Cave")
 ## [TUNE] 高床雪洞工作量 148（Web 原型 workRequired）。
+## [LEGACY] 未使用：Web 原型工作量（已由 ShelterPreset.build_minutes_total 取代）。
 @export var raised_cave_work_required: float = 148.0
 ## [TUNE] 高床雪洞消耗木材 2（床架/支撑）。
 @export var raised_cave_wood_cost: int = 2
@@ -385,6 +397,7 @@ extends Resource
 
 @export_group("Preset: Basic Cave")
 ## [TUNE] 基础雪洞工作量 108（Web 原型 workRequired）。
+## [LEGACY] 未使用：同上。
 @export var basic_cave_work_required: float = 108.0
 ## [TUNE] 基础雪洞消耗木材 1。
 @export var basic_cave_wood_cost: int = 1
@@ -401,8 +414,10 @@ extends Resource
 
 @export_group("Preset: Snow Trench")
 ## [TUNE] 标准雪沟工作量 58（Web 原型 workRequired）。
+## [LEGACY] 未使用：同上。
 @export var snow_trench_work_required: float = 58.0
 ## [TUNE] 浅雪砌墙变体的额外工时 25 分钟（CORE_GAMEPLAY §5）。
+## [LEGACY] 未使用：同上。
 @export var snow_trench_wall_extra_work_minutes: float = 25.0
 ## [TUNE] 雪沟消耗木材 0。
 @export var snow_trench_wood_cost: int = 0
@@ -419,6 +434,7 @@ extends Resource
 
 @export_group("Preset: Lean-To")
 ## [TUNE] 倒棚搭棚工作量 55（CORE_GAMEPLAY §5 的 40–60 min 量级）。
+## [LEGACY] 未使用：同上。
 @export var lean_to_work_required: float = 55.0
 ## [TUNE] 倒棚骨架消耗木材 1。
 @export var lean_to_wood_cost: int = 1

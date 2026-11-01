@@ -30,6 +30,7 @@ const SNOW_RAMP_MINUTES := 70.0
 ## 本局天气（每局开局抽取；测试可用命令行 -- --weather=storm 指定）。
 var weather_kind: String = "clear"
 var _last_wind_int := -1
+var _last_temp_int := 999
 
 func _ready() -> void:
 	add_to_group("weather")
@@ -76,8 +77,10 @@ func _apply_sun() -> void:
 	var snow := clampf((current_time_minutes - snow_start) / SNOW_RAMP_MINUTES, 0.0, 1.0) * (1.0 if weather_kind == "storm" else 0.9)
 	var wind := current_wind_kmh()
 	atmosphere.update(current_time_minutes, to_sun, p.x, p.y, snow, cloud, wind, weather_kind)
-	if int(wind) != _last_wind_int:
+	var temp := current_temp_c()
+	if int(wind) != _last_wind_int or int(round(temp)) != _last_temp_int:
 		_last_wind_int = int(wind)
+		_last_temp_int = int(round(temp))
 		_update_weather_signals()
 
 ## 动作消耗游戏时间：时钟直接跳进（采集 / 建造 / 融雪），太阳随之更新。
@@ -124,6 +127,14 @@ func current_cloud() -> float:
 func current_wind_kmh() -> float:
 	return wind_data.speed_kmh + tuning.storm_extra_wind_kmh * storm_progress()
 
+## 当前气温：从开局 temp_at_start_c 线性降到入夜（night_minutes）的夜间气温。
+func current_temp_c() -> float:
+	var start := float(tuning.start_minutes)
+	var k := clampf((current_time_minutes - start) / maxf(float(tuning.night_minutes) - start, 1.0), 0.0, 1.0)
+	if current_time_minutes < start:
+		k = 0.0
+	return lerpf(tuning.temp_at_start_c, night_temp_c(), k)
+
 ## 夜间气温：暴风雪夜更冷。
 func night_temp_c() -> float:
 	return tuning.temp_at_night_c - (tuning.storm_extra_cold_c if weather_kind == "storm" else 0.0)
@@ -136,4 +147,4 @@ func forecast_text() -> String:
 
 func _update_weather_signals() -> void:
 	var wind_str = "W %d km/h" % [int(current_wind_kmh() if tuning else wind_data.speed_kmh)]
-	weather_updated.emit(wind_data.temperature_celsius, wind_str)
+	weather_updated.emit(current_temp_c() if tuning else wind_data.temperature_celsius, wind_str)
