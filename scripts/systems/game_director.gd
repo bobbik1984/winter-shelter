@@ -55,6 +55,11 @@ var _compass: Control
 var _forced := false
 var _probe_count := 0
 var _best_depth := 0.0
+## R2（第一次评审）：探测点位置；选址时附近是否探过（报告据此区分"选对了"和"真的观察过"）。
+var _probe_points: Array[Vector3] = []
+var _site_probed := false
+## [GAME] "在选址处探过"的距离（m）：探测点离工地中心不超过这个距离。
+const PROBE_NEAR_SITE_M := 6.0
 var _zero_t := 0.0
 var _startup_frames := 0
 var _debug_depth := false
@@ -251,6 +256,7 @@ func _show_report() -> void:
 		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.theme, LevelState.target_presets(),
 			String(input.get("shelter_type", "None")), String(data["outcome"]), SnowField.map_facts(tuning),
 			{"chapter": LevelState.level.index, "stage": LevelState.stage, "wind_kmh": float(input.get("wind_speed_kmh", tuning.wind_speed_kmh)),
+			"probed_site": _site_probed, "probe_count": _probe_count, "entrance_deg": float(input.get("wind_angle_diff", 180.0)),
 			"night_temp_c": weather.night_temp_c(), "start_minutes": int(weather.day_start_minutes), "sunset_minutes": weather.sunset_minutes}, tuning)
 	var name_ := Loc.t("None — slept in the open")
 	if site:
@@ -770,6 +776,7 @@ func _sync_fires() -> void:
 
 func _on_probe(pos: Vector3, depth: float) -> void:
 	_probe_count += 1
+	_probe_points.append(pos)
 	SessionLog.log_event("probe", weather.clock_string(), {"depth": snappedf(depth, 0.01), "lee": snappedf(SnowField.lee_factor_at(pos.x, pos.z), 0.01), "x": snappedf(pos.x, 0.1), "z": snappedf(pos.z, 0.1)})
 	_mark("probe")
 	_best_depth = maxf(_best_depth, depth)
@@ -904,6 +911,7 @@ func _place_site() -> void:
 	site = ShelterSite.new()
 	site.name = "ShelterSite"
 	site.setup(build.preset_id, build.entrance_dir, build.depth, build.slope, build.near_windbreak)
+	_site_probed = GameRules.probed_near(_probe_points, site.global_position, PROBE_NEAR_SITE_M)
 	if build.is_snow_preset():
 		site.quick_roof = build.quick_roof
 		site.vent_count = build.vent_count

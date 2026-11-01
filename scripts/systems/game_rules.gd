@@ -27,6 +27,13 @@ static func classify_depth(depth: float, t: Tuning) -> Dictionary:
 
 
 ## 入口朝向与风的来向夹角（°）：0 = 入口正对上风（最糟），180 = 完全背风。
+## R2：选址前是否在离工地 radius 米内探过雪（水平距离）。
+static func probed_near(points: Array[Vector3], site_pos: Vector3, radius: float) -> bool:
+	for p in points:
+		if Vector2(p.x - site_pos.x, p.z - site_pos.z).length() <= radius:
+			return true
+	return false
+
 static func entrance_wind_angle(entrance_dir: Vector3, wind_from: Vector3) -> float:
 	var e := Vector2(entrance_dir.x, entrance_dir.z)
 	var w := Vector2(wind_from.x, wind_from.z)

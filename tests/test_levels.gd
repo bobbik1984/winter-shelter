@@ -301,10 +301,23 @@ func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 	_check(NightReportText.build(rep, lean, t)["lesson"].contains("cave"), "有深雪的图上，倒棚教训可以建议雪洞")
 
 	# 报告"本关要点"：章节主题 + 实测值 + 判断
-	var ctx := {"chapter": 4, "stage": 3, "wind_kmh": 32.0, "night_temp_c": -24.0, "start_minutes": 860, "sunset_minutes": 978.0}
+	var ctx := {"chapter": 4, "stage": 3, "wind_kmh": 32.0, "night_temp_c": -24.0, "start_minutes": 860, "sunset_minutes": 978.0, "probed_site": true, "entrance_deg": 160.0}
 	var facts := {"max_depth": 1.37, "frac_cave": 0.0}
 	var ok4 := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, ctx, t)
 	_check(ok4.contains("1.4") and ok4.contains("read the land right") and ok4.contains("Chapter 4") and ok4.contains("stage 3"), "开阔平地雪沟 COLD：引用最深 1.4 m、章 / 阶并肯定（%s）" % ok4)
+	# R2：结果对 ≠ 过程对
+	var ctx2 := ctx.duplicate()
+	ctx2["probed_site"] = false
+	var lucky := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, ctx2, t)
+	_check(lucky.contains("never probed") and not lucky.contains("read the land right"), "选对但没在挖的地方探过：不表扬，指出深度是碰巧的（%s）" % lucky)
+	ctx2["probed_site"] = true
+	ctx2["entrance_deg"] = 95.0
+	var side := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, ctx2, t)
+	_check(side.contains("95°") and not side.contains("read the land right"), "入口侧风：指出角度（%s）" % side)
+	var lean_ok := NightReportText.level_takeaway("blowdown", PackedStringArray(["LeanTo"]), "LeanTo", "COLD", facts, {"chapter": 3, "stage": 1, "probed_site": false, "entrance_deg": 180.0, "start_minutes": 900, "sunset_minutes": 978.0}, t)
+	_check(lean_ok.contains("read the land right"), "倒棚不靠雪深：没探雪也不扣（%s）" % lean_ok)
+	var pts: Array[Vector3] = [Vector3(10, 0, 10), Vector3(30, 0, 0)]
+	_check(GameRules.probed_near(pts, Vector3(14, 2, 13), 6.0) and not GameRules.probed_near(pts, Vector3(0, 0, -20), 6.0), "选址 6 m 内探过的判定")
 	var wrong4 := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "BasicCave", "DANGEROUS", facts, ctx, t)
 	_check(wrong4.contains("Snow cave") and wrong4.contains("Trench"), "开阔平地硬挖雪洞：指出雪沟更合适（%s）" % wrong4)
 	ctx["start_minutes"] = 905

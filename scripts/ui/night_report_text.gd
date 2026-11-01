@@ -99,7 +99,18 @@ static func level_takeaway(theme: String, targets: PackedStringArray, preset: St
 	if preset == "None":
 		verdict = Loc.t("You had no shelter at all.")
 	elif preset in targets:
-		verdict = Loc.t("You read the land right.") if good else Loc.t("Right choice of shelter — the weakest score above is what to fix.")
+		if not good:
+			verdict = Loc.t("Right choice of shelter — the weakest score above is what to fix.")
+		else:
+			# R2：结果对 ≠ 过程对。雪庇护所要在选址处探过雪；入口要背风（≥ 120°）。
+			var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench"]
+			var entrance := float(ctx.get("entrance_deg", 180.0))
+			if is_snow and not bool(ctx.get("probed_site", true)):
+				verdict = Loc.t("Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.")
+			elif entrance < 120.0:
+				verdict = Loc.t("Right shelter, but the entrance was only %d° away from the wind — face it fully downwind (120°+).") % int(round(entrance))
+			else:
+				verdict = Loc.t("You read the land right.")
 	elif good:
 		verdict = Loc.t("%s got you through, but %s fits these conditions better.") % [String(names.get(preset, preset)), target_text]
 	else:
