@@ -79,8 +79,8 @@ void fragment() {
 
 	// 3. 参考图冷暖色盘：受光面暖金奶油白，背风坡冰钴蓝，凹坑深群青
 	vec3 snow_sunlit = vec3(0.95, 0.90, 0.82);
-	vec3 snow_mid_cool = vec3(0.72, 0.81, 0.93);
-	vec3 snow_deep_drift = vec3(0.56, 0.69, 0.87);
+	vec3 snow_mid_cool = vec3(0.68, 0.80, 0.95);
+	vec3 snow_deep_drift = vec3(0.50, 0.66, 0.90);
 
 	vec3 snow_col = mix(snow_mid_cool, snow_sunlit, smoothstep(0.10, 0.78, sun_face));
 	snow_col = mix(snow_col, snow_deep_drift, smoothstep(0.35, 0.92, snow_depth) * (1.0 - sun_face * 0.55));

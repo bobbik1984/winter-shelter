@@ -77,7 +77,7 @@ func _ready() -> void:
 	env.ssao_intensity = 1.6
 
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.62, 0.70, 0.86)
+	env.fog_light_color = Color(0.58, 0.70, 0.90)
 	env.fog_light_energy = 0.75
 	env.fog_sun_scatter = 0.25
 	env.fog_density = 0.0011
