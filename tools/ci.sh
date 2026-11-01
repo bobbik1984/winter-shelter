@@ -2,14 +2,15 @@
 # 一键回归：逻辑测试 → 真实输入冒烟 → 机器人平衡（3 条路线）→ 短模糊测试。
 # 用法：tools/ci.sh [--quick]   （--quick 跳过机器人与模糊测试）
 # 需要窗口 / 显示（冒烟、机器人、模糊测试要渲染）。退出码非 0 = 失败。
-# 注意：会在 user:// 写 records.cfg / settings.cfg，结束时恢复原文件。
+# 注意：会在 user:// 写 records.cfg / settings.cfg / sessions/，结束时恢复原状态。
 set -uo pipefail
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 UD="$HOME/.local/share/godot/app_userdata/Snow Shelter Challenge"
 BK="$(mktemp -d)"
 for f in records.cfg settings.cfg; do [ -f "$UD/$f" ] && cp "$UD/$f" "$BK/"; done
-restore() { for f in records.cfg settings.cfg; do rm -f "$UD/$f"; [ -f "$BK/$f" ] && cp "$BK/$f" "$UD/"; done; rm -rf "$BK"; }
+[ -d "$UD/sessions" ] && mv "$UD/sessions" "$BK/sessions"   # 试玩记录不被测试污染
+restore() { for f in records.cfg settings.cfg; do rm -f "$UD/$f"; [ -f "$BK/$f" ] && cp "$BK/$f" "$UD/"; done; rm -rf "$UD/sessions"; [ -d "$BK/sessions" ] && mv "$BK/sessions" "$UD/sessions"; rm -rf "$BK"; }
 trap restore EXIT
 fail=0
 step() { printf '\n== %s ==\n' "$1"; }

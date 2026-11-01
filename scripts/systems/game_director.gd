@@ -177,6 +177,7 @@ func _enter_briefing() -> void:
 	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
 
 func start_game() -> void:
+	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang})
 	state = State.PLAYING
 	ui.show_briefing(false)
 	player.controls_enabled = true
@@ -236,6 +237,8 @@ func _show_report() -> void:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
+	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "warmth": int(warmth.body_warmth)})
+	SessionLog.close()
 	Records.save(String(input.get("shelter_type", "None")) + ("@day" if full_day else ""), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 
 
@@ -586,6 +589,7 @@ func _sync_fires() -> void:
 
 func _on_probe(pos: Vector3, depth: float) -> void:
 	_probe_count += 1
+	SessionLog.log_event("probe", weather.clock_string(), {"depth": snappedf(depth, 0.01), "lee": snappedf(SnowField.lee_factor_at(pos.x, pos.z), 0.01), "x": snappedf(pos.x, 0.1), "z": snappedf(pos.z, 0.1)})
 	_mark("probe")
 	_best_depth = maxf(_best_depth, depth)
 	audio.play_sfx("probe")
@@ -672,6 +676,8 @@ func _on_harvest(it: Interactable) -> Dictionary:
 	return {"ok": false, "msg": ""}
 
 func _on_interaction_completed(target: Interactable, result: Dictionary) -> void:
+	if target.kind != "shelter" and target.kind != "fire":
+		SessionLog.log_event("gather", weather.clock_string(), {"kind": target.kind})
 	if bool(result.get("ok", true)):
 		match target.kind:
 			"deadwood", "wet_log": audio.play_sfx("chop")
@@ -726,6 +732,7 @@ func _place_site() -> void:
 	site.interactable.prompt_fn = _site_prompt
 	site.interactable.handler = _on_build_stage
 	_mark("site")
+	SessionLog.log_event("site", weather.clock_string(), {"preset": site.preset_id, "depth": snappedf(site.snow_depth, 0.01), "wind_angle": int(GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d()))})
 	_exit_build()
 	ui.toast(Loc.t("Site marked. Hold [E] at the site to work: %s") % site.next_stage_title(), 6.0)
 
@@ -773,6 +780,7 @@ func _on_build_stage() -> Dictionary:
 		_attach_fire_interactable(site.fire)
 	minutes = 0.0
 	var msg := Loc.t("Stage %d/5 done — %s") % [int(r["stage"]), Loc.t(String(r["stage_title"]))]
+	SessionLog.log_event("stage", weather.clock_string(), {"stage": site.stage()})
 	if site.is_complete():
 		_mark("done")
 		msg = Loc.t("Shelter complete. Bring in what you need — rest when ready [N].")
@@ -850,6 +858,7 @@ func _try_fire() -> void:
 		if reason.contains("wind") or reason.contains("branches"):
 			inventory.spend({"bark": tuning.fire_tinder_cost})
 			_skip(4.0)
+		SessionLog.log_event("fire_fail", weather.clock_string(), {"reason": reason})
 		ui.toast(reason, 5.0)
 		return
 	inventory.spend({"wood": tuning.fire_wood_cost, "bark": tuning.fire_tinder_cost})
@@ -861,6 +870,7 @@ func _try_fire() -> void:
 	_attach_fire_interactable(fire)
 	_skip(5.0)
 	audio.play_sfx("fire")
+	SessionLog.log_event("fire", weather.clock_string())
 	_mark("fire")
 	ui.toast(Loc.t("Fire lit. Warm up, dry off, and melt snow for a hot drink [E]."), 5.0)
 
