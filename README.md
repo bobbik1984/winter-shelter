@@ -1,6 +1,6 @@
 # Winter Shelter Project
 
-> **"Read the Land. Make a Plan. Survive the Night."**
+> **"Read the Land. Make a Plan. Survive the Night."**  ·  English quick start: [`README_EN.md`](README_EN.md)
 
 一款聚焦于**环境阅读、雪地工程与严寒过夜**的硬核冬季生存实验游戏。
 
