@@ -116,10 +116,10 @@ phases:
     name: "可玩的夜晚轨道（D14，PRODUCTION_PLAN §4.N）"
     tasks:
       - {id: N1, text: "夜间失温速率模型 + 冷醒事件 + A2 规则 + 曲线结局（纯逻辑）", status: done, evidence: "tests/test_night_curve.gd 51（§10.2 标定 7 种情况 × 一直睡 / 醒来处理；A2：300 个随机夜晚冻死 / 窒息 / 跌破极危前都醒过；连续性：±10% 失温最低体温移动 ≤ 8 分、离分界线远的结局不变；事件与行动规则）；run_all 1179", note: "游戏尚未接入（N2–N4）"}
-      - {id: N2, text: "夜晚播放：快进、体温曲线、黑暗与光源", status: todo, depends: [N1]}
-      - {id: N3, text: "夜间事件面板与行动（添柴、活动、清通风口、顶落积雪、烘袜子）", status: todo, depends: [N1]}
-      - {id: N4, text: "报告：曲线 + 时间线 + 失温来源 + 三样只受一样 + 早晨后果", status: todo, depends: [N1]}
-      - {id: N5, text: "机器人夜间策略与平衡（±10% 参数不翻转结局）", status: todo, depends: [N2, N3, N4]}
+      - {id: N2, text: "夜晚播放：快进、体温曲线、黑暗与光源", status: written-unverified, depends: [N1], evidence: "snapshots/n2_playable_night.png（黑夜里只有火光；夜间面板；白天 HUD 隐藏）；smoke：黑屏后进入 NIGHT、夜间面板可见", note: "真人试玩未做；雪洞夜里的烛灯（D3 醒着时照明）未做"}
+      - {id: N3, text: "夜间事件面板与行动（添柴、活动、清通风口、顶落积雪、烘袜子）", status: written-unverified, depends: [N1], evidence: "smoke：醒来暂停并显示行动面板、按 [1] 执行第一个行动、Enter 接着睡；截图：倒棚火要灭 → 添柴；手柄 Start = 接着睡"}
+      - {id: N4, text: "报告：曲线 + 时间线 + 失温来源 + 三样只受一样 + 早晨后果", status: written-unverified, depends: [N1], evidence: "smoke：报告页有夜间曲线与时间线；结局 / 标题 / 结论来自整夜曲线；Heat 一行按火实际熄灭时刻写；中英"}
+      - {id: N5, text: "机器人夜间策略与平衡（±10% 参数不翻转结局）", status: todo, depends: [N2, N3, N4], note: "机器人已改为按夜间曲线（smart）出结局：深雪洞 SAFE、倒棚 COLD、迎风 / 露天 DANGEROUS；准备充分的雪沟 / 树井现在勉强 SAFE（最低 55 / 64），高于 §10.2 的 COLD 目标——待定：奖励准备，还是加快雪沟失温"}
     name: "章节 / 庇护所 / 地形轨道（D13，PRODUCTION_PLAN §4.S）"
     tasks:
       - {id: S1, text: "地形配方 v2（形态 × 起伏 × 树密度；背风积雪沿真实风向）", status: done, evidence: "tests/test_terrain_recipe.gd 84（默认 = 旧地图参考值；盆地 / 湖岸 / 悬崖各 4 山谷的积雪与地形特征；全覆盖；湖随旋转）+ 47432 点逐位对比旧代码一致；改动默认脊线后测试失败；run_all 761；ci.sh 全量 PASS（机器人结果不变）；snapshots/s1_terrain_shapes_overview.png", note: "规范帧 + 整图旋转（未改为逐形态重算背风）。尚未接入章节（S3）；地物 / 出生点按规则摆放 = S2"}

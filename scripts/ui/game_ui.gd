@@ -30,6 +30,12 @@ var _credits: Control
 var _build_keys: Label
 var _vignette: Control
 var _vignette_tex: TextureRect
+## D14 夜晚：HUD（时钟 / 体温 / 曲线）与醒来面板。
+var _night_hud: PanelContainer
+var _night_clock: Label
+var _night_graph: NightGraph
+var _night_event: PanelContainer
+var _night_event_box: VBoxContainer
 
 func _ready() -> void:
 	layer = 5
@@ -440,6 +446,16 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 		var tl := _label(String(data["timeline"]), 12, MUTED)
 		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(tl)
+	if data.has("night_curve"):
+		var g := NightGraph.new()
+		g.name = "ReportNightGraph"
+		g.custom_minimum_size = Vector2(880, 64)
+		g.set_data(data["night_curve"], float(data.get("night_duration", 828.0)), data.get("night_events", []))
+		v.add_child(g)
+		var nt := _label(String(data.get("night_timeline", "")), 12, CREAM)
+		nt.name = "ReportNightTimeline"
+		nt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(nt)
 	v.add_child(HSeparator.new())
 	for r in data["rows"]:
 		var row := HBoxContainer.new()
@@ -486,3 +502,70 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	_report_box = v
 	_report = shade
 	get_child(0).add_child(shade)
+
+# ------------------------------------------------------------------ D14 可玩的夜晚
+
+## 夜里只留夜间面板：隐藏白天的目标行 / 背包托盘 / 交互提示。
+func set_day_hud(on: bool) -> void:
+	_prompt_card.visible = on and _prompt_card.visible
+	var tray_card := _objective.get_parent().get_parent() as Control
+	if tray_card:
+		tray_card.visible = on
+
+func show_night_hud(on: bool) -> void:
+	if on and _night_hud == null:
+		_night_hud = _card(Color(0.55, 0.65, 0.9))
+		_night_hud.name = "NightHud"
+		_night_hud.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_night_hud.position = Vector2(-230, 18)
+		_night_hud.custom_minimum_size = Vector2(460, 0)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 4)
+		_night_hud.add_child(v)
+		_night_clock = _label("", 15, CREAM)
+		_night_clock.name = "NightClock"
+		v.add_child(_night_clock)
+		_night_graph = NightGraph.new()
+		_night_graph.custom_minimum_size = Vector2(440, 70)
+		v.add_child(_night_graph)
+		var hint := _label(Loc.t("Hold [Space] to fast-forward"), 12, MUTED)
+		v.add_child(hint)
+		get_child(0).add_child(_night_hud)
+	if _night_hud:
+		_night_hud.visible = on
+
+func update_night_hud(clock: String, warmth: int, points: PackedVector2Array, duration: float, events: Array, now_minute: float) -> void:
+	if _night_hud == null:
+		return
+	_night_clock.text = Loc.t("Night · %s · body warmth %d") % [clock, warmth]
+	_night_graph.set_data(points, duration, events, now_minute)
+
+## 醒来面板：标题（为什么醒）、一句说明、带编号的可选行动。
+func show_night_event(title: String, body: String, actions: Array) -> void:
+	hide_night_event()
+	_night_event = _card(Color(1.0, 0.62, 0.3))
+	_night_event.name = "NightEvent"
+	_night_event.set_anchors_preset(Control.PRESET_CENTER)
+	_night_event.position = Vector2(-260, -90)
+	_night_event.custom_minimum_size = Vector2(520, 0)
+	_night_event_box = VBoxContainer.new()
+	_night_event_box.add_theme_constant_override("separation", 6)
+	_night_event.add_child(_night_event_box)
+	_night_event_box.add_child(_label(title, 20, AMBER))
+	var b := _label(body, 14, CREAM)
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_night_event_box.add_child(b)
+	_night_event_box.add_child(HSeparator.new())
+	for i in range(actions.size()):
+		var l := _label("[%d]  %s" % [i + 1, String(actions[i])], 15, CREAM)
+		l.name = "NightAction%d" % (i + 1)
+		_night_event_box.add_child(l)
+	get_child(0).add_child(_night_event)
+
+func hide_night_event() -> void:
+	if _night_event:
+		# 先摘下再释放：同一帧里重建面板时不能和旧面板重名（否则新面板被改名、找不到）
+		if _night_event.get_parent():
+			_night_event.get_parent().remove_child(_night_event)
+		_night_event.queue_free()
+		_night_event = null

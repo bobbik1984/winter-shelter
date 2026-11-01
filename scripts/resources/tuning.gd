@@ -112,6 +112,9 @@ extends Resource
 @export var night_step_min: float = 5.0
 @export var night_safe_min_w: float = 50.0
 @export var night_safe_max_wakes: int = 1
+## [GAME] 播放：整夜多少现实秒；按住 [Space] 快进倍数。
+@export var night_real_seconds: float = 75.0
+@export var night_fast_multiplier: float = 6.0
 
 @export_group("Gear")
 ## [TUNE] 没有雪铲、用随身的锅（billy pot）挖雪的工时倍数。`[OB]`：Outdoor Boys《Lost in Alaska》只带锯、打火棒、刀、锅、勺也熬过冬夜——靠的是换策略（树井 / 倒棚 / 火），不是硬挖雪洞。

@@ -122,9 +122,12 @@ func _run() -> void:
 		printerr("  dampness before bed=%.2f wood=%d prewarmed=%s" % [d.dampness, d.inventory.wood, str(d.prewarmed)])
 		d._sleep(false)
 	var inp = d.night_input()
+	inp["night_snowfall"] = d.weather.atmosphere.snowfall
 	var rep = NightSimulator.evaluate(inp, d.tuning)
 	var sc = rep["scores"]
-	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s" % [strat, rep["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"]])
+	# D14：结局 = 可玩夜晚的整夜体温曲线（机器人夜里按 "smart" 处理：添柴 / 清通风口 / 顶雪 / 烘袜子 / 冷了就活动）
+	var nightres := NightCurve.run(inp, d.tuning, "sleep" if strat in ["none", "late", "wind"] else "smart")
+	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s  night: low=%d wakes=%d" % [strat, nightres["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"], int(nightres["min_warmth"]), int(nightres["wakes"])])
 	printerr("  fire_lit=", inp.get("fire_lit"), " exposure=", inp.get("fire_exposure"), " fuel_h=", inp.get("fuel_hours"), " held=", rep["details"]["fire_reaches_dawn"], " prewarmed=", inp.get("prewarmed"), " clogged=", inp.get("vent_snow_clogged"), " site_fire=", d.site.fire.lit if d.site and d.site.fire else null)
 	quit(0)
 func _fake(kind: String) -> Interactable:

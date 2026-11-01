@@ -10,6 +10,7 @@ func _initialize() -> void:
 	LevelState.auto_begin = false
 	Records.path = "user://test_records.cfg"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Records.path))
+	GameDirector.night_speed_scale = 20.0   # D14：夜晚 75 秒 → 约 4 秒
 	_run()
 
 func key(k: Key) -> void:
@@ -159,10 +160,29 @@ func _run() -> void:
 	await key(KEY_N)
 	await key(KEY_N)
 	check(d.state == d.State.NIGHT_FADE, "N twice goes to night")
+	# D14：黑屏后进入可玩的夜晚；第一次醒来按 [1] 做第一个行动，之后都按 Enter 接着睡
 	var t0 := Time.get_ticks_msec()
-	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 12000:
+	while d.state != d.State.NIGHT and Time.get_ticks_msec() - t0 < 15000:
 		await process_frame
+	check(d.state == d.State.NIGHT and d.night != null, "after the fade the night plays (state NIGHT)")
+	check(m.find_child("NightHud", true, false) != null and m.find_child("NightHud", true, false).visible, "night HUD (clock, warmth curve) is shown")
+	var first_event := true
+	var acted := false
+	t0 = Time.get_ticks_msec()
+	while d.state == d.State.NIGHT and Time.get_ticks_msec() - t0 < 40000:
+		if d.night.waiting():
+			check(m.find_child("NightEvent", true, false) != null, "a wake-up pauses the night and shows the actions panel")
+			if first_event:
+				first_event = false
+				var n_actions: int = d.night.timeline.size()
+				await key(KEY_1)
+				acted = d.night.timeline.size() > n_actions
+			else:
+				await key(KEY_ENTER)
+		await process_frame
+	check(acted, "pressing [1] at a wake-up performs the first action")
 	check(d.state == d.State.REPORT, "night ends in the report")
+	check(m.find_child("ReportNightGraph", true, false) != null and m.find_child("ReportNightTimeline", true, false) != null, "the report shows the night curve and timeline")
 	# 手柄：报告页按 Start = 重开（这里只验证映射，不真的重开）
 	check(d._joy_to_key(JOY_BUTTON_START) == KEY_R, "gamepad Start maps to retry on the report")
 	check(InputMap.action_has_event("interact", _joy_btn(JOY_BUTTON_A)), "gamepad A is bound to interact")
@@ -245,9 +265,7 @@ func _levels_part() -> void:
 	await key(KEY_B)
 	await key(KEY_N)
 	await key(KEY_N)
-	var t0 := Time.get_ticks_msec()
-	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 12000:
-		await process_frame
+	await _sleep_through_night(d)
 	check(d.state == d.State.REPORT, "the night ends in the report")
 	check(not Records.stage_unlocked(2, 2), "sleeping in the open (DANGEROUS) does not open stage 2")
 	await key(KEY_ENTER)
@@ -262,9 +280,7 @@ func _levels_part() -> void:
 	await key(KEY_ENTER)
 	await key(KEY_N)
 	await key(KEY_N)
-	t0 = Time.get_ticks_msec()
-	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 12000:
-		await process_frame
+	await _sleep_through_night(d)
 	d._unlock_after_report(2, "COLD")   # 冒烟测试打不出 COLD：直接走解锁分支
 	check(Records.stage_unlocked(2, 2), "COLD on chapter 2 stage 1 opens stage 2")
 	var id6 := m.get_instance_id()
@@ -275,3 +291,12 @@ func _levels_part() -> void:
 	check(d._joy_to_key(JOY_BUTTON_RIGHT_SHOULDER) == KEY_RIGHT and d._joy_to_key(JOY_BUTTON_LEFT_SHOULDER) == KEY_LEFT
 		and d._joy_to_key(JOY_BUTTON_DPAD_UP) == KEY_UP and d._joy_to_key(JOY_BUTTON_Y) == KEY_N, "gamepad: LB/RB chapter, d-pad stage, Y new map on the briefing")
 	levels_done = true
+
+
+## 夜里每次醒来都按 Enter 接着睡，直到报告页。
+func _sleep_through_night(d) -> void:
+	var t0 := Time.get_ticks_msec()
+	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 40000:
+		if d.state == d.State.NIGHT and d.night != null and d.night.waiting():
+			await key(KEY_ENTER)
+		await process_frame

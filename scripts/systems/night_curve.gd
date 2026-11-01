@@ -57,6 +57,8 @@ var wet_feet_due := INF
 var suffocated := false
 var clog_unresolved := false
 
+## 火最后一次熄灭的时刻（入睡后分钟；-1 = 一直烧到天亮）。
+var fire_out_at := -1.0
 var _last_wake := -INF
 var _pending_event := ""
 var _fire_dying_reported := false
@@ -139,7 +141,11 @@ func loss_per_hour() -> float:
 
 ## 推进到下一个事件或天亮。返回事件 id（"" = 天亮 / 结束）。
 func step() -> String:
-	while not is_over():
+	return advance_to(INF)
+
+## 推进到 target 分钟（游戏播放用：每帧推进一点）；途中遇到事件就停下并返回事件 id。
+func advance_to(target: float) -> String:
+	while not is_over() and minute < target:
 		var ev := _advance_one()
 		if ev != "":
 			_pending_event = ev
@@ -147,12 +153,21 @@ func step() -> String:
 			return ev
 	return ""
 
+func pending_event() -> String:
+	return _pending_event
+
+## 本次醒来、当前还能不能操作（等玩家选择）。
+func waiting() -> bool:
+	return _pending_event != ""
+
 func _advance_one() -> String:
 	var dt := t.night_step_min
 	warmth = clampf(warmth - loss_per_hour() * dt / 60.0, 0.0, t.warmth_max)
 	minute += dt
 	if fire_minutes > 0.0:
 		fire_minutes = maxf(0.0, fire_minutes - dt)
+		if fire_minutes <= 0.0:
+			fire_out_at = minute
 	min_warmth = minf(min_warmth, warmth)
 	if int(minute) % 30 == 0:
 		curve.append(Vector2(minute, warmth))
@@ -225,6 +240,7 @@ func act(a: String) -> bool:
 			stock_logs -= n
 			fire_minutes += float(n) * t.fire_fuel_hours_per_log * 60.0
 			_fire_dying_reported = false
+			fire_out_at = -1.0
 			minute += 5.0
 		ACT_EXERCISE:
 			warmth = minf(t.warmth_max, warmth + t.night_exercise_warmth)
@@ -264,7 +280,8 @@ func result() -> Dictionary:
 		outcome = "SAFE"
 	return {"outcome": outcome, "cause": cause, "min_warmth": min_warmth, "end_warmth": warmth, "wakes": wakes + critical_wakes,
 		"sleep_quality": sleep_quality, "protection": protection, "base_loss": base_loss, "curve": curve, "timeline": timeline,
-		"boots_frozen": NightSimulator.wet_fraction(dampness, t) > 0.5 and not has_fire_place}
+		"boots_frozen": NightSimulator.wet_fraction(dampness, t) > 0.5 and not has_fire_place,
+		"had_fire": has_fire_place, "fire_out_at": fire_out_at, "logs_left": stock_logs}
 
 ## 测试 / 机器人用：按策略跑完整夜。policy: "sleep"（醒了什么都不做）或 "smart"（能做的都做）。
 static func run(p_input: Dictionary, p_t: Tuning, policy: String = "smart") -> Dictionary:

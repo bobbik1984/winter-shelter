@@ -61,6 +61,7 @@ func run() -> Dictionary:
 	var lf_smart := NightCurve.run(c["leanto_fire"], t, "smart")
 	_check(float(lf_smart["min_warmth"]) > float(lf_sleep["min_warmth"]) + 20.0, "倒棚：醒来添柴比一直睡暖得多（%d vs %d）" % [int(lf_smart["min_warmth"]), int(lf_sleep["min_warmth"])])
 	_check(int(lf_smart["wakes"]) >= 2, "倒棚的火要半夜添柴：至少醒 2 次（%d）" % int(lf_smart["wakes"]))
+	_check(float(lf_smart["fire_out_at"]) < 0.0 and float(lf_sleep["fire_out_at"]) > 0.0, "添柴的火烧到天亮；不添柴的火半夜灭（记录熄灭时刻 %.0f）" % float(lf_sleep["fire_out_at"]))
 	# 湿衣：好雪洞也会变冷（与 R1 一致）
 	_check(float(NightCurve.run(c["raised_wet"], t, "sleep")["min_warmth"]) < float(NightCurve.run(c["raised_dry"], t, "sleep")["min_warmth"]) - 30.0, "湿衣入睡：同一个雪洞冷得多")
 

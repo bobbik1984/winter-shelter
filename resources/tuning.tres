@@ -194,3 +194,5 @@ night_snow_load_snowfall = 0.7
 night_step_min = 5.0
 night_safe_min_w = 50.0
 night_safe_max_wakes = 1
+night_real_seconds = 75.0
+night_fast_multiplier = 6.0

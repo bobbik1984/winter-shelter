@@ -61,7 +61,7 @@ func _process(delta: float) -> void:
 	current_time_minutes += (delta * time_scale) / 60.0
 
 	var total_min = int(current_time_minutes)
-	var time_str = "%02d:%02d" % [total_min / 60, total_min % 60]
+	var time_str = "%02d:%02d" % [(total_min / 60) % 24, total_min % 60]   # 夜里会跨过午夜（D14）
 	var rem_min = int(max(0.0, sunset_minutes - current_time_minutes))
 	var rem_str = "%dh %02dm" % [rem_min / 60, rem_min % 60]
 	time_changed.emit(time_str, rem_str)
@@ -103,7 +103,7 @@ func minutes_to_sunset() -> float:
 	return sunset_minutes - current_time_minutes
 
 func clock_string() -> String:
-	var m := int(current_time_minutes)
+	var m := int(current_time_minutes) % 1440
 	return "%02d:%02d" % [m / 60, m % 60]
 
 ## 当前时刻的 HH:MM 日落字符串（HUD 用，不再写死 16:18）。

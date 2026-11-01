@@ -5,7 +5,7 @@ extends Node
 ## 只做编排：规则在 GameRules / NightSimulator / ShelterBuilder，数值在 Tuning，外观在各自节点。
 ## 由 MainLevel 在 _ready 中创建并注入引用。
 
-enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT, PAUSED }
+enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT, PAUSED, NIGHT }
 
 var main: Node3D
 var player: PlayerController
@@ -49,6 +49,12 @@ var _fade_t := 0.0
 var _fade_start_ms := 0
 ## 教程里标出的"可生火位置"（缓存，2 s 刷新）。
 var _fire_spot := Vector3.INF
+## D14 可玩的夜晚
+var night: NightCurve
+var _night_input: Dictionary = {}
+var _bed_minutes := 0.0
+## 测试工具用：夜晚播放倍速（smoke test 设大，避免等 75 秒）。
+static var night_speed_scale := 1.0
 var _fire_spot_ms := -100000
 var _last_minutes := 0.0
 var _markers: Array[Node3D] = []
@@ -250,13 +256,110 @@ func _timeline_text() -> String:
 		parts.append("%s %s" % [e[1], e[0]])
 	return Loc.t("Your day: ") + "  →  ".join(parts)
 
-func _show_report() -> void:
+# ------------------------------------------------------------------ D14 可玩的夜晚
+
+## 黑屏渐变之后进入夜晚：用入睡那一刻的事实建 NightCurve，世界变暗，时钟继续走过午夜。
+func _begin_night() -> void:
+	_night_input = night_input()
+	_night_input["night_snowfall"] = weather.atmosphere.snowfall
+	night = NightCurve.new(_night_input, tuning)
+	_bed_minutes = weather.current_time_minutes
+	state = State.NIGHT
+	ui.show_vignette(null, "", 0.0)
+	ui.set_fade(0.0)
+	ui.set_prompt("", 0.0)
+	headlamp.light_energy = 0.0
+	ui.show_night_hud(true)
+	ui.set_day_hud(false)
+	var hud_layer := hud.get_parent()
+	if hud_layer:
+		hud_layer.set("visible", false)   # 白天的体温卡 / 环境卡 / 罗盘：夜里由夜间面板取代
+
+func _tick_night(delta: float) -> void:
+	if night == null:
+		return
+	if not night.waiting():
+		var rate := night.duration / maxf(tuning.night_real_seconds, 1.0) * night_speed_scale
+		if Input.is_action_pressed("probe"):
+			rate *= tuning.night_fast_multiplier
+		var ev := night.advance_to(night.minute + rate * delta)
+		weather.current_time_minutes = _bed_minutes + night.minute
+		weather.advance_minutes(0.0)
+		_sync_night_fire()
+		if ev != "":
+			_show_night_event(ev)
+		elif night.is_over():
+			_end_night()
+			return
+	ui.update_night_hud(weather.clock_string(), int(night.warmth), night.curve + PackedVector2Array([Vector2(night.minute, night.warmth)]),
+		night.duration, night.timeline.filter(func(e): return e["kind"] == "event"), night.minute)
+
+## 夜里的火：模型说烧着就烧着、说灭了就灭（倒棚反射火 / 睡前篝火）。
+func _sync_night_fire() -> void:
+	for f in get_tree().get_nodes_in_group("campfires"):
+		var c := f as Campfire
+		if night.has_fire_place:
+			c.fuel_minutes = night.fire_minutes
+			c.lit = night.fire_minutes > 0.0
+		else:
+			c.fuel_minutes = 0.0
+			c.lit = false
+		c._apply_lit()
+
+func _show_night_event(ev: String) -> void:
+	headlamp.light_energy = 2.5   # 醒了：打开头灯
+	var labels: Array = []
+	for a in night.available_actions():
+		labels.append(NightText.action_label(a, night, tuning))
+	ui.show_night_event(Loc.t("%s — %s") % [weather.clock_string(), NightText.event_title(ev)], NightText.event_body(ev, night.warmth), labels)
+	audio.play_sfx("probe")
+
+func _night_act(a: String) -> void:
+	if night == null or not night.act(a):
+		return
+	if a == NightCurve.ACT_SLEEP:
+		ui.hide_night_event()
+		headlamp.light_energy = 0.0
+		return
+	ui.toast(NightText.action_done(a), 2.0)
+	weather.current_time_minutes = _bed_minutes + night.minute
+	weather.advance_minutes(0.0)
+	_sync_night_fire()
+	_show_night_event(night.pending_event())
+
+func _end_night() -> void:
+	ui.hide_night_event()
+	ui.show_night_hud(false)
+	ui.set_fade(1.0)
+	_show_report(night.result())
+
+func _show_report(night_res: Dictionary = {}) -> void:
 	state = State.REPORT
-	var input := night_input()
+	var input := _night_input if not _night_input.is_empty() else night_input()
+	if night_res.is_empty():
+		night_res = NightCurve.run(input, tuning, "sleep")
 	# 本图实测最深雪（报告教训只在真的挖得了雪洞时才建议"去找深雪挖洞"）
 	input["map_max_snow_m"] = float(SnowField.map_facts(tuning)["max_depth"])
 	var report := NightSimulator.evaluate(input, tuning)
 	var data := NightReportText.build(report, input, tuning)
+	# D14：结局由整夜体温曲线决定；6 维留作"热量从哪里漏掉"
+	var wet := NightSimulator.wet_fraction(float(input.get("dampness", 0.0)), tuning) > 0.5
+	data["outcome"] = String(night_res["outcome"])
+	data["title"] = NightText.title(night_res, wet)
+	data["conclusion"] = NightText.conclusion(night_res, NightReportText._label(String(report["details"].get("min_axis", "heat"))))
+	data["night_curve"] = night_res["curve"]
+	data["night_duration"] = tuning.night_duration_hours * 60.0
+	data["night_events"] = (night_res["timeline"] as Array).filter(func(e): return e["kind"] == "event")
+	var extra: Array[String] = [NightText.timeline(night_res, _bed_minutes if _bed_minutes > 0.0 else weather.current_time_minutes)]
+	for line in [NightText.three_comforts(input, night_res, tuning), NightText.boots_line(night_res)]:
+		if line != "":
+			extra.append(line)
+	data["night_timeline"] = "\n".join(extra)
+	# Heat 一行按整夜实际发生的写（旧模型假设"有柴就烧到天亮"；现在火要醒来添才烧得下去）
+	if bool(night_res.get("had_fire", false)) and data["rows"].size() >= 6:
+		var out_at := float(night_res["fire_out_at"])
+		data["rows"][5]["note"] = Loc.t("You kept the fire going until dawn.") if out_at < 0.0 \
+			else Loc.t("The fire went out at %s and nobody fed it; the rest of the night was cold.") % NightText.clock(_bed_minutes, out_at)
 	if LevelState.active() and not LevelState.level.is_free():
 		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.theme, LevelState.target_presets(),
 			String(input.get("shelter_type", "None")), String(data["outcome"]), SnowField.map_facts(tuning),
@@ -340,6 +443,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif k == KEY_L:
 				_toggle_lang()
 				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
+		State.NIGHT:
+			if night != null and night.waiting():
+				var acts := night.available_actions()
+				if k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_N:
+					_night_act(NightCurve.ACT_SLEEP)
+				elif k >= KEY_1 and k <= KEY_9 and int(k - KEY_1) < acts.size():
+					_night_act(acts[int(k - KEY_1)])
 		State.REPORT:
 			if k == KEY_R:
 				_restart()
@@ -599,7 +709,9 @@ func _process(delta: float) -> void:
 				ui.show_vignette(vignette, Loc.t("Outside, the wind howls. Inside, the candle glows and the air stays still."), a)
 				audio.shelter_level = 2
 			if _fade_t >= total:
-				_show_report()
+				_begin_night()
+		State.NIGHT:
+			_tick_night(delta)
 		State.REPORT:
 			ui.set_fade(1.0)
 
