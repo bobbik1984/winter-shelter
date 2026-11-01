@@ -22,8 +22,34 @@ const SEED_MAX := 999999
 
 static var level: LevelDef
 static var game_seed: int = 0
-## 本局抽取：valley_seed / wind_rotation_deg / weather / snow_depth_scale / start_minutes / wind_speed_offset_kmh / snow_contrast / snag_density_scale
+## 本局抽取：valley_seed / wind_rotation_deg / weather / snow_depth_scale / start_minutes / wind_speed_offset_kmh / snow_patchiness / snag_density_scale
 static var roll: Dictionary = {}
+
+## 是否在关卡模式（已调用 begin）。未进入时游戏保持旧行为：山谷按重开轮换、天气按 Tuning 抽取。
+static func active() -> bool:
+	return level != null
+
+## 场景加载前调用（MainLevel._init）：把本局抽取写进地形 / 雪深的静态旋钮。
+## 未进入关卡时只把雪深旋钮复位，不碰 TerrainHeight.SEED（保留旧的山谷轮换）。
+static func apply_world() -> void:
+	if not active():
+		TerrainHeight.SNOW_SCALE = 1.0
+		TerrainHeight.SNOW_PATCHINESS = 0.0
+		return
+	TerrainHeight.SEED = int(roll.get("valley_seed", TerrainHeight.SEED))
+	TerrainHeight.SNOW_SCALE = float(roll.get("snow_depth_scale", 1.0))
+	TerrainHeight.SNOW_PATCHINESS = float(roll.get("snow_patchiness", 0.0))
+
+## 立枯木密度倍率（ForestScatter / ResourceSpawner 读取）。
+static func snag_density_scale() -> float:
+	return float(roll.get("snag_density_scale", 1.0)) if active() else 1.0
+
+## 退出关卡模式（测试用；回到旧行为）。
+static func reset() -> void:
+	level = null
+	game_seed = 0
+	roll = {}
+	apply_world()
 
 static func load_level(index: int) -> LevelDef:
 	if index < 0 or index > LEVEL_COUNT:
@@ -55,7 +81,7 @@ static func roll_for(def: LevelDef, p_seed: int) -> Dictionary:
 		"wind_rotation_deg": fposmod(rot, 360.0),
 		"weather": _pick_weather(def, rng.randf()),
 		"snow_depth_scale": depth_scale,
-		"snow_contrast": def.snow_contrast,
+		"snow_patchiness": def.snow_patchiness,
 		"snag_density_scale": def.snag_density_scale,
 		"start_minutes": def.start_minutes,
 		"wind_speed_offset_kmh": def.wind_speed_offset_kmh,

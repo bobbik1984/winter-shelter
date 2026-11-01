@@ -26,8 +26,8 @@ extends Resource
 @export_group("Snow")
 ## [TUNE] 雪深倍率候选：每局抽一个（第 5 关三选一；其余关只有一个值）。
 @export var snow_depth_scale_choices: PackedFloat32Array = PackedFloat32Array([1.0])
-## [TUNE] 雪深对比度（围绕均值放大起伏；1 = 不变）。> 1 时深雪更集中在少数背风处。
-@export var snow_contrast: float = 1.0
+## [TUNE] 雪深斑驳度 0..1（0 = 不变）：风蚀——少数保留斑块以外的雪按 (1 − 斑驳度) 削薄，背风深雪带断成几块。
+@export_range(0.0, 1.0) var snow_patchiness: float = 0.0
 
 @export_group("Resources")
 ## [TUNE] 立枯木密度倍率（1 = 不变）。

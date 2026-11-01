@@ -41,14 +41,14 @@ func run() -> Dictionary:
 	_check(is_equal_approx(free.weather_weight_clear, tuning.weather_weight_clear)
 		and is_equal_approx(free.weather_weight_overcast, tuning.weather_weight_overcast)
 		and is_equal_approx(free.weather_weight_storm, tuning.weather_weight_storm), "自由模式天气权重应等于 Tuning")
-	_check(free.snow_depth_scale_choices == PackedFloat32Array([1.0]) and is_equal_approx(free.snow_contrast, 1.0)
+	_check(free.snow_depth_scale_choices == PackedFloat32Array([1.0]) and is_equal_approx(free.snow_patchiness, 0.0)
 		and is_equal_approx(free.snag_density_scale, 1.0) and is_equal_approx(free.wind_speed_offset_kmh, 0.0), "自由模式环境倍率应全部为 1 / 0")
 
 	# 课题固定条件（CORE_GAMEPLAY §8.1 / §8.2）
 	_check(defs[1].start_minutes == tuning.full_day_start_minutes, "第 1 关 10:00 开局（= Tuning.full_day_start_minutes）")
 	_check(defs[1].wind_speed_offset_kmh < 0.0, "第 1 关风偏弱")
 	_check(defs[1].snow_depth_scale_choices[0] > 1.0, "第 1 关深雪")
-	_check(defs[2].snow_contrast > 1.0, "第 2 关雪深更斑驳")
+	_check(defs[2].snow_patchiness > 0.0, "第 2 关雪深更斑驳")
 	_check(defs[3].snow_depth_scale_choices[0] < 1.0 and defs[4].snow_depth_scale_choices[0] < defs[3].snow_depth_scale_choices[0], "第 3 / 4 关雪逐级变浅")
 	_check(defs[4].snag_density_scale > 1.0, "第 4 关立枯木更多")
 	_check(defs[5].weather_weight_storm > 0.0 and defs[5].weather_weight_clear == 0.0 and defs[5].weather_weight_overcast == 0.0, "第 5 关只有暴风雪将至")
@@ -102,6 +102,8 @@ func run() -> Dictionary:
 			same += 1
 	_check(same < 25, "不同关卡同种子的抽取应基本独立（重合 %d/50）" % same)
 
+	_check_snow_bands(defs, tuning)
+
 	# begin()
 	var r := LevelState.begin(3, 4242)
 	_check(LevelState.level != null and LevelState.level.index == 3 and LevelState.game_seed == 4242, "begin(3, 4242) 设置关卡与种子")
@@ -110,7 +112,8 @@ func run() -> Dictionary:
 	_check(LevelState.game_seed >= 1 and LevelState.game_seed <= LevelState.SEED_MAX, "未给种子时随机生成 1..SEED_MAX")
 	LevelState.begin(99, 7)
 	_check(LevelState.level.index == 0, "非法关卡回退到自由模式")
-	LevelState.begin(0, 0)
+	LevelState.reset()
+	_check(TerrainHeight.SNOW_SCALE == 1.0 and TerrainHeight.SNOW_PATCHINESS == 0.0, "reset() 复位雪深旋钮")
 
 	# 命令行
 	_check(LevelState.parse_args(PackedStringArray(["--level=3", "--seed=77"])) == {"level": 3, "seed": 77}, "--level=3 --seed=77")
@@ -128,3 +131,52 @@ func run() -> Dictionary:
 	_check(LevelState.is_unlocked(1, 0) and not LevelState.is_unlocked(2, 1), "新存档只开第 1 关")
 	_check(not LevelState.is_unlocked(0, 5) and LevelState.is_unlocked(0, 6), "自由模式在通过第 5 关后开放")
 	return {"passed": _passed, "failures": _failures}
+
+
+## L2：每关雪深分布符合 CORE_GAMEPLAY §8.2（D5 区间面积，4 个山谷都要满足）。
+func _band_fractions(step: float, tuning: Tuning) -> Dictionary:
+	var n := 0
+	var ge_trench := 0
+	var ge_cave := 0
+	var ge_raised := 0
+	var x := -48.0
+	while x <= 48.0:
+		var z := -48.0
+		while z <= 48.0:
+			var s := TerrainHeight.snow_depth_at(x, z)
+			n += 1
+			if s >= tuning.snow_depth_trench_wall_min_m: ge_trench += 1
+			if s >= tuning.snow_depth_cave_min_m: ge_cave += 1
+			if s >= tuning.snow_depth_raised_cave_min_m: ge_raised += 1
+			z += step
+		x += step
+	return {"trench": float(ge_trench) / n, "cave": float(ge_cave) / n, "raised": float(ge_raised) / n}
+
+func _check_snow_bands(defs: Array[LevelDef], tuning: Tuning) -> void:
+	var seed0 := TerrainHeight.SEED
+	var base := {}
+	for v in TerrainHeight.VALLEY_SEEDS:
+		TerrainHeight.SEED = v
+		TerrainHeight.SNOW_SCALE = 1.0
+		TerrainHeight.SNOW_PATCHINESS = 0.0
+		base[v] = _band_fractions(2.0, tuning)
+		for li in range(defs.size()):
+			var d := defs[li]
+			for sc in d.snow_depth_scale_choices:
+				TerrainHeight.SNOW_SCALE = sc
+				TerrainHeight.SNOW_PATCHINESS = d.snow_patchiness
+				var f := _band_fractions(2.0, tuning)
+				var tag := "关卡 %d 山谷 %d 倍率 %.2f" % [li, v, sc]
+				if sc == 1.0 and d.snow_patchiness == 0.0:
+					_check(f == base[v], tag + "：倍率 1 时雪深应与基础地图完全一致")
+				elif li == 1:
+					_check(f["cave"] > base[v]["cave"] and f["cave"] >= 0.4, tag + "：深雪（可挖雪洞）面积应更大且 ≥ 40%%（%.1f%%）" % (f["cave"] * 100.0))
+				elif li == 2:
+					_check(f["cave"] < base[v]["cave"] * 0.65 and f["raised"] >= 0.03, tag + "：深雪应明显变少但高床雪洞仍可建（洞 %.1f%% / 高床 %.1f%%）" % [f["cave"] * 100.0, f["raised"] * 100.0])
+				elif sc < 0.2:
+					_check(f["trench"] <= 0.03, tag + "：几乎没有能挖雪沟的地方（%.1f%%）" % (f["trench"] * 100.0))
+				elif sc < 1.0:
+					_check(f["cave"] == 0.0 and f["trench"] >= 0.7, tag + "：雪洞不可建、雪沟大部分可建（沟 %.1f%%）" % (f["trench"] * 100.0))
+	TerrainHeight.SEED = seed0
+	TerrainHeight.SNOW_SCALE = 1.0
+	TerrainHeight.SNOW_PATCHINESS = 0.0

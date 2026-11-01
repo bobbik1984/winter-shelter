@@ -177,7 +177,8 @@ func _enter_briefing() -> void:
 	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text())
 
 func start_game() -> void:
-	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang})
+	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
+		"level": LevelState.level.index if LevelState.active() else -1, "seed": LevelState.game_seed})
 	state = State.PLAYING
 	ui.show_briefing(false)
 	player.controls_enabled = true
@@ -215,8 +216,8 @@ func _vignette_texture() -> Texture2D:
 func _timeline_text() -> String:
 	var names := {"probe": Loc.t("first probe"), "site": Loc.t("site marked"), "done": Loc.t("shelter done"),
 		"fire": Loc.t("fire lit"), "sleep": Loc.t("bed")}
-	var start := "%02d:%02d" % [tuning.full_day_start_minutes / 60, tuning.full_day_start_minutes % 60] if full_day \
-		else "%02d:%02d" % [tuning.start_minutes / 60, tuning.start_minutes % 60]
+	var sm := int(weather.day_start_minutes)
+	var start := "%02d:%02d" % [sm / 60, sm % 60]
 	var events: Array = [[start, Loc.t("start")], [weather.sunset_clock(), Loc.t("sunset")]]
 	for e in _timeline:
 		events.append([e[1], names.get(e[0], e[0])])
@@ -290,9 +291,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		State.BRIEFING:
 			if k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_1:
 				start_game()
-			elif k == KEY_2:
+			elif k == KEY_2 and (not LevelState.active() or LevelState.level.is_free()):
 				full_day = true
 				weather.current_time_minutes = float(tuning.full_day_start_minutes)
+				weather.day_start_minutes = weather.current_time_minutes
 				weather.advance_minutes(0.0)
 				_last_minutes = weather.current_time_minutes
 				start_game()
@@ -327,8 +329,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_F: _begin_fire()
 				KEY_N: _request_sleep()
 
-## 重开：换到下一个山谷（同一结构、不同的起伏与雪深分布），再重载场景。
+## 重开：关卡模式下同一关重新抽取（新种子）；否则换到下一个山谷（同一结构、不同的起伏与雪深分布）。再重载场景。
 func _restart() -> void:
+	if LevelState.active():
+		LevelState.begin(LevelState.level.index)
+		get_tree().reload_current_scene()
+		return
 	var seeds: Array = TerrainHeight.VALLEY_SEEDS
 	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
 	get_tree().reload_current_scene()

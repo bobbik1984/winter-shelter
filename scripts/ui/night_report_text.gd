@@ -70,7 +70,7 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 	match key:
 		"site":
 			if none:
-				return "No shelter — exposed to the %d km/h wind all night." % int(t.wind_speed_kmh)
+				return "No shelter — exposed to the %d km/h wind all night." % int(float(i.get("wind_speed_kmh", t.wind_speed_kmh)))
 			if angle < 60.0:
 				return "The entrance faced into the wind (%d°): drafts and drifting snow all night." % int(angle)
 			if angle < 120.0:

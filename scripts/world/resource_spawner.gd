@@ -33,7 +33,7 @@ func _ready() -> void:
 	for p in FIXED_DEADWOOD:
 		_spawn_deadwood(p, 0)
 	var k := 0
-	k = _scatter(tuning.deadwood_spots - FIXED_DEADWOOD.size(), 10.0, 38.0, 11, _spawn_deadwood)
+	k = _scatter(int(round((tuning.deadwood_spots - FIXED_DEADWOOD.size()) * LevelState.snag_density_scale())), 10.0, 38.0, 11, _spawn_deadwood)
 	k = _scatter(tuning.birch_spots, 8.0, 34.0, 23, _spawn_birch)
 	k = _scatter(int(tuning.bedding_spots * 0.6), 4.0, 26.0, 37, _spawn_grass)
 	k = _scatter(tuning.bedding_spots - int(tuning.bedding_spots * 0.6), 6.0, 30.0, 41, _spawn_bough)

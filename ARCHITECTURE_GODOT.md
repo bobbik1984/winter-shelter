@@ -172,11 +172,12 @@ static func evaluate_shelter(
 - **致谢与许可**：暂停菜单 [C]，Godot MIT 文本来自 `Engine.get_license_text()`；随包字体许可在 `assets/fonts/`。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
-### 3.9 关卡阶梯（D12，规划中，L 轨道）
+### 3.9 关卡阶梯（D12，L 轨道：L1 / L2 已实现）
 
 - **`LevelDef`**（`scripts/resources/level_def.gd`，`Resource`）：`id`、课题文案键、`start_minutes`、天气池（权重）、`wind_speed_offset_kmh`、`snow_depth_scale` / `snow_contrast`、`snag_density_scale`、`wind_rotation_choices`（或抖动范围）、`target_presets`（只给机器人与报告文案用，不限制玩家）。实例在 `resources/levels/level_01.tres … level_05.tres`；自由模式 = `level_free.tres`（全部为现有默认值）。
 - **`LevelState`**（静态，同 `TerrainHeight.SEED` 的生命周期）：当前 `LevelDef` + 本局种子 + 抽取结果（山谷、风向旋转、天气、第 5 关雪深档位）。**必须在重载 `main.tscn` 之前设置**，因为地形、雪深场、森林、雪枕、资源都在 `_ready` 时构建。
-- **读取方**：`SnowField`（倍率 / 对比度）、`TerrainHeight` 与所有散布器（布局旋转：统一在"地图坐标 ↔ 世界坐标"处转换，不在各脚本里各自旋转）、`WeatherController`（天气池、开局时间、风速）、`ResourceSpawner`（枯木密度）、`GameDirector`（解锁、记录、简报 / 报告文案）。
+- **读取方**：`TerrainHeight.snow_depth_at`（静态 `SNOW_SCALE` / `SNOW_PATCHINESS`，`SnowField` 与所有调用者自动跟随；值为 1 / 0 时原样返回）、`TerrainHeight` 与所有散布器（布局旋转：统一在"地图坐标 ↔ 世界坐标"处转换，不在各脚本里各自旋转）、`WeatherController`（天气池、开局时间、风速）、`ResourceSpawner`（枯木密度）、`GameDirector`（解锁、记录、简报 / 报告文案）。
+- **入口**：`MainLevel._init` 读 `--level=N [--seed=S]` 调 `LevelState.begin`，再 `LevelState.apply_world()`；未进入关卡时一切保持旧行为（山谷按重开轮换、天气按 Tuning 抽取）。关卡模式下 R 重开 = 同一关新种子。`WeatherController.day_start_minutes` 是本局开局时刻（报告时间线读它）；`wind_offset_kmh` 叠加在风速上。
 - **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。
 - **测试**：`tests/test_levels.gd`（种子可复现、抽取在范围内、解锁规则）；`tools/playtest_bot.gd -- --level=N --seed=S`。
 

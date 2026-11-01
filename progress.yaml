@@ -106,7 +106,7 @@ phases:
     name: "关卡阶梯轨道（D12，PRODUCTION_PLAN §4.L）"
     tasks:
       - {id: L1, text: "LevelDef 资源 + 5 关 / 自由模式 .tres + LevelState + 种子", status: done, evidence: "tests/test_levels.gd 102 assertions；run_all 10 suites / 558 assertions 全绿；改坏 level_03 后测试按预期失败", note: "只有数据与纯函数，游戏尚未读取（L2 / L4 接入）"}
-      - {id: L2, text: "环境旋钮接入（雪深倍率 / 对比度、枯木密度、天气池、开局时间）", status: todo, depends: [L1]}
+      - {id: L2, text: "环境旋钮接入（雪深倍率 / 斑驳度、枯木密度、天气池、开局时间、风速）", status: done, depends: [L1], evidence: "test_levels 135 assertions（含逐关逐山谷 D5 面积）；run_all 591 全绿；ci.sh --quick PASS；实机 --level=1..5 --seed=101 启动报告（开局时刻 / 天气 / 风速 / 枯木 43→63）；snapshots/l2_level_snow_heatmaps.png", note: "对比度改为只削不加的斑驳度（对称起伏不改变深雪面积）；默认（未进关卡）行为不变；风向旋转 = L3"}
       - {id: L3, text: "风向随机 = 整图旋转（退路 ±30° 抖动）", status: todo, depends: [L1, L2]}
       - {id: L4, text: "简报页关卡选择 + 解锁（COLD/SAFE）+ 每关记录 + 自由模式", status: todo, depends: [L1]}
       - {id: L5, text: "课题文案（简报一句 + 报告本关要点，EN/ZH）", status: todo, depends: [L4]}

@@ -162,8 +162,8 @@
 
 | ID | 任务 | 涉及文件 | 完成标准 | 估时 |
 | :--- | :--- | :--- | :--- | :--- |
-| L1 | 关卡数据：`LevelDef` 资源（课题、开局时间、天气池、雪深倍率 / 对比度、燃料密度、风向随机范围、目标庇护所）+ 5 个关卡 `.tres` + `LevelState`（静态，像 `TerrainHeight.SEED` 一样在场景重载前设置）+ 每局种子 | `scripts/resources/level_def.gd` (new), `resources/levels/level_0N.tres` (new), `scripts/systems/level_state.gd` (new), `tests/test_levels.gd` (new) | 测试覆盖：同一种子两次抽取结果相同；每关抽取结果落在本关范围内；`--level=N` / `--seed=S` 命令行可指定 | 0.75 d |
-| L2 | 环境旋钮接入：`SnowField` 雪深倍率与对比度、资源密度倍率、天气池、开局时间，全部从当前 `LevelDef` 读取；自由模式 = 现有默认值 | `snow_field.gd`, `resource_spawner.gd`, `weather_controller.gd`, `game_director.gd` | 默认（自由模式）下全部现有测试与机器人结果不变；F3 热力图每关一张截图，D5 区间分布符合 `CORE_GAMEPLAY` §8.2 | 1 d |
+| L1 | 关卡数据：`LevelDef` 资源（课题、开局时间、天气池、雪深倍率 / 斑驳度、燃料密度、风向随机范围、目标庇护所）+ 5 个关卡 `.tres` + `LevelState`（静态，像 `TerrainHeight.SEED` 一样在场景重载前设置）+ 每局种子 | `scripts/resources/level_def.gd` (new), `resources/levels/level_0N.tres` (new), `scripts/systems/level_state.gd` (new), `tests/test_levels.gd` (new) | 测试覆盖：同一种子两次抽取结果相同；每关抽取结果落在本关范围内；`--level=N` / `--seed=S` 命令行可指定 | 0.75 d |
+| L2 | 环境旋钮接入：雪深倍率与斑驳度（风蚀）、资源密度倍率、天气池、开局时间，全部从当前 `LevelDef` 读取；自由模式 = 现有默认值 | `snow_field.gd`, `resource_spawner.gd`, `weather_controller.gd`, `game_director.gd` | 默认（自由模式）下全部现有测试与机器人结果不变；F3 热力图每关一张截图，D5 区间分布符合 `CORE_GAMEPLAY` §8.2 | 1 d |
 | L3 | 风向随机：旋转整张地图布局（迎风坡—脊线—背风坡随风一起转），风相对地形不变、相对太阳 / 罗盘变化；视野走廊与出生点随之旋转 | `terrain_height.gd`, `snow_field.gd`, `forest_scatter.gd`, `scenery_builder.gd`, `drift_scatter.gd`, `resource_spawner.gd`, `wind_data.gd` 调用处 | 4 个方位各一张截图：树冠偏向、雪枕、背风深雪一致；罗盘风向正确；太阳不动（D9）。**退路**：若相机构图（D8 朝西南看落日）在某些方位明显变差，改为风向只在 ±30° 内抖动，并在回执中说明 | 1.5 d |
 | L4 | 关卡选择与进度：简报页列出 5 关 + 自由模式，锁定的关显示"通过上一关解锁"；结局 COLD / SAFE 解锁下一关；每关最好记录；全天模式开关移到自由模式；中英文 | `game_director.gd`, `game_ui.gd`, `records.gd`, `loc.gd` | 新存档只开放第 1 关；第 N 关 COLD 后第 N+1 关解锁并保存；`--unlock-all` 开发参数；input smoke test 覆盖选择与解锁 | 1 d |
 | L5 | 课题文案：简报页一句本关课题（"Today: thin snow. A cave won't fit — try a trench."）；报告末尾"本关要点"，引用本关的固定条件 | `night_report_text.gd`, `game_ui.gd`, `loc.gd` | 每关文案 EN + ZH；test_loop_systems 覆盖每关报告文本 | 0.5 d |

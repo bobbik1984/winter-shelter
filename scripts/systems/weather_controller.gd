@@ -29,6 +29,10 @@ const SNOW_RAMP_MINUTES := 70.0
 
 ## 本局天气（每局开局抽取；测试可用命令行 -- --weather=storm 指定）。
 var weather_kind: String = "clear"
+## 本局开局时刻（分钟）：关卡（D12）或全天模式会改它；报告时间线从这里读。
+var day_start_minutes: float = 860.0
+## D12 关卡风速偏移（km/h），叠加在 WindData.speed_kmh 上。
+var wind_offset_kmh: float = 0.0
 var _last_wind_int := -1
 var _last_temp_int := 999
 
@@ -40,6 +44,10 @@ func _ready() -> void:
 	if tuning == null:
 		tuning = Tuning.new()
 	current_time_minutes = float(tuning.start_minutes)
+	if LevelState.active():
+		current_time_minutes = float(LevelState.roll.get("start_minutes", tuning.start_minutes))
+		wind_offset_kmh = float(LevelState.roll.get("wind_speed_offset_kmh", 0.0))
+	day_start_minutes = current_time_minutes
 	time_scale = 3600.0 / maxf(tuning.real_seconds_per_game_hour, 1.0)
 	sunset_minutes = SunModel.sunset_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
 	weather_kind = _roll_weather()
@@ -104,6 +112,8 @@ func _roll_weather() -> String:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--weather="):
 			return a.substr(10)
+	if LevelState.active():
+		return String(LevelState.roll.get("weather", "clear"))
 	var total := tuning.weather_weight_clear + tuning.weather_weight_overcast + tuning.weather_weight_storm
 	var r := randf() * maxf(total, 0.001)
 	if r < tuning.weather_weight_clear:
@@ -125,7 +135,7 @@ func current_cloud() -> float:
 	return 0.0
 
 func current_wind_kmh() -> float:
-	return wind_data.speed_kmh + tuning.storm_extra_wind_kmh * storm_progress()
+	return maxf(wind_data.speed_kmh + wind_offset_kmh + tuning.storm_extra_wind_kmh * storm_progress(), 0.0)
 
 ## 当前气温：从开局 temp_at_start_c 线性降到入夜（night_minutes）的夜间气温。
 func current_temp_c() -> float:

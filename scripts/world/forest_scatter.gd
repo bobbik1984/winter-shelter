@@ -196,7 +196,8 @@ func _scatter_snags() -> void:
 	var buckets: Array = [[], [], []]
 	var placed := 0
 	var k := 0
-	while placed < snag_count and k < snag_count * 20:
+	var target := int(round(snag_count * LevelState.snag_density_scale()))
+	while placed < target and k < target * 20:
 		k += 1
 		var x := (TerrainHeight.hash2(k, 5, seed_idx * 19) - 0.5) * half_extent * 2.0
 		var z := (TerrainHeight.hash2(k, 9, seed_idx * 19) - 0.5) * half_extent * 2.0

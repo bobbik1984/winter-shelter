@@ -14,6 +14,15 @@ const VALLEY_SEEDS := [7, 13, 29, 41]
 static var SEED: int = 7
 ## T4.7 方案 A：迎风脊上的低垭口（出生点西南视线方向），露出远景山谷与冰湖。默认关闭；由 Tuning.ridge_saddle 打开。
 static var SADDLE: bool = false
+## D12 关卡雪深旋钮（由 LevelState.apply_world 在场景加载前设置；默认 = 不变）。
+## [TUNE] 雪深倍率；[TUNE] 斑驳度 0..1（风蚀）：低频噪声选出少数"保留斑块"，
+## 斑块以外的雪按 (1 − 斑驳度) 削薄——背风深雪带断成几块，深雪只在少数地方，必须探测（第 2 关）。
+## 只削不加：对称起伏会让深雪面积几乎不变（L2 实测）。
+static var SNOW_SCALE: float = 1.0
+static var SNOW_PATCHINESS: float = 0.0
+## 斑驳噪声的空间尺度（网格单位，约 2 m/格 → 斑块约 10–15 m）与噪声值的拉伸系数（数学常量）。
+const PATCH_NOISE_SCALE := 5.0
+const PATCH_NOISE_STRETCH := 2.8
 ## 垭口中心（世界坐标 x, z）、半宽（m）、深度（m）。
 const SADDLE_CENTER := Vector2(-6.0, 32.0)
 const SADDLE_RADIUS := 9.0
@@ -114,7 +123,14 @@ static func snow_depth_at(x: float, z: float) -> float:
 	var lee := clampf((hw - h) / 1.8, -1.2, 1.4)
 	var base := 0.28 + fbm(i / 6.5, j / 6.5, SEED + 91) * 0.7
 	var lee_band := smoothstep(0.52, 0.78, i / float(GRID - 1)) * 1.55
-	return clampf(base + lee * 0.62 + lee_band - maxf(0.0, h - 5.2) * 0.14, 0.04, 3.0)
+	var d := clampf(base + lee * 0.62 + lee_band - maxf(0.0, h - 5.2) * 0.14, 0.04, 3.0)
+	if SNOW_SCALE == 1.0 and SNOW_PATCHINESS == 0.0:
+		return d
+	if SNOW_PATCHINESS > 0.0:
+		var k := clampf((fbm(i / PATCH_NOISE_SCALE, j / PATCH_NOISE_SCALE, SEED + 137, 3) - 0.5) * PATCH_NOISE_STRETCH, -1.0, 1.0)
+		var keep := smoothstep(0.0, 0.5, k)
+		d *= 1.0 - SNOW_PATCHINESS * (1.0 - keep)
+	return clampf(d * SNOW_SCALE, 0.04, 3.0)
 
 static func gradient_at(x: float, z: float) -> Vector2:
 	var e := 0.4
