@@ -26,6 +26,7 @@ const SUITES := [
 	{"name": "loop_systems", "path": "res://tests/test_loop_systems.gd", "required": true},
 	{"name": "levels", "path": "res://tests/test_levels.gd", "required": true},
 	{"name": "terrain_recipe", "path": "res://tests/test_terrain_recipe.gd", "required": true},
+	{"name": "map_layout", "path": "res://tests/test_map_layout.gd", "required": true},
 ]
 
 

@@ -182,6 +182,7 @@ static func evaluate_shelter(
 - **地图坐标 vs 世界坐标（L3）**：`TerrainHeight.ROTATION_DEG`（90° 倍数）。`height_at` / `snow_depth_at` / `lee_factor_at` 先 `to_map()` 再算，所以地形网格、探针、散布、雪枕、远景边缘自动跟随；`gradient_at` / `normal_at` / `slope_at` 由 `height_at` 差分得到，也自动正确。**脚本里写死的坐标一律是地图坐标**，使用时 `TerrainHeight.to_world()` / `to_world3()`：出生点、固定枯木、树根、场景群落、脚印链、`KEEP_OUT`、剖面雪洞原点。视野走廊起点随出生点旋转，方向（相机前方 / 落日）不转。新加写死坐标时必须遵守，否则旋转后会落在错误的坡上。
 - **本图事实（L5）**：`SnowField.map_facts(tuning)` 2 m 网格采样可玩区，返回最深雪与各 D5 区间面积，按（山谷, 倍率, 斑驳度, 旋转）缓存。报告文案、教训只引用它，不写死数字。`LevelState.target_presets()` 给出本局目标路线（第 5 关随雪深档位）。
 - **地形配方（S1）**：`TerrainRecipe`（`scripts/world/terrain_recipe.gd`）：`shape`（ridge_valley / basin / lakeshore / cliff_band）、`roughness`、`tree_density`、`feature_i`（脊 / 岸 / 崖在规范帧网格中的位置）、`feature_h`。`TerrainHeight.RECIPE` 静态持有，`_height_from_grid` 按形态分派，`_lee_band` 给出形态的背风积雪带；`is_lake_at()` 湖面判定（地形网格顶点色 G 通道 = 湖面遮罩，shader 画冰）。默认配方与 S1 之前的地图逐位一致（`tests/test_terrain_recipe.gd` 的参考值）。开发参数 `--shape= --rough= --trees=`（`MainLevel._init`）。`SnowField.map_facts` 缓存键含配方。S3 前关卡都用默认配方。
+- **地物布局（S2）**：`MapLayout.get_layout()`（`scripts/world/map_layout.gd`）返回本图的出生点、交互枯木、树根盘、生态小岛、脚印链、剖面原点、避让圆（世界坐标），按（山谷, 配方, 旋转, 雪深旋钮）缓存。默认配方返回旧坐标（经 `to_world`），其它配方按规则在真实地形上挑选。`MainLevel`、`ResourceSpawner`、`ForestScatter`（避让圆 / 视野走廊起点）、`SceneryBuilder`、`ShelterCutawayRig` 都从这里读。**新增任何"放在某处"的东西都必须走 MapLayout，不得写死坐标。**
 - **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。
 - **测试**：`tests/test_levels.gd`（种子可复现、抽取在范围内、解锁规则）；`tools/playtest_bot.gd -- --level=N --seed=S`。
 

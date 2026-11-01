@@ -10,18 +10,8 @@ const SPRUCE_VARIANTS := 4
 const ROCK_VARIANTS := 3
 const SNAG_VARIANTS := 3
 
-## 避让圆：Vector3(x, z, 半径)，x / z 为地图坐标（L3 随地图旋转）
-const KEEP_OUT := [
-	Vector3(18.0, 8.0, 7.0),     # 出生点
-	Vector3(-4.2, 9.2, 5.0),     # 篝火
-	Vector3(20.5, 11.2, 5.0),    # 剖面雪洞位置
-	Vector3(5.5, 3.5, 4.0),      # 交互枯木
-	Vector3(-4.0, -3.0, 5.5),    # 脚印路径
-	Vector3(10.0, 5.0, 5.0),     # 出生点 → 交互枯木的通道
-]
-
-## 视野走廊：从出生点朝远景（相机前方 / 落日）方向稀疏化树木，露出山谷与天际线。
-const VISTA_ORIGIN := Vector2(18.0, 8.0)
+## 避让圆（出生点、篝火、剖面雪洞、交互枯木、脚印、通道）来自 MapLayout.get_layout()["keep_out"]（S2）。
+## 视野走廊：从出生点朝远景（相机前方 / 落日）方向稀疏化树木，露出山谷与天际线。起点 = MapLayout 出生点。
 const VISTA_DIR := Vector2(-0.7071, 0.7071)
 ## [TUNE] 走廊半角（度）与走廊内保留比例。
 @export var vista_half_angle_deg: float = 28.0
@@ -127,16 +117,15 @@ static func add_trunk(body: StaticBody3D, p: Vector2, radius: float) -> void:
 func _blocked(x: float, z: float, extra: float = 0.0) -> bool:
 	if TerrainHeight.is_lake_at(x, z):
 		return true   # 冰面上不长树、不放石头（S1）
-	for k in KEEP_OUT:
-		var c := TerrainHeight.to_world(Vector2(k.x, k.y))
-		if Vector2(x - c.x, z - c.y).length() < k.z + extra:
+	for k in MapLayout.get_layout()["keep_out"]:
+		if Vector2(x - k.x, z - k.y).length() < k.z + extra:
 			return true
 	return false
 
 
 func _in_vista(x: float, z: float) -> bool:
 	# 走廊起点 = 出生点（随地图旋转）；方向 = 相机前方 / 落日（世界坐标，不旋转）
-	var d := Vector2(x, z) - TerrainHeight.to_world(VISTA_ORIGIN)
+	var d := Vector2(x, z) - MapLayout.spawn()
 	if d.length() < 6.0:
 		return false
 	# 前方视野走廊 + 出生点身后（相机一侧）25 m 内的空地

@@ -7,10 +7,7 @@ extends Node3D
 ## 摆放确定性（哈希），避开出生点、雪洞位与视野走廊中心。
 
 const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
-const SPAWN := Vector2(18.0, 8.0)
 ## 固定点位：参考图标志性的交互立枯木、篝火旁的树根盘。
-const FIXED_DEADWOOD := [Vector2(5.5, 3.5)]
-const FIXED_ROOTBALLS := [Vector2(-4.2, 10.5), Vector2(30.0, 22.0), Vector2(8.0, 26.0)]
 
 var tuning: Tuning
 var _placed: Array[Vector2] = []
@@ -28,13 +25,13 @@ func _ready() -> void:
 	if tuning == null:
 		tuning = load("res://resources/tuning.tres") as Tuning
 	_make_materials()
-	# 固定点是地图坐标（L3：随地图旋转）
-	for p in FIXED_ROOTBALLS:
-		_spawn_rootball(TerrainHeight.to_world(p), _placed.size())
-	for p in FIXED_DEADWOOD:
-		_spawn_deadwood(TerrainHeight.to_world(p), 0)
+	# 树根盘与交互枯木的位置来自 MapLayout（S2：旧地图 = 旧坐标；其它配方按规则摆放）
+	var layout := MapLayout.get_layout()
+	for p in layout["rootballs"]:
+		_spawn_rootball(p, _placed.size())
+	_spawn_deadwood(layout["special_deadwood"], 0)
 	var k := 0
-	k = _scatter(int(round((tuning.deadwood_spots - FIXED_DEADWOOD.size()) * LevelState.snag_density_scale())), 10.0, 38.0, 11, _spawn_deadwood)
+	k = _scatter(int(round((tuning.deadwood_spots - 1) * LevelState.snag_density_scale())), 10.0, 38.0, 11, _spawn_deadwood)
 	k = _scatter(tuning.birch_spots, 8.0, 34.0, 23, _spawn_birch)
 	k = _scatter(int(tuning.bedding_spots * 0.6), 4.0, 26.0, 37, _spawn_grass)
 	k = _scatter(tuning.bedding_spots - int(tuning.bedding_spots * 0.6), 6.0, 30.0, 41, _spawn_bough)
@@ -70,7 +67,7 @@ func _scatter(count: int, rmin: float, rmax: float, seed_k: int, spawn_fn: Calla
 		tries += 1
 		var a := TerrainHeight.hash2(tries, seed_k, 7) * TAU
 		var r := lerpf(rmin, rmax, sqrt(TerrainHeight.hash2(tries, seed_k, 13)))
-		var p := TerrainHeight.to_world(SPAWN) + Vector2(cos(a), sin(a)) * r
+		var p := MapLayout.spawn() + Vector2(cos(a), sin(a)) * r
 		if absf(p.x) > 44.0 or absf(p.y) > 44.0:
 			continue
 		if TerrainHeight.slope_at(p.x, p.y) > 26.0:
@@ -84,7 +81,7 @@ func _scatter(count: int, rmin: float, rmax: float, seed_k: int, spawn_fn: Calla
 func _free(p: Vector2, min_d: float) -> bool:
 	if TerrainHeight.is_lake_at(p.x, p.y):
 		return false
-	if p.distance_to(TerrainHeight.to_world(SPAWN)) < 3.5 or p.distance_to(TerrainHeight.to_world(Vector2(20.5, 11.2))) < 3.0:
+	if p.distance_to(MapLayout.spawn()) < 3.5 or p.distance_to(MapLayout.get_layout()["cutaway"]) < 3.0:
 		return false
 	for q in _placed:
 		if p.distance_to(q) < min_d:

@@ -5,16 +5,8 @@ extends Node3D
 ## 参考图 Box 2/3 的橙色交互圈 + 雪地脚印链、远景雪山剪影。
 ## 全部由 TerrainHeight 落地，不依赖外部资产；不修改地形/Shader 核心公式。
 
-## 以下坐标均为地图坐标（L3：用 TerrainHeight.to_world3 随地图旋转）。
-const CLUSTERS := [
-	Vector3(-16.0, 0.0, -8.0), Vector3(-11.0, 0.0, 14.0), Vector3(-23.0, 0.0, 2.0),
-	Vector3(13.0, 0.0, -18.0), Vector3(21.0, 0.0, 2.0), Vector3(17.0, 0.0, 16.0),
-	Vector3(-2.0, 0.0, 24.0), Vector3(27.0, 0.0, -24.0),
-]
+## 生态小岛中心、脚印链来自 MapLayout（S2：旧地图 = 旧坐标；其它配方按规则摆放）。
 const MAIN_TYPES := ["spruce", "deadwood", "spruce", "spruce", "deadwood", "spruce", "spruce", "deadwood"]
-const FOOTPRINT_START := Vector3(-8.0, 0.0, -6.0)
-const FOOTPRINT_END := Vector3(0.0, 0.0, 0.0)
-const SPECIAL_DEADWOOD := Vector3(5.5, 0.0, 3.5)
 
 var _mat_green: StandardMaterial3D
 var _mat_snow: StandardMaterial3D
@@ -196,11 +188,13 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 # -----------------------------------------------------------------------------
 
 func _build_clusters() -> void:
-	for cluster_idx in range(CLUSTERS.size()):
-		var center: Vector3 = TerrainHeight.to_world3(CLUSTERS[cluster_idx])
+	var centers: Array = MapLayout.get_layout()["clusters"]
+	for cluster_idx in range(centers.size()):
+		var c2: Vector2 = centers[cluster_idx]
+		var center := Vector3(c2.x, 0.0, c2.y)
 		if TerrainHeight.is_lake_at(center.x, center.z):
 			continue   # 群落落在冰面上就不放（S1；S2 改为按规则摆放）
-		var main_type: String = MAIN_TYPES[cluster_idx]
+		var main_type: String = MAIN_TYPES[cluster_idx % MAIN_TYPES.size()]
 		var seed_idx := 100 + cluster_idx * 37
 
 		if main_type == "deadwood":
@@ -269,7 +263,8 @@ func _dry_grass_tuft(pos: Vector3, seed_idx: int) -> void:
 # -----------------------------------------------------------------------------
 
 func _build_special_deadwood() -> void:
-	var sd := TerrainHeight.to_world3(SPECIAL_DEADWOOD)
+	var sd2: Vector2 = MapLayout.get_layout()["special_deadwood"]
+	var sd := Vector3(sd2.x, 0.0, sd2.y)
 	var ground_y := TerrainHeight.height_at(sd.x, sd.z)
 	_deadwood(sd, 1.18, 20.0, 777)
 
@@ -295,8 +290,9 @@ func _build_special_deadwood() -> void:
 	add_child(light)
 
 func _build_footprints() -> void:
-	var fp_start := TerrainHeight.to_world3(FOOTPRINT_START)
-	var fp_end := TerrainHeight.to_world3(FOOTPRINT_END)
+	var lay := MapLayout.get_layout()
+	var fp_start := Vector3(lay["footprint_start"].x, 0.0, lay["footprint_start"].y)
+	var fp_end := Vector3(lay["footprint_end"].x, 0.0, lay["footprint_end"].y)
 	var dir := fp_end - fp_start
 	var path_angle := atan2(dir.x, dir.z)
 	var perp := Vector3(-dir.z, 0.0, dir.x).normalized()

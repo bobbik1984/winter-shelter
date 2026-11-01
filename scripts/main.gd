@@ -1,8 +1,6 @@
 class_name MainLevel
 extends Node3D
 
-## 出生点（地图坐标；L3 随地图旋转，用 TerrainHeight.to_world3 换算）。
-const SPAWN_POSITION := Vector3(18.0, 0.0, 8.0)
 
 @onready var player: PlayerController = $Player
 @onready var camera_rig: IsometricCameraRig = $CameraRig
@@ -30,8 +28,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	if player:
-		var sp := TerrainHeight.to_world3(SPAWN_POSITION)
-		player.global_position = Vector3(sp.x, TerrainHeight.height_at(sp.x, sp.z) + 1.0, sp.z)
+		var sp := MapLayout.spawn()   # S2：旧地图 = 旧出生点；其它配方按规则挑选
+		player.global_position = Vector3(sp.x, TerrainHeight.height_at(sp.x, sp.y) + 1.0, sp.y)
 
 	# 相机跟随设置：首帧即对准玩家，避免截图时还在 lerp 途中
 	if camera_rig and player:
