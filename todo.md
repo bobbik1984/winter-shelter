@@ -33,12 +33,12 @@
 
 - [x] 中文字体：已随包附带 Droid Sans Fallback（Apache-2.0，4 MB，取自本机系统字体）作为默认字体的后备字体
 
-- [ ] 背包外观不随采集变化（木柴捆 / 干草束挂件，T2.2 剩余）
+- [x] 背包外观随采集变化：已实现（commit 6ba5978，`HikerVisual.set_load`）
 - [ ] 雪洞没有碰撞：玩家可直接走进雪丘（进洞时雪丘变半透明显示洞内，作为设计取舍保留）
 - [ ] 导出构建需要下载 Godot 4.3.stable 导出模板（需你授权联网 / 安装）。导出预设（Linux / Windows）与 `tools/build.sh` 已就绪，装好模板后一条命令出包；已验证预设可被 Godot 解析，只差模板
 
 - [ ] 剖面面板 SDF 轮廓边缘偶有零星像素噪点
-- [ ] 透视模式下 SceneryBuilder 的岩石 / 雪枕仍可能遮挡玩家（只有云杉与枯立木支持镂空）
+- [x] 透视模式下岩石 / 雪枕遮挡玩家：SceneryBuilder 岩石 + 顶雪 + 雪枕、Blender 岩体、碎石、风积雪枕均接入 `occlusion_fade`（snapshots/t_occlusion_rocks_before_after.png，左旧右新）
 - [ ] 正交备用模式下不做遮挡镂空（实现限制，见 ARCHITECTURE §3.7）
 
 ## 📌 Backlog（已在路线中，尚未派发）

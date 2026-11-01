@@ -10,7 +10,15 @@ extends Node3D
 @export var min_depth: float = 2.2
 @export var min_lee: float = 0.0
 
+var _mat: ShaderMaterial
+
+## "occlusion_fade" 组回调：雪枕（最高约 1.5 m）挡住玩家时镂空。
+func set_focus(pos: Vector3) -> void:
+	if _mat:
+		_mat.set_shader_parameter("focus_pos", pos)
+
 func _ready() -> void:
+	add_to_group("occlusion_fade")
 	var wind := load("res://resources/default_wind.tres") as WindData
 	var blow := wind.get_blow_direction_3d() if wind else Vector3.RIGHT
 	var yaw := atan2(blow.x, blow.z)
@@ -37,5 +45,7 @@ func _ready() -> void:
 	mat.set_shader_parameter("snow_color", Color(0.94, 0.96, 1.0))
 	mat.set_shader_parameter("snow_amount", 1.0)
 	mat.set_shader_parameter("base_roughness", 0.8)
+	mat.set_shader_parameter("occlusion_fade", true)
+	_mat = mat
 	ForestScatter.add_chunked(self, "Drifts", mesh, mat, transforms, 25.0, true)
 	print("[DriftScatter] drift pillows: %d" % transforms.size())

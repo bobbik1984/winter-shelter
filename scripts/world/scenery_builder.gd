@@ -19,7 +19,9 @@ var _mat_green: StandardMaterial3D
 var _mat_snow: StandardMaterial3D
 var _mat_bark: StandardMaterial3D
 var _mat_deadwood: Material
-var _mat_rock: StandardMaterial3D
+var _mat_rock: ShaderMaterial
+## 岩石顶雪 / 背风雪枕（与岩石一起参与遮挡镂空）。
+var _mat_rock_snow: ShaderMaterial
 var _mat_grass: StandardMaterial3D
 var _mat_footprint: StandardMaterial3D
 var _mat_ring: StandardMaterial3D
@@ -78,7 +80,9 @@ func _make_materials() -> void:
 	dw.set_shader_parameter("occlusion_fade", true)
 	dw.set_shader_parameter("rim_amount", 0.45)
 	_mat_deadwood = dw
-	_mat_rock = _make_material(Color(0.12, 0.13, 0.16), 0.98)
+	_mat_rock = _fade_material(Color(0.12, 0.13, 0.16), 0.0)
+	_mat_rock.set_shader_parameter("rim_amount", 0.35)
+	_mat_rock_snow = _fade_material(Color(0.86, 0.90, 0.98), 1.0)
 	_mat_grass = _make_material(Color(0.68, 0.56, 0.32), 0.94)
 	_mat_footprint = _make_material(Color(0.42, 0.49, 0.60), 0.92)
 	_mat_peak_rock = _make_material(Color(0.28, 0.34, 0.46), 0.98)
@@ -90,9 +94,18 @@ func _make_materials() -> void:
 
 ## "occlusion_fade" 组回调（见 snow_cover.gdshader）。
 func set_focus(pos: Vector3) -> void:
-	for m in [_mat_spruce, _mat_deadwood]:
+	for m in [_mat_spruce, _mat_deadwood, _mat_rock, _mat_rock_snow]:
 		if m is ShaderMaterial:
 			(m as ShaderMaterial).set_shader_parameter("focus_pos", pos)
+
+## snow_cover 材质 + 遮挡镂空（岩石 / 雪枕在透视模式下也不能挡住玩家）。
+func _fade_material(base: Color, snow_amount: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = SNOW_COVER_SHADER
+	m.set_shader_parameter("base_color", base)
+	m.set_shader_parameter("snow_amount", snow_amount)
+	m.set_shader_parameter("occlusion_fade", true)
+	return m
 
 func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -158,7 +171,7 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 	var cap := MeshInstance3D.new()
 	cap.name = "SnowCap"
 	cap.mesh = mesh
-	cap.material_override = _mat_snow
+	cap.material_override = _mat_rock_snow
 	cap.position = Vector3(0.0, scale_vec.y * 0.95, 0.0)
 	cap.scale = Vector3(scale_vec.x * 0.92, scale_vec.y * 0.42, scale_vec.z * 0.92)
 	root.add_child(cap)
@@ -172,7 +185,7 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 	var pillow := MeshInstance3D.new()
 	pillow.name = "SnowPillow"
 	pillow.mesh = pillow_mesh
-	pillow.material_override = _mat_snow
+	pillow.material_override = _mat_rock_snow
 	pillow.position = Vector3(1.1, 0.12, 0.0)
 	pillow.scale = Vector3(1.8, 0.55, 1.3)
 	root.add_child(pillow)

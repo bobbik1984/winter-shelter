@@ -77,6 +77,7 @@ func _place_outcrops() -> void:
 		inst.free()
 	var mat := _material(Color(0.17, 0.17, 0.20), 0.38, 0.07)
 	mat.set_shader_parameter("rim_amount", 0.35)
+	_enable_fade(mat)
 	var buckets: Array = [[], [], []]
 	var placed := 0
 	var k := 0
@@ -240,6 +241,7 @@ func _scatter_rocks() -> void:
 		rock_spheres.append(Vector3(x, z, s * lerpf(0.8, 1.2, big)))
 		placed += 1
 	var mat := _material(Color(0.20, 0.20, 0.24), 0.30, 0.06)
+	_enable_fade(mat)
 	mat.set_shader_parameter("rim_amount", 0.5)
 	for v in range(ROCK_VARIANTS):
 		_add_multimesh("Rocks%d" % v, PropMeshes.rock(60 + v), mat, buckets[v], true)
