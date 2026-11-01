@@ -123,7 +123,8 @@ func build_night_sim_input(warmth_ctrl: WarmthController = null) -> Dictionary:
 	var preset := active_preset()
 	var is_lean_to := active_preset_id == "LeanTo"
 	var is_snow := active_preset_id == "RaisedCave" or active_preset_id == "BasicCave" \
-		or active_preset_id == "SnowTrench"
+		or active_preset_id == "SnowTrench" or active_preset_id == "TreeWell"
+	var is_tree_well := active_preset_id == "TreeWell"
 	var stage := current_stage
 	var is_complete := stage >= STAGES_MAX
 	var starting_warmth := 100.0
@@ -132,13 +133,15 @@ func build_night_sim_input(warmth_ctrl: WarmthController = null) -> Dictionary:
 
 	var has_cold_pit := active_preset_id == "RaisedCave" and stage >= 2
 	var has_raised_bed := active_preset_id == "RaisedCave" and stage >= 3
-	var has_vent := stage >= 4 and is_snow
+	var has_vent := stage >= 4 and is_snow and not is_tree_well   # 树井：枝条屋顶透气，没有通风管
 	var has_snow_wall := active_preset_id == "SnowTrench" and _site_snow_depth < 1.0 \
 		and stage >= 2
 	var has_reflector_wall := is_lean_to and stage >= 4
 	var bedding := 1.0 if stage >= 3 else 0.0
 	var roof := 0.0
-	if is_snow and stage >= 1:
+	if is_tree_well:
+		roof = 0.35 if stage >= 4 else 0.2   # 枝条屋顶：补顶后约等于薄雪顶
+	elif is_snow and stage >= 1:
 		roof = clampf(_site_snow_depth * 0.22, 0.30, 0.55)
 	var fuel_hours := 0.0
 	var fire_lit := is_lean_to and is_complete

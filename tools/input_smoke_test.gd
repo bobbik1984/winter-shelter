@@ -238,7 +238,7 @@ func _levels_part() -> void:
 	for i in 6:
 		seen[d.build.preset_id] = true
 		await key(KEY_TAB)
-	check(not seen.has("LeanTo") and not seen.has("BasicCave") and seen.has("RaisedCave") and seen.has("SnowTrench"), "chapter 2 build mode only offers known + introduced shelters (%s)" % str(seen.keys()))
+	check(not seen.has("LeanTo") and not seen.has("BasicCave") and not seen.has("RaisedCave") and seen.has("TreeWell") and seen.has("SnowTrench"), "chapter 2 build mode only offers known (trench) + introduced (tree well) shelters (%s)" % str(seen.keys()))
 	await key(KEY_B)
 	await key(KEY_N)
 	await key(KEY_N)

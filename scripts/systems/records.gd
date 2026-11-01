@@ -143,7 +143,7 @@ static func learn_shelter(preset: String, outcome: String) -> bool:
 # ------------------------------------------------------------------ 显示
 
 static func preset_names() -> Dictionary:
-	return {"RaisedCave": Loc.t("Raised cave"), "BasicCave": Loc.t("Snow cave"), "SnowTrench": Loc.t("Trench"), "LeanTo": Loc.t("Lean-to"), "None": Loc.t("No shelter")}
+	return {"RaisedCave": Loc.t("Raised cave"), "BasicCave": Loc.t("Snow cave"), "SnowTrench": Loc.t("Trench"), "LeanTo": Loc.t("Lean-to"), "TreeWell": Loc.t("Tree well"), "None": Loc.t("No shelter")}
 
 ## 自由模式：每种庇护所的最好一夜。
 static func text() -> String:

@@ -50,6 +50,7 @@ const PRESET_RAISED_CAVE := "RaisedCave"
 const PRESET_BASIC_CAVE := "BasicCave"
 const PRESET_SNOW_TRENCH := "SnowTrench"
 const PRESET_LEAN_TO := "LeanTo"
+const PRESET_TREE_WELL := "TreeWell"
 const PRESET_NONE := "None"
 
 const OUTCOME_SAFE := "SAFE"
@@ -200,6 +201,8 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		isolation = t.isolation_snow_trench_base
 	elif shelter_type == PRESET_LEAN_TO:
 		isolation = t.isolation_lean_to_base
+	elif shelter_type == PRESET_TREE_WELL:
+		isolation = t.tree_well_isolation_base
 	if is_snow:
 		if has_cold_pit:
 			isolation += t.isolation_cold_pit_bonus
@@ -209,7 +212,10 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 
 	# ---------------------------------------------------------------- Air
 	var air := t.air_open_score
-	if is_snow:
+	if shelter_type == PRESET_TREE_WELL:
+		# 枝条屋顶透气：不需要通风管，也不会被夜雪堵死
+		air = t.tree_well_air_score
+	elif is_snow:
 		if vent_count <= 0:
 			air = t.air_no_vent_score
 		elif vent_count == 1:
@@ -541,6 +547,8 @@ static func _air_note(
 	vent_clogged: bool,
 	is_snow: bool
 ) -> String:
+	if shelter_type == PRESET_TREE_WELL:
+		return "云杉枝条屋顶透气，不需要通风管，CO₂ 不会积聚。"
 	if not is_snow and shelter_type != PRESET_NONE:
 		return "开放结构通风充分，不存在 CO₂ 积聚问题。"
 	if shelter_type == PRESET_NONE:
@@ -631,6 +639,8 @@ static func _resolve_preset(raw: String) -> Dictionary:
 		return {"type": PRESET_SNOW_TRENCH, "known": true}
 	if key == "leanto" or key == "lean_to" or key == "lean-to":
 		return {"type": PRESET_LEAN_TO, "known": true}
+	if key == "treewell" or key == "tree_well" or key == "tree-well":
+		return {"type": PRESET_TREE_WELL, "known": true}
 	if key == "" or key == "none" or key == "no_shelter":
 		return {"type": PRESET_NONE, "known": true}
 	return {"type": PRESET_NONE, "known": false}
@@ -641,6 +651,7 @@ static func _is_snow_shelter(shelter_type: String) -> bool:
 		shelter_type == PRESET_RAISED_CAVE
 		or shelter_type == PRESET_BASIC_CAVE
 		or shelter_type == PRESET_SNOW_TRENCH
+		or shelter_type == PRESET_TREE_WELL
 	)
 
 
@@ -653,6 +664,8 @@ static func _preset_label(shelter_type: String) -> String:
 		return "雪沟"
 	if shelter_type == PRESET_LEAN_TO:
 		return "倒棚"
+	if shelter_type == PRESET_TREE_WELL:
+		return "树井"
 	return "None"
 
 
@@ -663,6 +676,8 @@ static func _preset_min_depth(shelter_type: String, t: Tuning) -> float:
 		return t.snow_depth_cave_min_m
 	if shelter_type == PRESET_SNOW_TRENCH:
 		return t.snow_depth_trench_standard_m
+	if shelter_type == PRESET_TREE_WELL:
+		return t.tree_well_min_snow_m
 	return 0.0
 
 
@@ -697,6 +712,8 @@ static func _preset_base_thermal(shelter_type: String, t: Tuning) -> float:
 		return t.snow_trench_base_thermal
 	if shelter_type == PRESET_LEAN_TO:
 		return t.lean_to_base_thermal
+	if shelter_type == PRESET_TREE_WELL:
+		return t.tree_well_base_thermal
 	return 0.0
 
 
@@ -709,6 +726,8 @@ static func _preset_base_structure(shelter_type: String, t: Tuning) -> float:
 		return t.snow_trench_base_structure
 	if shelter_type == PRESET_LEAN_TO:
 		return t.lean_to_base_structure
+	if shelter_type == PRESET_TREE_WELL:
+		return t.tree_well_base_structure
 	return 0.0
 
 
@@ -721,6 +740,8 @@ static func _preset_volume(shelter_type: String, t: Tuning) -> float:
 		return t.snow_trench_volume_m3
 	if shelter_type == PRESET_LEAN_TO:
 		return t.lean_to_volume_m3
+	if shelter_type == PRESET_TREE_WELL:
+		return t.tree_well_volume_m3
 	return 0.0
 
 

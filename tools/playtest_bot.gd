@@ -1,5 +1,5 @@
 extends SceneTree
-## 策略机器人（QA）：godot --path . -s res://tools/playtest_bot.gd -- --s=<good|deep|deep_stick|quick|twovent|wind|late|trench|leanto_short|leanto_full|none>
+## 策略机器人（QA）：godot --path . -s res://tools/playtest_bot.gd -- --s=<good|deep|deep_stick|quick|twovent|wind|late|trench|treewell|leanto_short|leanto_full|none>
 ## 直接调用 GameDirector API 走完一局，打印结局与 6 维分数；用于平衡回归（见 PRODUCTION_PLAN §4.V / T3.9）。
 ## 策略机器人：直接调用 GameDirector API 走完一局，打印结局与 6 维分数。
 func _initialize() -> void:
@@ -40,6 +40,16 @@ func _run() -> void:
 		"leanto_short": preset = "LeanTo"; wood_need = 8; spot = Vector3(-1.2, 0, 10.5)
 		"leanto_full": preset = "LeanTo"; wood_need = 12; spot = Vector3(-1.2, 0, 10.5)
 		"trench": preset = "SnowTrench"; wood_need = 5; bedding_need = 1   # 2 根雪沟 + 3 根睡前烤干衣服（R1）
+		"treewell":
+			# S5：离出生点最近、周围积雪够厚的老云杉；树井不花木头，3 根留着睡前烤干
+			preset = "TreeWell"; wood_need = 3; bedding_need = 4
+			var best := INF
+			for q in OldSpruces.points:
+				var dq: float = q.distance_to(MapLayout.spawn())
+				if dq < best and TerrainHeight.snow_depth_at(q.x, q.y) >= d.tuning.tree_well_min_snow_m + 0.1 and TerrainHeight.slope_at(q.x, q.y) < 25.0:
+					best = dq
+					spot = Vector3(q.x, 0, q.y)
+			printerr("  tree well spruce at %s (%.0f m from spawn, %d old spruces on the map)" % [str(spot), best, OldSpruces.points.size()])
 	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
 	while d.inventory.bedding < bedding_need:
 		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
@@ -72,7 +82,7 @@ func _run() -> void:
 			if strat == "late" and d.weather.current_time_minutes > 1060.0:
 				break
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
-		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench"]:
+		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench", "treewell"]:
 			# 篝火 + 热饮：像玩家一样找最近的树根盘，站到它的背风侧生火（原先站的开阔处风太大，火一直点不着）
 			var best_r := Vector2.ZERO
 			var best_d := INF

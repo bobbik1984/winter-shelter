@@ -112,6 +112,8 @@ func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
 
 func _spruce(pos: Vector3, scale_factor: float, tilt_deg: float, seed_idx: int) -> void:
 	spruce_points.append(Vector2(pos.x, pos.z))
+	if scale_factor >= OldSpruces.tuning().old_spruce_min_scale:
+		OldSpruces.add(Vector2(pos.x, pos.z))
 	var root := Node3D.new()
 	root.name = "Spruce"
 	root.position = Vector3(pos.x, TerrainHeight.height_at(pos.x, pos.z) - 0.12, pos.z)

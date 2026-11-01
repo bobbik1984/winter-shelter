@@ -2,7 +2,7 @@ extends RefCounted
 
 ## L1（D12）：关卡数据与抽取。种子可复现、抽取落在本关范围、自由模式 = 现有默认值、命令行解析、解锁规则。
 
-const VALID_PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo"]
+const VALID_PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell"]
 const WEATHERS := ["clear", "overcast", "storm"]
 const SAMPLE_SEEDS := 300
 
@@ -46,7 +46,7 @@ func run() -> Dictionary:
 
 	# 课题固定条件（CORE_GAMEPLAY §8.1 / §8.2）
 	# 章节固定条件（CORE_GAMEPLAY §9.5）
-	_check(defs[1].theme == "deep_drift" and defs[2].theme == "hidden_pockets" and defs[3].theme == "blowdown"
+	_check(defs[1].theme == "deep_drift" and defs[2].theme == "old_forest" and defs[3].theme == "blowdown"
 		and defs[4].theme == "open_flat" and defs[5].theme == "storm_mix", "五章主题按 §9.5 排列")
 	_check(defs[1].start_minutes == tuning.full_day_start_minutes and defs[1].start_minutes_hard > defs[1].start_minutes, "第 1 章第 1 阶 10:00 开局，第 10 阶更晚")
 	_check(defs[1].wind_speed_offset_kmh < 0.0 and defs[1].snow_depth_scale_choices[0] > 1.0, "第 1 章风偏弱、深雪")
@@ -60,7 +60,8 @@ func run() -> Dictionary:
 		mono = mono and ch1_starts[i] >= ch1_starts[i - 1]
 	_check(mono, "第 1 章开局时刻逐阶不提前")
 	_check(LevelState.start_minutes_for(defs[2], 0.5) == int(round(lerpf(float(defs[2].start_minutes), float(defs[2].start_minutes_hard), 0.5))), "没设第 2 阶开局的章节仍线性")
-	_check(defs[2].snow_patchiness > 0.0 and defs[2].snow_patchiness_hard >= defs[2].snow_patchiness, "第 2 章雪深斑驳，越往后越斑驳")
+	_check(not defs[2].has_shovel and defs[2].target_presets == PackedStringArray(["TreeWell"]) and "TreeWell" in defs[2].introduced_presets
+		and defs[2].tree_density > 1.0, "第 2 章：没有雪铲、更密的老林、引入并以树井为目标")
 	_check(defs[3].start_minutes > tuning.start_minutes and defs[3].rootball_bonus > 0 and defs[3].target_presets == PackedStringArray(["LeanTo"]), "第 3 章：开工晚、树根盘多、目标倒棚")
 	_check(not ("ridge_valley" in defs[4].shape_choices) and defs[4].target_presets == PackedStringArray(["SnowTrench"]), "第 4 章：盆地 / 湖岸，目标雪沟")
 	_check(defs[5].weather_weight_storm > 0.0 and defs[5].weather_weight_clear == 0.0 and not defs[5].has_extra_layer and "cliff_band" in defs[5].shape_choices, "第 5 章：暴风雪、无保暖层、可能有悬崖")
@@ -121,6 +122,7 @@ func run() -> Dictionary:
 	_check_rotation()
 	_check_texts(defs, tuning)
 	_check_gear(defs, tuning)
+	_check_tree_well(tuning)
 
 	# begin()：章 / 阶 / 第 k 张图
 	var r := LevelState.begin(3, 4242)
@@ -198,8 +200,9 @@ func _check_snow_bands(defs: Array[LevelDef], tuning: Tuning) -> void:
 				match theme:
 					"deep_drift":
 						_check(f["cave"] >= 0.3, tag + "：深雪多（雪洞深度 %.0f%%）" % (f["cave"] * 100.0))
-					"hidden_pockets":
-						_check(f["cave"] <= 0.3 and f["raised"] >= 0.02, tag + "：深雪少但高床雪洞仍可建（洞 %.0f%% / 高床 %.0f%%）" % [f["cave"] * 100.0, f["raised"] * 100.0])
+					"old_forest":
+						var ge1 := _fraction_at_least(tuning.tree_well_min_snow_m)
+						_check(ge1 >= 0.5, tag + "：树井需要的周围积雪（≥ %.1f m）占大半（%.0f%%）" % [tuning.tree_well_min_snow_m, ge1 * 100.0])
 					"blowdown":
 						_check(f["trench"] >= 0.7, tag + "：雪能挖（雪沟深度 %.0f%%）" % (f["trench"] * 100.0))
 					"open_flat":
@@ -375,3 +378,50 @@ func _sig(r: Dictionary) -> Dictionary:
 	var out := r.duplicate()
 	out["recipe"] = (r["recipe"] as TerrainRecipe).describe() if r.has("recipe") else ""
 	return out
+
+func _fraction_at_least(depth: float) -> float:
+	var n := 0
+	var k := 0
+	var x := -48.0
+	while x <= 48.0:
+		var z := -48.0
+		while z <= 48.0:
+			if not TerrainHeight.is_lake_at(x, z):
+				n += 1
+				if TerrainHeight.snow_depth_at(x, z) >= depth:
+					k += 1
+			z += 4.0
+		x += 4.0
+	return float(k) / maxf(n, 1)
+
+## S5 树井：老云杉树冠下积雪更浅（玩法雪深如实）；选址规则；过夜表现；不靠雪铲。
+func _check_tree_well(t: Tuning) -> void:
+	var saved := OldSpruces.points.duplicate()
+	OldSpruces.reset()
+	var open_d := SnowField.snow_at(5.0, 5.0)
+	OldSpruces.add(Vector2(5.0, 5.0))
+	var at_trunk := SnowField.snow_at(5.0, 5.0)
+	var at_edge := SnowField.snow_at(5.0 + t.tree_well_canopy_radius_m + 0.1, 5.0)
+	_check(is_equal_approx(at_trunk, open_d * (1.0 - t.tree_well_canopy_snow_reduction)), "老云杉树干处积雪 = 开阔积雪 × %.1f（%.2f → %.2f m）" % [1.0 - t.tree_well_canopy_snow_reduction, open_d, at_trunk])
+	_check(is_equal_approx(at_edge, TerrainHeight.snow_depth_at(5.0 + t.tree_well_canopy_radius_m + 0.1, 5.0)), "树冠外积雪不受影响")
+	_check(is_equal_approx(OldSpruces.nearest(Vector2(6.0, 5.0))["distance"], 1.0), "最近老云杉距离")
+	OldSpruces.points = saved
+	var tw: ShelterPreset = ShelterPreset.create_all_presets()["TreeWell"]
+	_check(bool(tw.validate_site(t.tree_well_min_snow_m + 0.1, 10.0)["ok"]) and not bool(tw.validate_site(t.tree_well_min_snow_m - 0.1, 10.0)["ok"]), "树井：周围积雪 ≥ %.1f m 才能建" % t.tree_well_min_snow_m)
+	_check(tw.build_minutes_total < (ShelterPreset.create_all_presets()["SnowTrench"] as ShelterPreset).build_minutes_total, "树井比雪沟省工（地物做了大部分工作）")
+	_check(is_equal_approx(GameRules.dig_minutes(tw.build_minutes_total, false, false, t), tw.build_minutes_total), "树井不靠雪铲：没有雪铲也不加工时")
+	var night := {"shelter_type": "TreeWell", "snow_depth_meters": 1.6, "terrain_shelter": 0.8, "completion_ratio": 1.0, "wind_angle_diff": 160.0,
+		"bedding_quality": 1.0, "starting_warmth": 90.0, "prewarmed": false, "roof_thickness_meters": 0.35, "vent_count": 0, "vent_snow_clogged": true}
+	var rep := NightSimulator.evaluate(night, t)
+	_check(String(rep["outcome"]) != "DANGEROUS", "完工树井 + 厚枝条地板：熬得过去（%s，%s）" % [String(rep["outcome"]), str(rep["scores"])])
+	_check(float(rep["scores"]["air"]) >= 80.0, "树井不靠通风管、夜雪也堵不住（Air %d）" % int(rep["scores"]["air"]))
+	var cave := night.duplicate()
+	cave["shelter_type"] = "RaisedCave"
+	cave["snow_depth_meters"] = 2.6
+	cave["vent_count"] = 1
+	cave["vent_snow_clogged"] = false
+	cave["has_cold_pit"] = true
+	cave["has_raised_bed"] = true
+	cave["roof_thickness_meters"] = 0.45
+	_check(float(rep["scores"]["heat"]) < float(NightSimulator.evaluate(cave, t)["scores"]["heat"]), "树井不如深雪高床洞暖（省工的代价）")
+	_check(String(rep["notes"][4]).contains("透气") and NightReportText.build(rep, night, t)["rows"][4]["note"].contains("breathes"), "报告：树井枝条屋顶透气")

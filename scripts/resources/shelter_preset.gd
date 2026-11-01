@@ -98,8 +98,28 @@ static func create_all_presets() -> Dictionary:
 		"Stage 5: Light long-burning reflector campfire"
 	])
 
+	# S5 树井：老云杉树干周围的浅坑 + 枝条屋顶。条件 = 老云杉 + 周围积雪 ≥ tree_well_min_snow_m；不需要雪铲；枝条当屋顶和垫层。
+	var treewell := ShelterPreset.new()
+	treewell.preset_id = "TreeWell"
+	treewell.display_name = "Tree Well Shelter"
+	treewell.min_snow_depth = 1.0   ## 被 validate_site 用 Tuning.tree_well_min_snow_m 覆盖（周围积雪）
+	treewell.allows_open_fire = false
+	treewell.build_minutes_total = 40.0   ## [TUNE] 坑大多是现成的：掏出浮雪、修枝、铺枝、补顶
+	treewell.wood_cost = 0
+	treewell.bedding_cost = 4
+	treewell.stage_titles = PackedStringArray([
+		"1. Scoop out the well around the trunk",
+		"2. Trim low inner branches (headroom)",
+		"3. Spruce-bough floor",
+		"4. Thatch the gaps in the bough roof",
+		"5. Close the entrance with boughs",
+	])
+	treewell.stage_shelter_levels = PackedInt32Array([1, 1, 2, 2, 2])
+	treewell.stage_wind_muffle = PackedFloat32Array([0.45, 0.5, 0.55, 0.62, 0.66])
+
 	return {
 		"RaisedCave": raised,
+		"TreeWell": treewell,
 		"BasicCave": basic,
 		"SnowTrench": trench,
 		"LeanTo": leanto,
@@ -107,6 +127,14 @@ static func create_all_presets() -> Dictionary:
 
 
 func validate_site(snow_depth: float, slope_deg: float, near_windbreak: bool = false) -> Dictionary:
+	if preset_id == "TreeWell":
+		# 树井的"深度"是周围的开阔积雪（BuildMode 已对准最近的老云杉并取树干周围雪深）
+		var need := OldSpruces.tuning().tree_well_min_snow_m
+		if snow_depth < need:
+			return {"ok": false, "reason": Loc.t("Snow around this spruce is too shallow for a tree well (%.2f m < %.2f m)") % [snow_depth, need]}
+		if slope_deg > 30.0:
+			return {"ok": false, "reason": Loc.t("Too steep around this trunk for a tree well")}
+		return {"ok": true, "reason": Loc.t("Site suitable for %s") % Loc.t(display_name)}
 	if snow_depth < min_snow_depth:
 		return {
 			"ok": false,

@@ -946,7 +946,8 @@ func _site_prompt() -> String:
 
 ## 本阶段工时（含装备：没有雪铲挖雪庇护所更慢，S6）。
 func _stage_minutes() -> float:
-	return GameRules.dig_minutes(site.stage_minutes(), site.is_snow_shelter(), bool(gear["shovel"]), tuning)
+	# 树井的坑大多是现成的、浮雪用手就能掏：不靠雪铲（S5）
+	return GameRules.dig_minutes(site.stage_minutes(), site.is_snow_shelter() and site.preset_id != "TreeWell", bool(gear["shovel"]), tuning)
 
 func _efficiency() -> float:
 	return GameRules.work_efficiency(warmth.get_action_efficiency(), weather.minutes_to_sunset(), tuning)

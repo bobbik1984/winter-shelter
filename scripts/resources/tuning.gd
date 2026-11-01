@@ -438,6 +438,24 @@ extends Resource
 # 预设：倒棚 + 反射火（A，T0.6 新增，D2）
 # -----------------------------------------------------------------------------
 
+@export_group("Preset: Tree Well")
+## [REAL] 方向 / [TUNE] 数值：老云杉浓密的树冠接住落雪，树干周围积雪明显更浅（tree well）。
+## 树干处削薄比例与树冠半径（m）。出处待 research/ 核实（Paul Kirtley 等冬季森林庇护所资料）。
+@export var tree_well_canopy_snow_reduction: float = 0.6
+@export var tree_well_canopy_radius_m: float = 2.2
+## [GAME] 算"老云杉"（低枝浓密、能做树井）的最小缩放。
+@export var old_spruce_min_scale: float = 1.0
+## [TUNE] 树井需要的周围积雪（m）：周围雪够厚，挖开树干周围的浅坑才有雪墙。
+@export var tree_well_min_snow_m: float = 1.0
+## [GAME] 选址时离老云杉树干的最大距离（m）。
+@export var tree_well_max_trunk_dist_m: float = 2.6
+## [TUNE] 树井夜间参数：保暖介于雪沟与雪洞之间；枝条屋顶透气（不需通风管）；没有冷气坑。
+@export var tree_well_base_thermal: float = 0.6
+@export var tree_well_base_structure: float = 0.62
+@export var tree_well_isolation_base: float = 0.5
+@export var tree_well_air_score: float = 0.86
+@export var tree_well_volume_m3: float = 1.6
+
 @export_group("Preset: Lean-To")
 ## [TUNE] 倒棚搭棚工作量 55（CORE_GAMEPLAY §5 的 40–60 min 量级）。
 ## [LEGACY] 未使用：同上。

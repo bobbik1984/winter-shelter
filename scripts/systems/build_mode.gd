@@ -5,7 +5,7 @@ extends Node3D
 ## 不合格时显示**第一条原因**；入口朝向可旋转（R），预设可切换（Tab）。
 ## 本节点只做预览与校验；确认放置由 GameDirector 处理（材料、唯一工地）。
 
-const PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo"]
+const PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell"]
 
 var player: Node3D
 var visual: Node3D          # 玩家朝向来源（player.visual_node）
@@ -70,6 +70,9 @@ func enter() -> void:
 	_update_site()
 	var rec := _builder.recommend_preset_for_site(depth, slope, near_windbreak)
 	preset_id = rec if rec != "None" else "LeanTo"
+	# 站在老云杉旁且会做树井 → 推荐树井（S5：条件就在眼前）
+	if "TreeWell" in available and float(OldSpruces.nearest(Vector2(player.global_position.x, player.global_position.z))["distance"]) <= tuning.tree_well_max_trunk_dist_m + 1.5:
+		preset_id = "TreeWell"
 	if not (preset_id in available) and not available.is_empty():
 		# 推荐的庇护所还没学会：先给一个在这里能建的已学会类型，没有就给第一个
 		preset_id = available[0]
@@ -128,6 +131,17 @@ func _update_site() -> void:
 	site_pos = Vector3(p.x, SnowField.height_at(p.x, p.z), p.z)
 	depth = SnowField.snow_at(p.x, p.z)
 	slope = SnowField.slope_at(p.x, p.z)
+	if preset_id == "TreeWell":
+		# 树井：工地对准最近的老云杉树干；"深度"取树干周围的开阔积雪（坑壁有多高）
+		var n := OldSpruces.nearest(Vector2(p.x, p.z))
+		if float(n["distance"]) > tuning.tree_well_max_trunk_dist_m:
+			valid = false
+			reason = Loc.t("No big spruce with low branches here — look for one: the snow around its trunk is shallow.")
+			return
+		var tp: Vector2 = n["point"]
+		site_pos = Vector3(tp.x, SnowField.height_at(tp.x, tp.y), tp.y)
+		depth = TerrainHeight.snow_depth_at(tp.x, tp.y)
+		slope = SnowField.slope_at(tp.x, tp.y)
 	near_windbreak = ResourceSpawner.nearest_windbreak_distance(get_tree(), site_pos) < tuning.windbreak_radius_m
 	wind_angle = GameRules.entrance_wind_angle(entrance_dir, wind_from)
 	var v := _builder.validate_site(preset_id, depth, slope, near_windbreak)

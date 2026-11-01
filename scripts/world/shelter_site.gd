@@ -12,6 +12,8 @@ const STAGE_COSTS := {
 	"BasicCave": [{}, {}, {"bedding": 2}, {}, {}],
 	"SnowTrench": [{}, {}, {"bedding": 1}, {"wood": 2}, {}],
 	"LeanTo": [{"wood": 2}, {}, {"bedding": 2}, {"wood": 2}, {"wood": 2, "bark": 1}],
+	# S5 树井：不花木头；云杉枝当地板、补顶、封门
+	"TreeWell": [{}, {}, {"bedding": 2}, {"bedding": 1}, {"bedding": 1}],
 }
 
 var builder: ShelterBuilder
@@ -135,6 +137,8 @@ func _refresh() -> void:
 			_trench_visual(s)
 		"LeanTo":
 			_leanto_visual(s)
+		"TreeWell":
+			_treewell_visual(s)
 	if s == 0:
 		# 工地标桩：四根小木桩 + 入口方向
 		for c in [Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
@@ -309,3 +313,39 @@ func _process(_delta: float) -> void:
 	if w:
 		var elev: float = w.sun_elevation_deg
 		_entrance_light.light_energy = lerpf(1.4, 3.2, clampf((6.0 - elev) / 8.0, 0.0, 1.0))
+
+## S5 树井外观（工地中心 = 树干）：树干周围挖开的浅坑、修剪后的低枝、枝条地板、补顶的枝条裙、封门。
+func _treewell_visual(s: int) -> void:
+	if s <= 0:
+		return
+	# 浅坑：树干周围下沉的暗色雪坑 + 外圈弃雪
+	_sphere(Vector3(0, 0.02, 0), 1.0, Vector3(1.5, 0.06, 1.5), _dark)
+	for i in range(6):
+		var a := TAU * float(i) / 6.0
+		_sphere(Vector3(cos(a) * 1.9, 0.0, sin(a) * 1.9), 0.5, Vector3(0.8, 0.45, 0.8), _snow)
+	if s >= 2:
+		# 修下来的低枝堆在坑边
+		_box(Vector3(1.6, 0.12, -1.2), Vector3(0.9, 0.12, 0.35), _bough, Vector3(0, 30, 0))
+	if s >= 3:
+		_box(Vector3(0, 0.08, 0.6), Vector3(1.2, 0.08, 1.2), _bough)
+	if s >= 4:
+		# 补顶：围着树干的枝条裙（低矮圆锥）
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.25
+		cone.bottom_radius = 1.9
+		cone.height = 1.3
+		cone.radial_segments = 10
+		var mi := MeshInstance3D.new()
+		mi.mesh = cone
+		mi.material_override = _bough
+		mi.position = Vector3(0, 0.75, 0)
+		_visual.add_child(mi)
+	if s >= 5:
+		# 封门的枝条束 + 洞口暖光（朝 entrance_dir，本节点已按入口朝向旋转，入口 = +Z）
+		_box(Vector3(0, 0.35, 1.75), Vector3(0.8, 0.5, 0.25), _bough)
+		_entrance_light = OmniLight3D.new()
+		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
+		_entrance_light.omni_range = 4.0
+		_entrance_light.light_energy = 1.2
+		_entrance_light.position = Vector3(0, 0.5, 1.6)
+		_visual.add_child(_entrance_light)

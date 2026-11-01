@@ -4,8 +4,9 @@ extends RefCounted
 ## M1 雪深场门面：把 TerrainHeight 的雪深/坡度/背风因子收成稳定 API。
 ## 后续 T1.2 的探针与热力图只依赖这里，不再直接读碰撞体 meta。
 
+## 玩法雪深（探针、建造校验、报告）：开阔雪深 × 老云杉树冠下的削薄（S5 树井）。
 static func snow_at(x: float, z: float) -> float:
-	return TerrainHeight.snow_depth_at(x, z)
+	return TerrainHeight.snow_depth_at(x, z) * OldSpruces.canopy_factor(x, z)
 
 static func slope_at(x: float, z: float) -> float:
 	return TerrainHeight.slope_at(x, z)

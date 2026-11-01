@@ -28,12 +28,12 @@ grep -q "RESULT PASS" /tmp/ws_ci_smoke.log || fail=1
 
 if [ "${1:-}" != "--quick" ]; then
   step "balance bots"
-  for s in deep_stick trench leanto_full; do
+  for s in deep_stick trench treewell leanto_full; do
     line=$("$GODOT" --path . -s res://tools/playtest_bot.gd -- --s=$s --weather=clear 2>&1 | grep -E "^depth|PLACE FAILED")
     echo "$line"
     case "$s" in
       deep_stick) echo "$line" | grep -q " SAFE " || { echo "  expected SAFE"; fail=1; } ;;
-      trench|leanto_full) echo "$line" | grep -qE " (COLD|SAFE) " || { echo "  expected COLD or better"; fail=1; } ;;
+      trench|treewell|leanto_full) echo "$line" | grep -qE " (COLD|SAFE) " || { echo "  expected COLD or better"; fail=1; } ;;
     esac
   done
   step "fuzz (3 x 30 s)"

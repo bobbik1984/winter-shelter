@@ -134,6 +134,9 @@ func _in_vista(x: float, z: float) -> bool:
 	return absf(rad_to_deg(d.angle_to(VISTA_DIR))) < vista_half_angle_deg
 
 
+static func _old_min_scale() -> float:
+	return OldSpruces.tuning().old_spruce_min_scale
+
 func _enable_fade(m: ShaderMaterial) -> void:
 	m.set_shader_parameter("occlusion_fade", true)
 	_fade_materials.append(m)
@@ -178,6 +181,8 @@ func _scatter_spruce(blow: Vector3) -> void:
 				Vector3(x, TerrainHeight.height_at(x, z) - 0.15, z))
 			buckets[(i * 7 + j * 3) % SPRUCE_VARIANTS].append(t)
 			spruce_points.append(Vector2(x, z))
+			if s >= _old_min_scale():
+				OldSpruces.add(Vector2(x, z))
 	var mat := _material(Color(0.035, 0.11, 0.07), 0.56)
 	_enable_fade(mat)
 	mat.set_shader_parameter("sway_amount", 1.0)

@@ -76,6 +76,10 @@ static func level_takeaway(theme: String, targets: PackedStringArray, preset: St
 	match theme:
 		"deep_drift":
 			cond = Loc.t("Deep snow (up to %.1f m) and a %d km/h wind: dig into the lee slope, entrance away from the wind.") % [mx, int(round(float(ctx.get("wind_kmh", 0.0))))]
+		"old_forest":
+			var cave_min := int(round((ShelterPreset.create_all_presets()["BasicCave"] as ShelterPreset).build_minutes_total * t.no_shovel_dig_factor))
+			var tw_min := int(round((ShelterPreset.create_all_presets()["TreeWell"] as ShelterPreset).build_minutes_total))
+			cond = Loc.t("No shovel: a snow cave dug by hand takes about %d min; a tree well under a big spruce took about %d. The old spruces with a hollow at their base were the shelter.") % [cave_min, tw_min]
 		"hidden_pockets":
 			cond = Loc.t("Only %d%% of this valley had snow deep enough for a cave (≥ %.1f m), in a few lee pockets. Probing finds them.") % [
 				int(round(float(facts.get("frac_cave", 0.0)) * 100.0)), t.snow_depth_cave_min_m]
@@ -103,7 +107,7 @@ static func level_takeaway(theme: String, targets: PackedStringArray, preset: St
 			verdict = Loc.t("Right choice of shelter — the weakest score above is what to fix.")
 		else:
 			# R2：结果对 ≠ 过程对。雪庇护所要在选址处探过雪；入口要背风（≥ 120°）。
-			var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench"]
+			var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell"]
 			var entrance := float(ctx.get("entrance_deg", 180.0))
 			if is_snow and not bool(ctx.get("probed_site", true)):
 				verdict = Loc.t("Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.")
@@ -124,7 +128,7 @@ static func _label(key: String) -> String:
 	return key
 
 static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning, report_scores: Dictionary = {}) -> String:
-	var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench"]
+	var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell"]
 	var lean := preset == "LeanTo"
 	var none := not (is_snow or lean)
 	var angle := float(i.get("wind_angle_diff", 90.0))
@@ -145,6 +149,8 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 				return "The snow here (%.1f m) was too shallow for this shelter." % float(i.get("snow_depth_meters", 0.0))
 			if completion < 0.999:
 				return "Only %d%% finished — it wasn't closed up before night." % int(completion * 100.0)
+			if preset == "TreeWell":
+				return "The spruce's own boughs made the roof; %.1f m of snow around the trunk made the walls." % float(i.get("snow_depth_meters", 0.0))
 			if is_snow:
 				return "Roof %.2f m thick over %.1f m of snow — it held." % [float(i.get("roof_thickness_meters", 0.0)), float(i.get("snow_depth_meters", 0.0))]
 			return "Frame, thatch and reflector wall all finished."
@@ -160,6 +166,8 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 				return "An open shelter can't trap cold air; bedding and fire had to make up for it."
 			if none:
 				return "You slept in the coldest air, right on the ground."
+			if preset == "TreeWell":
+				return "You slept at the bottom of the well with the cold air; a thick bough floor is what kept it off you."
 			var pit := bool(i.get("has_cold_pit", false))
 			var bed := bool(i.get("has_raised_bed", false))
 			if pit and bed:
@@ -168,6 +176,8 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 				return "A cold-air pit, but the bed wasn't raised — cold air still reached you."
 			return "Your bed was level with the entrance, where the cold air pools."
 		"air":
+			if preset == "TreeWell":
+				return "The bough roof breathes — no vent needed, nothing to clog."
 			if not is_snow:
 				return "Open air — no stale-air risk, but no trapped heat either."
 			if int(i.get("vent_count", 0)) <= 0:
