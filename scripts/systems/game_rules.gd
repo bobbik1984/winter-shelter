@@ -115,7 +115,7 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 ##       missing: String（下一阶段缺的材料，空 = 不缺）, next_stage: String, minutes_to_sunset: float, preset: String}
 static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 	if bool(ctx.get("clothes_wet", false)):
-		return "Your layers are wet and no longer warm — dry them by a fire [F]."
+		return Loc.t("Your layers are wet and no longer warm — dry them by a fire [F].")
 	if bool(ctx.get("complete", false)):
 		if bool(ctx.get("needs_vent_stick", false)):
 			return Loc.t("Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).")
@@ -123,11 +123,17 @@ static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 			return Loc.t("Shelter done. Stockpile dry wood for the fire, then rest [N].")
 		return Loc.t("Shelter done. Warm up by a fire [F] + hot drink, then rest [N].")
 	if not bool(ctx.get("has_site", false)):
+		# 只依据玩家自己的探测结果 + D5 门槛说话（不泄露关卡设定，也不预设"一定要挖雪洞"）
 		if not bool(ctx.get("probed", false)):
-			return Loc.t("Hold [Space] to probe the snow. Look for >= %.1f m on leeward slopes.") % t.snow_depth_cave_min_m
-		if float(ctx.get("best_depth", 0.0)) < t.snow_depth_cave_min_m:
-			return Loc.t("Keep probing — deeper snow collects east of the ridge, out of the wind.")
-		return Loc.t("Deep snow found. Stand next to it and press [B] to plan a shelter.")
+			return Loc.t("Hold [Space] to probe the snow on leeward slopes. Its depth decides which shelter you can build.")
+		var best := float(ctx.get("best_depth", 0.0))
+		if best < t.snow_depth_trench_wall_min_m:
+			return Loc.t("Deepest so far %.2f m — too thin to dig. Probe elsewhere, or build a lean-to by a root plate [B].") % best
+		if best < t.snow_depth_cave_min_m:
+			return Loc.t("Deepest so far %.1f m — enough for a trench [B]. A snow cave needs %.1f m.") % [best, t.snow_depth_cave_min_m]
+		if best < t.snow_depth_raised_cave_min_m:
+			return Loc.t("Deepest so far %.1f m — a snow cave fits [B]. A raised cave needs %.1f m.") % [best, t.snow_depth_raised_cave_min_m]
+		return Loc.t("Deep snow found (%.1f m) — room for a raised cave. Stand next to it and press [B].") % best
 	var missing := String(ctx.get("missing", ""))
 	if missing != "":
 		return Loc.t("Gather %s — then hold [E] at your site.") % missing

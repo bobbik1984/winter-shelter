@@ -70,7 +70,7 @@ static func default_level() -> int:
 
 # ------------------------------------------------------------------ 显示
 
-static func _names() -> Dictionary:
+static func preset_names() -> Dictionary:
 	return {"RaisedCave": Loc.t("Raised cave"), "BasicCave": Loc.t("Snow cave"), "SnowTrench": Loc.t("Trench"), "LeanTo": Loc.t("Lean-to"), "None": Loc.t("No shelter")}
 
 ## 自由模式：每种庇护所的最好一夜。
@@ -78,7 +78,7 @@ static func text() -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return ""
-	var names := _names()
+	var names := preset_names()
 	var parts: Array[String] = []
 	for k in names:
 		if cfg.has_section(k):
@@ -90,7 +90,7 @@ static func level_best(level_index: int) -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return ""
-	var names := _names()
+	var names := preset_names()
 	var best_k := ""
 	var best_o := ""
 	var best_s := -1

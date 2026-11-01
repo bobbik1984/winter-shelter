@@ -72,6 +72,10 @@ func _build_terrain() -> void:
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	var mat := ShaderMaterial.new()
 	mat.shader = TERRAIN_SHADER
+	var wind := load("res://resources/default_wind.tres") as WindData
+	if wind:
+		var b := wind.get_blow_direction_3d()   # 已随地图旋转（L3）
+		mat.set_shader_parameter("wind_blow", Vector2(b.x, b.z))
 	mesh_instance.material_override = mat
 	_material = mat
 	add_child(mesh_instance)

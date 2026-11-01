@@ -458,6 +458,11 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	var c := _label(String(data["conclusion"]), 16, CREAM)
 	c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(c)
+	if String(data.get("level_takeaway", "")) != "":
+		var tk := _label(String(data["level_takeaway"]), 15, CREAM)
+		tk.name = "LevelTakeaway"
+		tk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(tk)
 	var lesson := _label(Loc.t("What to remember: ") + String(data["lesson"]), 14, AMBER)
 	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(lesson)

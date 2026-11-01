@@ -51,6 +51,18 @@ static func apply_world() -> void:
 static func snag_density_scale() -> float:
 	return float(roll.get("snag_density_scale", 1.0)) if active() else 1.0
 
+## 本局目标路线：若目标列表与雪深候选一一对应（第 5 关），取与抽到的雪深档位对应的那个。
+static func target_presets() -> PackedStringArray:
+	if not active():
+		return PackedStringArray()
+	var t := level.target_presets
+	var scales := level.snow_depth_scale_choices
+	if scales.size() > 1 and t.size() == scales.size():
+		var i := Array(scales).find(float(roll.get("snow_depth_scale", 1.0)))
+		if i >= 0:
+			return PackedStringArray([t[i]])
+	return t
+
 ## 退出关卡模式（测试用；回到旧行为）。
 static func reset() -> void:
 	level = null

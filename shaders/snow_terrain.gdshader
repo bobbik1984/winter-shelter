@@ -12,6 +12,11 @@ uniform vec3 sun_dir_world = vec3(-0.7, 0.16, -0.7);
 uniform bool low_quality = false;
 // 开发热力图（F3，T1.2）：按雪深着色，D5 门槛处画等值线。snow_depth 是归一化值（÷2.5 m）。
 uniform bool debug_depth = false;
+// 风的去向（世界 xz，单位向量）：风蚀雪纹沿它拉长（TerrainBuilder 从 WindData 设置，随 L3 地图旋转）。
+uniform vec2 wind_blow = vec2(1.0, 0.0);
+// 薄雪露地（L5 如实表现）：雪深低于 bare_full_m 时地面 / 枯草从雪里露出，高于 bare_none_m 完全覆盖（米）。
+uniform float bare_full_m = 0.08;
+uniform float bare_none_m = 0.45;
 
 varying float snow_depth;
 varying vec3 world_normal;
@@ -57,8 +62,11 @@ void vertex() {
 }
 
 void fragment() {
-	// 1. 风蚀雪波纹 (沿西北->东南风向拉长的 Sastrugi 纹理)
-	vec2 wind_uv = vec2(world_pos.x * 0.28 + world_pos.z * 0.14, world_pos.z * 0.52 - world_pos.x * 0.12);
+	// 1. 风蚀雪波纹（Sastrugi）：在"顺风 / 横风"坐标里拉长，风向变了纹理跟着转（wind_blow = (1,0) 时与旧版一致）
+	vec2 wb = normalize(wind_blow);
+	float w_along = dot(world_pos.xz, wb);
+	float w_across = dot(world_pos.xz, vec2(-wb.y, wb.x));
+	vec2 wind_uv = vec2(w_along * 0.28 + w_across * 0.14, w_across * 0.52 - w_along * 0.12);
 	float drift_n = low_quality ? vnoise(wind_uv * 1.6) * 0.8 + 0.1 : fbm(wind_uv);
 	float detail_n = low_quality ? vnoise(world_pos.xz * 1.35) : fbm(world_pos.xz * 1.35);
 
@@ -88,6 +96,17 @@ void fragment() {
 	snow_col = mix(snow_col, snow_deep_drift, smoothstep(0.35, 0.92, snow_depth) * (1.0 - sun_face * 0.55));
 	snow_col += (drift_n - 0.5) * vec3(0.045, 0.050, 0.065);
 
+	// 3b. 薄雪露地：雪越薄，地面（深褐土 / 帚石楠）与枯草越多地露出来，斑块由噪声决定。
+	//     让"这里雪很薄"不用探针也能看出来（第 3 / 4 关、风蚀脊顶）。
+	float depth_m = snow_depth * 2.5;
+	float thin = 1.0 - smoothstep(bare_full_m, bare_none_m, depth_m);
+	float patch_n = low_quality ? vnoise(world_pos.xz * 0.9) : fbm(world_pos.xz * 0.9);
+	float bare = smoothstep(0.42, 0.72, thin * (0.35 + 0.9 * patch_n));
+	// 草丛：平滑值噪声的高值斑点（圆润、不规则；不能用 floor 网格，会出现方块像素）
+	float tuft = smoothstep(0.74, 0.86, vnoise(world_pos.xz * 3.3 + vec2(17.0, 5.0))) * smoothstep(0.15, 0.5, thin);
+	vec3 ground_col = mix(vec3(0.20, 0.18, 0.16), vec3(0.50, 0.43, 0.30), detail_n);
+	snow_col = mix(snow_col, ground_col * mix(0.75, 1.15, sun_face), max(bare, tuft * 0.85));
+
 	// 4. 陡坡岩层裸露与台地覆雪过渡（复刻参考图左侧与山脊的覆雪岩体）
 	vec3 rock_dark = vec3(0.19, 0.21, 0.25);
 	vec3 rock_warm = vec3(0.31, 0.28, 0.26);
@@ -97,10 +116,10 @@ void fragment() {
 
 	// 5. 高频雪晶闪点 (Sparkle)
 	float sparkle_grid = hash21(floor(world_pos.xz * 14.0));
-	float sparkle = step(0.965, sparkle_grid) * (sun_face * 0.5 + forward_scatter * 1.5) * (1.0 - rock_mask) * 0.22;
+	float sparkle = step(0.965, sparkle_grid) * (sun_face * 0.5 + forward_scatter * 1.5) * (1.0 - rock_mask) * (1.0 - bare) * 0.22;
 	base += vec3(sparkle);
 	// 朝太阳方向看去的雪面：暖金逆光辉
-	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask));
+	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask) * (1.0 - bare * 0.7));
 
 	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
 	if (debug_depth) {
@@ -116,7 +135,7 @@ void fragment() {
 		line = max(line, 1.0 - smoothstep(0.0, 0.04, abs(m - 2.0)));
 		ALBEDO = mix(c, vec3(0.05), line);
 	}
-	ROUGHNESS = mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12;
+	ROUGHNESS = max(mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12, bare * 0.95);
 	SPECULAR = mix(0.28, 0.12, rock_mask);
 	AO = mix(0.72, 1.0, up) * mix(0.85, 1.0, drift_n);
 }

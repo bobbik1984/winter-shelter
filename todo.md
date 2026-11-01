@@ -41,7 +41,7 @@
 - [x] 透视模式下岩石 / 雪枕遮挡玩家：SceneryBuilder 岩石 + 顶雪 + 雪枕、Blender 岩体、碎石、风积雪枕均接入 `occlusion_fade`（snapshots/t_occlusion_rocks_before_after.png，左旧右新）
 - [ ] 正交备用模式下不做遮挡镂空（实现限制，见 ARCHITECTURE §3.7）
 
-- [ ] **薄雪看不出来**（L2 发现）：第 4 关雪深 < 0.3 m，但雪面着色和深雪地图几乎一样（不开 F3 看不出"几乎没雪"）。Read the Land 要求雪深可读：薄雪处应露出草茎 / 石块 / 地面色。建议在 L6 前做（snow_terrain.gdshader 已有归一化雪深顶点色）
+- [x] **薄雪看不出来**（L2 发现；L5 已修：薄雪露地，VISUAL_LANGUAGE §2.4）：第 4 关雪深 < 0.3 m，但雪面着色和深雪地图几乎一样（不开 F3 看不出"几乎没雪"）。Read the Land 要求雪深可读：薄雪处应露出草茎 / 石块 / 地面色。建议在 L6 前做（snow_terrain.gdshader 已有归一化雪深顶点色）
 
 ## 📌 Backlog（已在路线中，尚未派发）
 

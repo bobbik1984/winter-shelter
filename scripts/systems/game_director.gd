@@ -185,7 +185,10 @@ func start_game() -> void:
 	player.controls_enabled = true
 	interaction.enabled = true
 	weather.time_scale = _saved_time_scale
-	ui.toast(Loc.t("Probe the snow [Space]. Deep, leeward snow is where a snow cave works."), 6.0)
+	if LevelState.active() and not LevelState.level.is_free():
+		ui.toast(Loc.t(LevelState.level.lesson), 7.0)
+	else:
+		ui.toast(Loc.t("Probe the snow [Space]: its depth decides which shelter you can build."), 6.0)
 
 func _sleep(forced: bool) -> void:
 	if state != State.PLAYING:
@@ -232,8 +235,14 @@ func _timeline_text() -> String:
 func _show_report() -> void:
 	state = State.REPORT
 	var input := night_input()
+	# 本图实测最深雪（报告教训只在真的挖得了雪洞时才建议"去找深雪挖洞"）
+	input["map_max_snow_m"] = float(SnowField.map_facts(tuning)["max_depth"])
 	var report := NightSimulator.evaluate(input, tuning)
 	var data := NightReportText.build(report, input, tuning)
+	if LevelState.active() and not LevelState.level.is_free():
+		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.index, LevelState.target_presets(),
+			String(input.get("shelter_type", "None")), String(data["outcome"]), SnowField.map_facts(tuning),
+			float(input.get("wind_speed_kmh", tuning.wind_speed_kmh)), weather.night_temp_c(), tuning)
 	var name_ := Loc.t("None — slept in the open")
 	if site:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
@@ -411,7 +420,7 @@ func _briefing_intro() -> String:
 	return (Loc.t("January 14, %s. %d °C, wind from the %s at %d km/h; the sun sets at %s.\n") % [
 		"%02d:%02d" % [sm / 60, sm % 60], int(round(weather.current_temp_c())),
 		GameRules.wind_word(wind.from_octant()), int(round(weather.current_wind_kmh())), weather.sunset_clock()]) \
-		+ Loc.t("You have about %d hours of light to find deep snow, gather what you need and build a shelter for the night.\n\n") % hours
+		+ Loc.t("You have about %d hours of light to read the land, gather what you need and build a shelter for the night.\n\n") % hours
 
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]

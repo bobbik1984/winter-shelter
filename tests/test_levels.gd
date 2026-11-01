@@ -104,6 +104,7 @@ func run() -> Dictionary:
 
 	_check_snow_bands(defs, tuning)
 	_check_rotation()
+	_check_texts(defs, tuning)
 
 	# begin()
 	var r := LevelState.begin(3, 4242)
@@ -223,3 +224,66 @@ func _check_rotation() -> void:
 	TerrainHeight.ROTATION_DEG = 0.0
 	_check(TerrainHeight.to_world(Vector2(3.0, 4.0)) == Vector2(3.0, 4.0), "不旋转时 to_world 是恒等")
 	TerrainHeight.ROTATION_DEG = r0
+
+
+## L5：文案如实——课题有中文；目标行只依据探测结果与 D5 门槛；报告要点引用本图实测值。
+func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
+	for d in defs:
+		_check(Loc.ZH.has(d.lesson), "关卡 %d 课题缺中文：%s" % [d.index, d.lesson])
+	# 第 5 关目标路线随抽到的雪深档位
+	for s in range(1, 40):
+		LevelState.begin(5, s)
+		var sc := float(LevelState.roll["snow_depth_scale"])
+		var tp := LevelState.target_presets()
+		var want := "RaisedCave" if sc >= 1.0 else ("SnowTrench" if sc >= 0.5 else "LeanTo")
+		if tp.size() != 1 or tp[0] != want:
+			_failures.append("第 5 关种子 %d 雪深 %.2f 的目标路线应为 %s，实际 %s" % [s, sc, want, str(tp)])
+			break
+	_passed += 1
+	LevelState.begin(3, 1)
+	_check(LevelState.target_presets() == PackedStringArray(["SnowTrench"]), "第 3 关目标 = 雪沟")
+	LevelState.reset()
+	_check(LevelState.target_presets().is_empty(), "非关卡模式没有目标路线")
+
+	# 目标行：每个 D5 区间一句，且都不写死方位 / 不预设雪洞
+	var o0 := GameRules.next_objective({}, t)
+	var o1 := GameRules.next_objective({"probed": true, "best_depth": 0.2}, t)
+	var o2 := GameRules.next_objective({"probed": true, "best_depth": 0.8}, t)
+	var o3 := GameRules.next_objective({"probed": true, "best_depth": 1.7}, t)
+	var o4 := GameRules.next_objective({"probed": true, "best_depth": 2.3}, t)
+	_check(o0.contains("probe") and not o0.contains("1.5"), "开局目标行：去探，不预设雪洞深度")
+	_check(o1.contains("too thin") and o1.contains("lean-to"), "< 0.3 m：太薄，建议倒棚（%s）" % o1)
+	_check(o2.contains("trench") and o2.contains("1.5"), "0.3–1.5 m：够雪沟，雪洞要 1.5 m（%s）" % o2)
+	_check(o3.contains("snow cave fits") and o3.contains("2.0"), "1.5–2.0 m：能挖雪洞（%s）" % o3)
+	_check(o4.contains("raised cave"), "≥ 2.0 m：能挖高床雪洞（%s）" % o4)
+	for o in [o0, o1, o2, o3, o4]:
+		_check(not (o.contains("east") or o.contains("west")), "目标行不得写死方位（地图会旋转）：%s" % o)
+
+	# 倒棚教训：本图没有雪洞深度时不建议"去找深雪挖洞"
+	var lean := {"shelter_type": "LeanTo", "snow_depth_meters": 0.2, "terrain_shelter": 0.8, "completion_ratio": 1.0, "map_max_snow_m": 0.3}
+	var rep := NightSimulator.evaluate(lean, t)
+	rep["details"]["min_axis"] = "isolation"
+	_check(not NightReportText.build(rep, lean, t)["lesson"].contains("cave"), "第 4 关这种图上，倒棚教训不提雪洞")
+	lean["map_max_snow_m"] = 2.5
+	_check(NightReportText.build(rep, lean, t)["lesson"].contains("cave"), "有深雪的图上，倒棚教训可以建议雪洞")
+
+	# 报告"本关要点"：条件句引用实测值 + 判断
+	var facts := {"max_depth": 1.37, "frac_cave": 0.0}
+	var ok3 := NightReportText.level_takeaway(3, PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, 32.0, -24.0, t)
+	_check(ok3.contains("1.4") and ok3.contains("read the land right"), "第 3 关雪沟 COLD：引用最深 1.4 m 并肯定（%s）" % ok3)
+	var wrong3 := NightReportText.level_takeaway(3, PackedStringArray(["SnowTrench"]), "BasicCave", "DANGEROUS", facts, 32.0, -24.0, t)
+	_check(wrong3.contains("Snow cave") and wrong3.contains("Trench"), "第 3 关硬挖雪洞：指出雪沟更合适（%s）" % wrong3)
+	var none4 := NightReportText.level_takeaway(4, PackedStringArray(["LeanTo"]), "None", "DANGEROUS", {"max_depth": 0.31}, 32.0, -24.0, t)
+	_check(none4.contains("0.31") and none4.contains("no shelter"), "第 4 关露天：引用 0.31 m（%s）" % none4)
+	var l2 := NightReportText.level_takeaway(2, PackedStringArray(["RaisedCave"]), "RaisedCave", "DANGEROUS", {"max_depth": 2.6, "frac_cave": 0.14}, 32.0, -24.0, t)
+	_check(l2.contains("14%") and l2.contains("Right choice"), "第 2 关：引用深雪面积 14%%（%s）" % l2)
+	var l5 := NightReportText.level_takeaway(5, PackedStringArray(["LeanTo"]), "LeanTo", "SAFE", {"max_depth": 0.3}, 52.0, -29.0, t)
+	_check(l5.contains("52") and l5.contains("-29") and l5.contains("Lean-to"), "第 5 关：引用风速 / 气温 / 目标（%s）" % l5)
+	_check(NightReportText.level_takeaway(0, PackedStringArray(), "None", "SAFE", facts, 0.0, 0.0, t) == "", "自由模式没有本关要点")
+	# 真实地图实测：第 3 关的图上最深雪 < 雪洞门槛（与文案一致）
+	LevelState.begin(3, 7)
+	LevelState.apply_world()
+	var f3 := SnowField.map_facts(t)
+	_check(float(f3["max_depth"]) < t.snow_depth_cave_min_m and float(f3["frac_cave"]) == 0.0, "第 3 关实测：没有能挖雪洞的地方（最深 %.2f m）" % float(f3["max_depth"]))
+	LevelState.reset()
+	_check(SnowField.map_facts(t)["max_depth"] > t.snow_depth_raised_cave_min_m, "复位后缓存失效：基础地图有高床雪洞深度")
