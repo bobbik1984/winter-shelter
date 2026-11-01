@@ -84,6 +84,8 @@ func apply() -> void:
 	var vp := get_viewport()
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
 	vp.scaling_3d_scale = float(p[0])
+	# 低档关闭 FXAA（画面已经过 FSR 放大；约 +2 FPS）
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if level == 0 else Viewport.SCREEN_SPACE_AA_FXAA
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(p[6]) as RenderingServer.ShadowQuality)
 	var env_node := get_tree().get_first_node_in_group("world_environment") as WorldEnvironment
 	if env_node and env_node.environment:

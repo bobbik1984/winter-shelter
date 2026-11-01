@@ -57,7 +57,7 @@ void vertex() {
 void fragment() {
 	// 1. 风蚀雪波纹 (沿西北->东南风向拉长的 Sastrugi 纹理)
 	vec2 wind_uv = vec2(world_pos.x * 0.28 + world_pos.z * 0.14, world_pos.z * 0.52 - world_pos.x * 0.12);
-	float drift_n = fbm(wind_uv);
+	float drift_n = low_quality ? vnoise(wind_uv * 1.6) * 0.8 + 0.1 : fbm(wind_uv);
 	float detail_n = low_quality ? vnoise(world_pos.xz * 1.35) : fbm(world_pos.xz * 1.35);
 
 	// 2. 微法线扰动：让雪面呈现真实的风积凹凸起伏，告别塑料平滑感
