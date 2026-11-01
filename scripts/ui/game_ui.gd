@@ -25,6 +25,7 @@ var _fade: ColorRect
 var _report: Control
 var _pause: Control
 var _guide: Control
+var _credits: Control
 var _build_keys: Label
 var _vignette: Control
 var _vignette_tex: TextureRect
@@ -269,6 +270,42 @@ func relocalize() -> void:
 	if _build_keys:
 		_build_keys.text = Loc.t("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel")
 
+## 致谢与许可（发布要求：Godot MIT 声明、随包字体 Apache-2.0）。暂停菜单里按 [C] 开关。
+func toggle_credits() -> void:
+	if _credits == null:
+		var shade := ColorRect.new()
+		shade.color = Color(0.02, 0.03, 0.05, 0.95)
+		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var scroll := ScrollContainer.new()
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.offset_left = 160
+		scroll.offset_right = -160
+		scroll.offset_top = 80
+		scroll.offset_bottom = -80
+		shade.add_child(scroll)
+		var v := VBoxContainer.new()
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_theme_constant_override("separation", 10)
+		scroll.add_child(v)
+		v.add_child(_label(Loc.t("CREDITS & LICENSES"), 24, CREAM))
+		for line in [
+				Loc.t("Snow Shelter Challenge — design and development by the Winter Shelter project."),
+				Loc.t("Built with the Godot Engine (godotengine.org). Character modelled procedurally in Blender."),
+				Loc.t("Chinese text fallback font: Droid Sans Fallback © Google, Apache License 2.0 (assets/fonts/DroidSansFallback-LICENSE.txt)."),
+				Loc.t("All other art, sound and shaders are generated procedurally by this project."),
+				"", "Godot Engine — MIT License:"]:
+			var l := _label(line, 13, MUTED)
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			v.add_child(l)
+		var lic := _label(Engine.get_license_text(), 11, MUTED)
+		lic.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(lic)
+		v.add_child(_label(Loc.t("[C] close"), 13, AMBER))
+		_credits = shade
+		get_child(0).add_child(shade)
+	else:
+		_credits.visible = not _credits.visible
+
 func show_pause(on: bool) -> void:
 	if on and _pause == null:
 		var shade := ColorRect.new()
@@ -283,7 +320,7 @@ func show_pause(on: bool) -> void:
 		var t := _label(Loc.t("PAUSED"), 40, CREAM)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t)
-		for line in [Loc.t("[Esc] resume      [R] restart      [Q] quit"),
+		for line in [Loc.t("[Esc] resume      [R] restart      [Q] quit      [C] credits"),
 				"", Loc.t("[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink"),
 				Loc.t("[B] build mode — [Tab] type, [R] rotate entrance, [E] place"),
 				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics") + "    [M] " + ("声音" if Loc.is_zh() else "sound") + "    [F11] " + ("全屏" if Loc.is_zh() else "fullscreen")]:
@@ -294,6 +331,8 @@ func show_pause(on: bool) -> void:
 		get_child(0).add_child(shade)
 	if _pause:
 		_pause.visible = on
+	if not on and _credits:
+		_credits.visible = false
 
 ## 入夜小场景（Brutal Outside, Cozy Inside）：黑屏上显示自己雪洞的剖面与烛光。
 func show_vignette(tex: Texture2D, caption: String, alpha: float) -> void:

@@ -279,6 +279,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_ESCAPE, KEY_P: _set_paused(false)
 				KEY_R: _restart()
 				KEY_Q: get_tree().quit()
+				KEY_C: ui.toggle_credits()
 		State.PLAYING:
 			if k == KEY_ESCAPE and not build.active:
 				_set_paused(true)
