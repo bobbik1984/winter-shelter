@@ -61,8 +61,8 @@ func _make_materials() -> void:
 	_mat_green = _make_material(Color(0.07, 0.16, 0.11), 0.92)
 	_mat_spruce = ShaderMaterial.new()
 	_mat_spruce.shader = SNOW_COVER_SHADER
-	_mat_spruce.set_shader_parameter("base_color", Color(0.06, 0.15, 0.11))
-	_mat_spruce.set_shader_parameter("snow_amount", 0.72)
+	_mat_spruce.set_shader_parameter("base_color", Color(0.035, 0.11, 0.07))
+	_mat_spruce.set_shader_parameter("snow_amount", 0.56)
 	_mat_spruce.set_shader_parameter("occlusion_fade", true)
 	_mat_spruce.set_shader_parameter("sway_amount", 1.0)
 	var bd := _wind_dir()
@@ -73,10 +73,10 @@ func _make_materials() -> void:
 	_mat_bark = _make_material(Color(0.16, 0.11, 0.07), 0.95)
 	var dw := ShaderMaterial.new()
 	dw.shader = SNOW_COVER_SHADER
-	dw.set_shader_parameter("base_color", Color(0.30, 0.25, 0.20))
+	dw.set_shader_parameter("base_color", Color(0.30, 0.28, 0.26))
 	dw.set_shader_parameter("snow_amount", 0.22)
 	dw.set_shader_parameter("occlusion_fade", true)
-	dw.set_shader_parameter("rim_amount", 0.8)
+	dw.set_shader_parameter("rim_amount", 0.45)
 	_mat_deadwood = dw
 	_mat_rock = _make_material(Color(0.12, 0.13, 0.16), 0.98)
 	_mat_grass = _make_material(Color(0.68, 0.56, 0.32), 0.94)

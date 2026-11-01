@@ -61,7 +61,7 @@ func _ready() -> void:
 	env.ambient_light_energy = 0.75
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 0.72
+	env.tonemap_exposure = 0.82
 	env.tonemap_white = 5.0
 
 	# 逆光雪景：太阳在画面里，需要柔和泛光与朝阳侧的暖色雾散射

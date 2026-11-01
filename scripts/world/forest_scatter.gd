@@ -148,7 +148,7 @@ func _scatter_spruce(blow: Vector3) -> void:
 				Vector3(x, TerrainHeight.height_at(x, z) - 0.15, z))
 			buckets[(i * 7 + j * 3) % SPRUCE_VARIANTS].append(t)
 			spruce_points.append(Vector2(x, z))
-	var mat := _material(Color(0.05, 0.13, 0.10), 0.70)
+	var mat := _material(Color(0.035, 0.11, 0.07), 0.56)
 	_enable_fade(mat)
 	mat.set_shader_parameter("sway_amount", 1.0)
 	mat.set_shader_parameter("wind_dir", Vector2(blow.x, blow.z))
@@ -175,8 +175,8 @@ func _scatter_snags() -> void:
 		buckets[k % SNAG_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.2, z)))
 		snag_points.append(Vector2(x, z))
 		placed += 1
-	var mat := _material(Color(0.40, 0.33, 0.27), 0.25, 0.10)
-	mat.set_shader_parameter("rim_amount", 0.8)
+	var mat := _material(Color(0.30, 0.28, 0.26), 0.25, 0.10)
+	mat.set_shader_parameter("rim_amount", 0.45)
 	_enable_fade(mat)
 	for v in range(SNAG_VARIANTS):
 		_add_multimesh("Snag%d" % v, PropMeshes.snag(40 + v), mat, buckets[v], true)
