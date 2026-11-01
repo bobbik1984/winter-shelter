@@ -24,6 +24,7 @@ const SUITES := [
 	{"name": "game_rules", "path": "res://tests/test_game_rules.gd", "required": true},
 	{"name": "loc", "path": "res://tests/test_loc.gd", "required": true},
 	{"name": "loop_systems", "path": "res://tests/test_loop_systems.gd", "required": true},
+	{"name": "levels", "path": "res://tests/test_levels.gd", "required": true},
 ]
 
 
