@@ -10,6 +10,8 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 uniform vec3 sun_dir_world = vec3(-0.7, 0.16, -0.7);
 // 低画质：跳过法线扰动的两次额外 fbm、detail 用一次 vnoise（GraphicsSettings 设置）。
 uniform bool low_quality = false;
+// 开发热力图（F3，T1.2）：按雪深着色，D5 门槛处画等值线。snow_depth 是归一化值（÷2.5 m）。
+uniform bool debug_depth = false;
 
 varying float snow_depth;
 varying vec3 world_normal;
@@ -101,6 +103,19 @@ void fragment() {
 	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask));
 
 	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
+	if (debug_depth) {
+		float m = snow_depth * 2.5;   // 还原为米
+		vec3 c = vec3(1.0, 0.4, 0.15);
+		if (m < 2.0) { c = vec3(1.0, 0.8, 0.2); }
+		if (m < 1.5) { c = vec3(0.2, 0.85, 0.6); }
+		if (m < 0.9) { c = vec3(0.3, 0.6, 1.0); }
+		if (m < 0.3) { c = vec3(0.55, 0.55, 0.6); }
+		float line = 1.0 - smoothstep(0.0, 0.04, abs(m - 0.3));
+		line = max(line, 1.0 - smoothstep(0.0, 0.04, abs(m - 0.9)));
+		line = max(line, 1.0 - smoothstep(0.0, 0.04, abs(m - 1.5)));
+		line = max(line, 1.0 - smoothstep(0.0, 0.04, abs(m - 2.0)));
+		ALBEDO = mix(c, vec3(0.05), line);
+	}
 	ROUGHNESS = mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12;
 	SPECULAR = mix(0.28, 0.12, rock_mask);
 	AO = mix(0.72, 1.0, up) * mix(0.85, 1.0, drift_n);

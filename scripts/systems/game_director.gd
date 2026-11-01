@@ -54,6 +54,7 @@ var _probe_count := 0
 var _best_depth := 0.0
 var _zero_t := 0.0
 var _startup_frames := 0
+var _debug_depth := false
 ## 保暖层受潮 0..1（CORE_GAMEPLAY §4）。
 var dampness := 0.0
 var _cloth_label: Label
@@ -260,6 +261,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if k == KEY_F10:
 		graphics.cycle()
+		return
+	if k == KEY_F3:
+		_debug_depth = not _debug_depth
+		var tb := get_tree().get_first_node_in_group("terrain")
+		if tb:
+			tb.set_debug_depth(_debug_depth)
+		ui.toast("Snow depth heatmap: grey <0.3 · blue <0.9 · green <1.5 · yellow <2.0 · orange ≥2.0 m  [F3]" if _debug_depth else "Heatmap off  [F3]", 4.0)
 		return
 	if k == KEY_F9:
 		ui.toast(Loc.t("Hold assist ON — tap once to probe / work / light fire  [F9]") if HoldAssist.toggle() else Loc.t("Hold assist OFF  [F9]"), 2.5)

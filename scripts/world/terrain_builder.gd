@@ -24,6 +24,10 @@ func _connect_atmosphere() -> void:
 		set_sun_dir(a.sun_dir)
 
 ## 雪面 shader 的太阳方向（来自 AtmosphereState）。
+func set_debug_depth(on: bool) -> void:
+	if _material:
+		_material.set_shader_parameter("debug_depth", on)
+
 func set_low_quality(on: bool) -> void:
 	if _material:
 		_material.set_shader_parameter("low_quality", on)

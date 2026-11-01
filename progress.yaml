@@ -38,7 +38,7 @@ phases:
     tasks:
       - {id: T1.1a, text: "高度函数 + 测试", status: done, note: "scripts/world/terrain_height.gd：world.ts buildTerrain 移植；6 assertions 通过（脊线最高、东坡更缓、法线/范围）"}
       - {id: T1.1b, text: "地形网格 + 碰撞", status: written-unverified, depends: [T1.1a], note: "terrain_builder.gd：SurfaceTool ArrayMesh + trimesh 碰撞，100×100 m；snapshots/m1_blockout_diorama.png 实机渲染；F5 走遍全图待人工"}
-      - {id: T1.2, text: "SnowField 雪深场 + 测试", status: written-unverified, depends: [T1.1a], note: "scripts/world/snow_field.gd + 8 assertions 通过（背风更深、范围、连续性）；探针仍读碰撞体 meta，T1.6 接入"}
+      - {id: T1.2, text: "SnowField 雪深场 + 测试", status: written-unverified, depends: [T1.1a], note: "SnowField + 8 assertions；探针已改读 SnowField（T1.6）；F3 开发热力图（D5 门槛等值线，snapshots/dev_snow_depth_heatmap.png）"}
       - {id: T1.3, text: "相机调参热键并定稿", status: superseded, note: "D8 改为移轴透视，由 V9 替代"}
       - {id: T1.4, text: "移动阻尼", status: written-unverified, note: "GameRules.move_speed：上坡 + 深雪衰减，Tuning Movement 组；test_game_rules 覆盖"}
       - {id: T1.5, text: "最小风粒子 + 避风传感器", status: written-unverified, depends: [T0.5], note: "风粒子读 WindData；暴露度 = 背风坡 + 树根 + 林木挡风（GameRules.fire_exposure）驱动体温与 AmbientAudio 风声低通（录音验证）"}
