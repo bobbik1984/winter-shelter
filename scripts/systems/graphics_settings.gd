@@ -91,6 +91,14 @@ func apply() -> void:
 	if env_node and env_node.environment:
 		env_node.environment.ssao_enabled = bool(p[1])
 		env_node.environment.glow_enabled = bool(p[3])
+		# T4.3 体积雾：只在高档开启（逆光穿林的暖色光幕，约 +6 ms GPU）
+		var env := env_node.environment
+		env.volumetric_fog_enabled = level == 2
+		env.volumetric_fog_density = 0.008
+		env.volumetric_fog_albedo = Color(0.86, 0.89, 0.96)
+		env.volumetric_fog_anisotropy = 0.6
+		env.volumetric_fog_length = 80.0
+		env.volumetric_fog_sky_affect = 0.0
 	var rig := get_tree().get_first_node_in_group("camera_rig")
 	if rig:
 		rig.dof_enabled = bool(p[2])
