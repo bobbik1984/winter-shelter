@@ -167,6 +167,9 @@ static func evaluate_shelter(
 - **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。
 - **本地化**：`Loc`（`scripts/ui/loc.gd`）按英文源串查中文表；`Loc.t("…%d…") % n`；`[L]` 切换并存 `user://settings.cfg`。新增玩家可见文字必须包 `Loc.t()` 并补表；`const` 里的文字在显示处再包。
 - **输入**：键盘为主；`GameInput.ensure_joypad()` 把手柄摇杆 / A / X 写进 InputMap，其余手柄键经 `GameInput.joy_to_key()` 转成等价键盘键。最好记录在 `Records`（`user://records.cfg`）。
+- **山谷轮换**：`TerrainHeight.SEED` 是静态变量（默认 7 = 测试基准）；`GameDirector._restart()` 在重载场景前切到 `VALLEY_SEEDS` 的下一个。只改噪声起伏与雪深分布，不改迎风坡—脊线—背风坡结构；所有建造器在 `_ready` 时读取，所以必须在重载前设置。
+- **启动守卫**：窗口在载入后会重建一次 swapchain；`GraphicsSettings` 与粒子（组 `deferred_particles`）都在第 30 帧后才应用 / 发射，避开引擎原生崩溃（见 todo.md）。
+- **致谢与许可**：暂停菜单 [C]，Godot MIT 文本来自 `Engine.get_license_text()`；随包字体许可在 `assets/fonts/`。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
