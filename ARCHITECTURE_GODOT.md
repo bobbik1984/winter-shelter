@@ -172,7 +172,7 @@ static func evaluate_shelter(
 - **致谢与许可**：暂停菜单 [C]，Godot MIT 文本来自 `Engine.get_license_text()`；随包字体许可在 `assets/fonts/`。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
-### 3.9 关卡阶梯（D12，L 轨道：L1–L5 已实现）
+### 3.9 关卡阶梯（D12 / D13：L1–L5、S1–S4、S6 已实现）
 
 - **`LevelDef`**（`scripts/resources/level_def.gd`，`Resource`）：`id`、课题文案键、`start_minutes`、天气池（权重）、`wind_speed_offset_kmh`、`snow_depth_scale` / `snow_contrast`、`snag_density_scale`、`wind_rotation_choices`（或抖动范围）、`target_presets`（只给机器人与报告文案用，不限制玩家）。实例在 `resources/levels/level_01.tres … level_05.tres`；自由模式 = `level_free.tres`（全部为现有默认值）。
 - **`LevelState`**（静态，同 `TerrainHeight.SEED` 的生命周期）：当前 `LevelDef` + 本局种子 + 抽取结果（山谷、风向旋转、天气、第 5 关雪深档位）。**必须在重载 `main.tscn` 之前设置**，因为地形、雪深场、森林、雪枕、资源都在 `_ready` 时构建。
@@ -181,6 +181,7 @@ static func evaluate_shelter(
 - **进度与选择（L4）**：`Records`（`static var path`，默认 `user://records.cfg`）存 `[progress] highest_unlocked / last_level` 与每关最好记录；`Records.default_level()` 决定开局关。`LevelState.auto_begin`（默认 true）让真实游戏总在关卡模式；**测试工具（playtest_bot / input_smoke_test / capture_snapshot）设为 false 保留固定基准，且把 `Records.path` 改到测试文件**——任何新工具 / 测试都不得写玩家的 `records.cfg`。fuzz_test 走关卡模式（关卡与种子来自 `--seed`）。换关 = `LevelState.begin` + `reload_current_scene`（`GameDirector._go_to_level`）。
 - **地图坐标 vs 世界坐标（L3）**：`TerrainHeight.ROTATION_DEG`（90° 倍数）。`height_at` / `snow_depth_at` / `lee_factor_at` 先 `to_map()` 再算，所以地形网格、探针、散布、雪枕、远景边缘自动跟随；`gradient_at` / `normal_at` / `slope_at` 由 `height_at` 差分得到，也自动正确。**脚本里写死的坐标一律是地图坐标**，使用时 `TerrainHeight.to_world()` / `to_world3()`：出生点、固定枯木、树根、场景群落、脚印链、`KEEP_OUT`、剖面雪洞原点。视野走廊起点随出生点旋转，方向（相机前方 / 落日）不转。新加写死坐标时必须遵守，否则旋转后会落在错误的坡上。
 - **本图事实（L5）**：`SnowField.map_facts(tuning)` 2 m 网格采样可玩区，返回最深雪与各 D5 区间面积，按（山谷, 倍率, 斑驳度, 旋转）缓存。报告文案、教训只引用它，不写死数字。`LevelState.target_presets()` 给出本局目标路线（第 5 关随雪深档位）。
+- **章节 × 阶（S3）**：`LevelState.begin(章, 种子 = -1, 阶 = 1, 第 k 张图 = 0)`；种子 < 0 时 = `stage_seed(章, 阶, k)`（固定图）。`roll_for(def, seed, 难度)` 额外给出 `recipe`（TerrainRecipe）、`night_temp_offset_c`、`rootball_bonus`、`difficulty`；`apply_world` 写入 `TerrainHeight.RECIPE` 与 `MapLayout.DIFFICULTY / ROOTBALL_BONUS`。解锁是纯函数 `LevelState.unlocks_after(章, 阶, 结局)`，进度在 `Records.chapter_progress / record_stage_result / map_index / next_map / default_selection`。`LevelState.target_presets()` 对 storm_mix 按 `SnowField.map_facts` 实测选。报告要点 `NightReportText.level_takeaway(theme, …, ctx)`。
 - **地形配方（S1）**：`TerrainRecipe`（`scripts/world/terrain_recipe.gd`）：`shape`（ridge_valley / basin / lakeshore / cliff_band）、`roughness`、`tree_density`、`feature_i`（脊 / 岸 / 崖在规范帧网格中的位置）、`feature_h`。`TerrainHeight.RECIPE` 静态持有，`_height_from_grid` 按形态分派，`_lee_band` 给出形态的背风积雪带；`is_lake_at()` 湖面判定（地形网格顶点色 G 通道 = 湖面遮罩，shader 画冰）。默认配方与 S1 之前的地图逐位一致（`tests/test_terrain_recipe.gd` 的参考值）。开发参数 `--shape= --rough= --trees=`（`MainLevel._init`）。`SnowField.map_facts` 缓存键含配方。S3 前关卡都用默认配方。
 - **地物布局（S2）**：`MapLayout.get_layout()`（`scripts/world/map_layout.gd`）返回本图的出生点、交互枯木、树根盘、生态小岛、脚印链、剖面原点、避让圆（世界坐标），按（山谷, 配方, 旋转, 雪深旋钮）缓存。默认配方返回旧坐标（经 `to_world`），其它配方按规则在真实地形上挑选。`MainLevel`、`ResourceSpawner`、`ForestScatter`（避让圆 / 视野走廊起点）、`SceneryBuilder`、`ShelterCutawayRig` 都从这里读。**新增任何"放在某处"的东西都必须走 MapLayout，不得写死坐标。**
 - **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。

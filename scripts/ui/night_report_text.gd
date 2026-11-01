@@ -59,10 +59,11 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		lesson = Loc.t("Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing.")
 	return {"title": title, "outcome": outcome, "rows": rows, "conclusion": conclusion, "lesson": lesson}
 
-## D12 / L5 报告"本关要点"：本关的固定条件（用本图实测值）+ 对玩家选择的判断。
-## facts = SnowField.map_facts()；targets = LevelState.target_presets()。
-static func level_takeaway(level_index: int, targets: PackedStringArray, preset: String, outcome: String,
-		facts: Dictionary, wind_kmh: float, night_temp_c: float, t: Tuning) -> String:
+## D12 / L5 / D13 报告"本关要点"：本章主题的固定条件（用本图实测值）+ 对玩家选择的判断。
+## theme = LevelDef.theme；facts = SnowField.map_facts()；targets = LevelState.target_presets()；
+## ctx = {chapter, stage, wind_kmh, night_temp_c, start_minutes, sunset_minutes}。
+static func level_takeaway(theme: String, targets: PackedStringArray, preset: String, outcome: String,
+		facts: Dictionary, ctx: Dictionary, t: Tuning) -> String:
 	var mx := float(facts.get("max_depth", 0.0))
 	var names := Records.preset_names()
 	var target_names: Array[String] = []
@@ -70,17 +71,27 @@ static func level_takeaway(level_index: int, targets: PackedStringArray, preset:
 		target_names.append(String(names.get(p, p)))
 	var target_text := " / ".join(target_names)
 	var cond := ""
-	match level_index:
-		1: cond = Loc.t("Level 1 — deep snow (up to %.1f m) and a light %d km/h wind: dig into the lee slope, entrance away from the wind.") % [mx, int(round(wind_kmh))]
-		2: cond = Loc.t("Level 2 — only %d%% of this valley had snow deep enough for a cave (≥ %.1f m), in a few lee pockets. Probing finds them.") % [
-			int(round(float(facts.get("frac_cave", 0.0)) * 100.0)), t.snow_depth_cave_min_m]
-		3: cond = Loc.t("Level 3 — no snow here was deeper than %.1f m; a cave needs %.1f m. A trench works from %.1f m.") % [
-			mx, t.snow_depth_cave_min_m, t.snow_depth_trench_wall_min_m]
-		4: cond = Loc.t("Level 4 — the deepest snow was %.2f m, under the %.1f m needed to dig. A lean-to by a root plate with an all-night fire is what works.") % [
-			mx, t.snow_depth_trench_wall_min_m]
-		5: cond = Loc.t("Level 5 — storm night: %d km/h wind and %d °C. The deepest snow was %.1f m, so the shelter it allowed was: %s.") % [
-			int(round(wind_kmh)), int(round(night_temp_c)), mx, target_text]
-		_: return ""
+	match theme:
+		"deep_drift":
+			cond = Loc.t("Deep snow (up to %.1f m) and a %d km/h wind: dig into the lee slope, entrance away from the wind.") % [mx, int(round(float(ctx.get("wind_kmh", 0.0))))]
+		"hidden_pockets":
+			cond = Loc.t("Only %d%% of this valley had snow deep enough for a cave (≥ %.1f m), in a few lee pockets. Probing finds them.") % [
+				int(round(float(facts.get("frac_cave", 0.0)) * 100.0)), t.snow_depth_cave_min_m]
+		"blowdown":
+			var start := int(ctx.get("start_minutes", 900))
+			var light := int(round(float(ctx.get("sunset_minutes", 978)) - float(start)))
+			var cave_min := int(round((ShelterPreset.create_all_presets()["BasicCave"] as ShelterPreset).build_minutes_total))
+			cond = Loc.t("You started at %s with %d min of light; a snow cave takes about %d min to dig. A root plate is half a shelter: a lean-to and a fire go up in time.") % [
+				"%02d:%02d" % [start / 60, start % 60], light, cave_min]
+		"open_flat":
+			cond = Loc.t("No snow here was deeper than %.1f m; a cave needs %.1f m. A trench works from %.1f m.") % [
+				mx, t.snow_depth_cave_min_m, t.snow_depth_trench_wall_min_m]
+		"storm_mix":
+			cond = Loc.t("Storm night: %d km/h wind and %d °C. The deepest snow was %.1f m, so the shelter it allowed was: %s.") % [
+				int(round(float(ctx.get("wind_kmh", 0.0)))), int(round(float(ctx.get("night_temp_c", 0.0)))), mx, target_text]
+		_:
+			return ""
+	var head := Loc.t("Chapter %d · stage %d — ") % [int(ctx.get("chapter", 0)), int(ctx.get("stage", 1))]
 	var good := outcome == "SAFE" or outcome == "COLD"
 	var verdict := ""
 	if preset == "None":
@@ -91,7 +102,7 @@ static func level_takeaway(level_index: int, targets: PackedStringArray, preset:
 		verdict = Loc.t("%s got you through, but %s fits these conditions better.") % [String(names.get(preset, preset)), target_text]
 	else:
 		verdict = Loc.t("%s was the harder road here; %s fits these conditions.") % [String(names.get(preset, preset)), target_text]
-	return cond + ("" if Loc.is_zh() else " ") + verdict
+	return head + cond + ("" if Loc.is_zh() else " ") + verdict
 
 static func _label(key: String) -> String:
 	for a in AXES:

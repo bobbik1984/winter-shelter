@@ -230,23 +230,31 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 		v.add_child(alt)
 	return shade
 
-## 关卡行（D12 / L4）：1 2 3 4 5 Free，当前关高亮、未解锁变暗；下面是本关课题与种子。
-func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
+## 章节行 + 阶行（D12 / D13）：1 2 3 4 5 Free（←/→）、阶 1–10（↑/↓），当前高亮、未开放变暗；下面是标题、课题、庇护所 / 装备、图号与种子。
+func _chip_row(v: VBoxContainer, head_text: String, chips: Array, prefix: String, row_name: String) -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 14)
-	var head := _label(Loc.t("[←] LEVEL [→]"), 14, MUTED)
-	row.add_child(head)
-	for chip in level.get("chips", []):
+	row.add_theme_constant_override("separation", 12)
+	row.add_child(_label(head_text, 13, MUTED))
+	for chip in chips:
 		var cur := bool(chip["current"])
 		var open := bool(chip["unlocked"])
 		var text := ("[ %s ]" % chip["label"]) if cur else String(chip["label"])
 		var col := AMBER if cur else (CREAM if open else Color(MUTED, 0.35))
-		var l := _label(text, 20 if cur else 16, col)
-		l.name = "LevelChip_%s" % chip["label"]
+		var l := _label(text, 19 if cur else 15, col)
+		l.name = "%s%s" % [prefix, chip["label"]]
 		row.add_child(l)
-	row.name = "LevelRow"
+	row.name = row_name
 	v.add_child(row)
+
+func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
+	_chip_row(v, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")
+	if not (level.get("stage_chips", []) as Array).is_empty():
+		_chip_row(v, Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
+	var title := _label(String(level.get("title", "")), 15, CREAM)
+	title.name = "LevelTitle"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(title)
 	var lesson := _label(String(level.get("lesson", "")), 17, CREAM)
 	lesson.name = "LevelLesson"
 	lesson.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -257,11 +265,13 @@ func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
 		sh.name = "LevelShelters"
 		sh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(sh)
-	var meta := Loc.t("Seed %d") % int(level.get("seed", 0))
+	var meta := Loc.t("Map %d  [N] new map   ·   Seed %d") % [int(level.get("map", 1)), int(level.get("seed", 0))]
 	if String(level.get("locked_hint", "")) != "":
 		meta += "   ·   " + String(level["locked_hint"])
 	var ml := _label(meta, 12, MUTED)
+	ml.name = "LevelMeta"
 	ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(ml)
 
 ## 野外手册（参考图右侧 KEY RESOURCES / READ THE LAND 两块）：[H] 开关。

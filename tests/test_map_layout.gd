@@ -48,7 +48,7 @@ func run() -> Dictionary:
 				var sd: Vector2 = L["special_deadwood"]
 				_check(sd.distance_to(sp) >= 5.0 and sd.distance_to(sp) <= 12.0 and not TerrainHeight.is_lake_at(sd.x, sd.y), tag + "：交互枯木在出生点 5–12 m")
 				var roots: Array = L["rootballs"]
-				_check(roots.size() == MapLayout.ROOTBALL_COUNT, tag + "：%d 个树根盘（实际 %d）" % [MapLayout.ROOTBALL_COUNT, roots.size()])
+				_check(roots.size() == MapLayout.rootball_count(), tag + "：%d 个树根盘（实际 %d）" % [MapLayout.rootball_count(), roots.size()])
 				var ok_r := true
 				for a in range(roots.size()):
 					var p: Vector2 = roots[a]

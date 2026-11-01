@@ -33,6 +33,8 @@ var weather_kind: String = "clear"
 var day_start_minutes: float = 860.0
 ## D12 关卡风速偏移（km/h），叠加在 WindData.speed_kmh 上。
 var wind_offset_kmh: float = 0.0
+## D13 §9.6 夜间气温偏移（°C，负 = 更冷）。
+var night_temp_offset_c: float = 0.0
 var _last_wind_int := -1
 var _last_temp_int := 999
 
@@ -47,6 +49,7 @@ func _ready() -> void:
 	if LevelState.active():
 		current_time_minutes = float(LevelState.roll.get("start_minutes", tuning.start_minutes))
 		wind_offset_kmh = float(LevelState.roll.get("wind_speed_offset_kmh", 0.0))
+		night_temp_offset_c = float(LevelState.roll.get("night_temp_offset_c", 0.0))
 	day_start_minutes = current_time_minutes
 	time_scale = 3600.0 / maxf(tuning.real_seconds_per_game_hour, 1.0)
 	sunset_minutes = SunModel.sunset_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
@@ -147,7 +150,7 @@ func current_temp_c() -> float:
 
 ## 夜间气温：暴风雪夜更冷。
 func night_temp_c() -> float:
-	return tuning.temp_at_night_c - (tuning.storm_extra_cold_c if weather_kind == "storm" else 0.0)
+	return tuning.temp_at_night_c + night_temp_offset_c - (tuning.storm_extra_cold_c if weather_kind == "storm" else 0.0)
 
 func forecast_text() -> String:
 	match weather_kind:

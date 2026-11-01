@@ -29,7 +29,7 @@ const GRID_STEP := 4.0          # 候选点网格（m）
 const SPAN := 40.0              # 候选范围 ±m
 const SPAWN_MAX_SLOPE := 12.0
 const SPAWN_DEEP_DIST := Vector2(8.0, 24.0)   # 出生点到最近雪洞深度点的理想距离（m）
-const ROOTBALL_COUNT := 3
+const ROOTBALL_COUNT := 3   # 旧地图的数量；规则布局用 rootball_count()（随难度 / 风倒区）
 const ROOTBALL_DIST := Vector2(10.0, 34.0)
 const ROOTBALL_SPACING := 12.0
 const ROOTBALL_MAX_SLOPE := 15.0
@@ -40,12 +40,20 @@ const DEEP_SNOW_M := 1.5        # = D5 雪洞门槛（只用于"出生点离深�
 ## 雪洞深度的雪至少占候选点的这个比例，才把"离深雪够得着"计入出生点打分（盆地里零星一两处不算：那张图的答案本来就不是雪洞）。
 const DEEP_MIN_FRACTION := 0.02
 
+## D13 §9.6 难度（0 = 第 1 阶，1 = 第 10 阶）与额外树根盘（风倒区章节）。由 LevelState.apply_world 设置。
+static var DIFFICULTY: float = 0.0
+static var ROOTBALL_BONUS: int = 0
+
+## 本图树根盘数量：难度越高越少（4 → 2），风倒区章节另加。
+static func rootball_count() -> int:
+	return maxi(int(round(lerpf(4.0, 2.0, DIFFICULTY))) + ROOTBALL_BONUS, 1)
+
 static var _key := ""
 static var _cache: Dictionary = {}
 
 static func _current_key() -> String:
-	return "%d|%s|%f|%f|%f" % [TerrainHeight.SEED, TerrainHeight.RECIPE.describe(), TerrainHeight.ROTATION_DEG,
-		TerrainHeight.SNOW_SCALE, TerrainHeight.SNOW_PATCHINESS]
+	return "%d|%s|%f|%f|%f|%f|%d" % [TerrainHeight.SEED, TerrainHeight.RECIPE.describe(), TerrainHeight.ROTATION_DEG,
+		TerrainHeight.SNOW_SCALE, TerrainHeight.SNOW_PATCHINESS, DIFFICULTY, ROOTBALL_BONUS]
 
 ## 本图布局：{spawn, special_deadwood, rootballs[], clusters[], footprint_start, footprint_end, cutaway, keep_out[]}
 ## 点均为世界坐标 Vector2(x, z)；keep_out 为 Vector3(x, z, 半径)。legacy = 是否旧地图布局。
@@ -121,7 +129,9 @@ static func _by_rules() -> Dictionary:
 			var d := 1e9
 			for q in deep:
 				d = minf(d, p.distance_to(q))
-			score -= maxf(0.0, SPAWN_DEEP_DIST.x - d) * 1.0 + maxf(0.0, d - SPAWN_DEEP_DIST.y) * 0.6
+			# 难度越高，深雪离出生点越远（8–24 m → 16–32 m）
+			var band := SPAWN_DEEP_DIST + Vector2(8.0, 8.0) * DIFFICULTY
+			score -= maxf(0.0, band.x - d) * 1.0 + maxf(0.0, d - band.y) * 0.6
 		if score > best:
 			best = score
 			spawn_p = p
@@ -144,7 +154,7 @@ static func _by_rules() -> Dictionary:
 	var order: Array[Vector2] = cands.duplicate()
 	order.sort_custom(func(a: Vector2, b: Vector2) -> bool: return _jitter(a, 6) > _jitter(b, 6))
 	for p in order:
-		if roots.size() >= ROOTBALL_COUNT:
+		if roots.size() >= rootball_count():
 			break
 		var d := p.distance_to(spawn_p)
 		if d < ROOTBALL_DIST.x or d > ROOTBALL_DIST.y or not _ok_ground(p, ROOTBALL_MAX_SLOPE) or _near_steep(p, 4.0):

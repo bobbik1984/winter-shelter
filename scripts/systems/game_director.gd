@@ -186,7 +186,8 @@ func _enter_briefing() -> void:
 
 func start_game() -> void:
 	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
-		"level": LevelState.level.index if LevelState.active() else -1, "seed": LevelState.game_seed})
+		"level": LevelState.level.index if LevelState.active() else -1, "stage": LevelState.stage, "map": LevelState.map_index,
+		"seed": LevelState.game_seed, "terrain": TerrainHeight.RECIPE.describe()})
 	state = State.PLAYING
 	ui.show_briefing(false)
 	player.controls_enabled = true
@@ -247,9 +248,10 @@ func _show_report() -> void:
 	var report := NightSimulator.evaluate(input, tuning)
 	var data := NightReportText.build(report, input, tuning)
 	if LevelState.active() and not LevelState.level.is_free():
-		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.index, LevelState.target_presets(),
+		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.theme, LevelState.target_presets(),
 			String(input.get("shelter_type", "None")), String(data["outcome"]), SnowField.map_facts(tuning),
-			float(input.get("wind_speed_kmh", tuning.wind_speed_kmh)), weather.night_temp_c(), tuning)
+			{"chapter": LevelState.level.index, "stage": LevelState.stage, "wind_kmh": float(input.get("wind_speed_kmh", tuning.wind_speed_kmh)),
+			"night_temp_c": weather.night_temp_c(), "start_minutes": int(weather.day_start_minutes), "sunset_minutes": weather.sunset_minutes}, tuning)
 	var name_ := Loc.t("None — slept in the open")
 	if site:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
@@ -258,7 +260,7 @@ func _show_report() -> void:
 	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "warmth": int(warmth.body_warmth)})
 	SessionLog.close()
 	var lvl := LevelState.level.index if LevelState.active() else 0
-	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day, LevelState.stage), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
 	_unlock_after_report(lvl, String(data["outcome"]))
 	_learn_after_report(String(input.get("shelter_type", "None")), String(data["outcome"]))
 
@@ -319,15 +321,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				_last_minutes = weather.current_time_minutes
 				start_game()
 			elif k == KEY_LEFT or k == KEY_RIGHT:
-				_switch_level(-1 if k == KEY_LEFT else 1)
+				_switch_chapter(-1 if k == KEY_LEFT else 1)
+			elif k == KEY_UP or k == KEY_DOWN:
+				_switch_stage(-1 if k == KEY_DOWN else 1)
+			elif k == KEY_N:
+				_new_map()
 			elif k == KEY_L:
 				_toggle_lang()
 				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
 		State.REPORT:
 			if k == KEY_R:
 				_restart()
-			elif (k == KEY_ENTER or k == KEY_KP_ENTER) and _next_level() >= 0:
-				_go_to_level(_next_level())
+			elif (k == KEY_ENTER or k == KEY_KP_ENTER) and _next_stage().x >= 0:
+				_go_to(_next_stage().x, _next_stage().y)
 		State.PAUSED:
 			match k:
 				KEY_ESCAPE, KEY_P: _set_paused(false)
@@ -353,16 +359,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_F: _begin_fire()
 				KEY_N: _request_sleep()
 
-## 重开：关卡模式下同一关重新抽取（新种子）；否则换到下一个山谷（同一结构、不同的起伏与雪深分布）。再重载场景。
-func _restart() -> void:
-	if LevelState.active():
-		LevelState.begin(LevelState.level.index)
-		get_tree().reload_current_scene()
-		return
-	var seeds: Array = TerrainHeight.VALLEY_SEEDS
-	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
-	get_tree().reload_current_scene()
-
 ## 环境卡提示行（V3）。简报时也刷新一次，否则显示的是 hud.tscn 的空默认值。
 func _update_hint() -> void:
 	if hud and hud.has_node("TopRightCard/VBox/HintLabel"):
@@ -372,35 +368,6 @@ func _update_hint() -> void:
 			GameRules.wind_word(wind.from_octant()))
 
 # ------------------------------------------------------------------ 关卡（D12 / L4）
-
-## 简报页的关卡信息（GameUI 渲染）；不在关卡模式时为空。
-func _level_info() -> Dictionary:
-	if not LevelState.active():
-		return {}
-	var hi := Records.highest_unlocked()
-	var chips: Array = []
-	for idx in LevelState.ORDER:
-		chips.append({"label": Loc.t("Free") if idx == 0 else str(idx), "current": idx == LevelState.level.index,
-			"unlocked": LevelState.is_unlocked(idx, hi)})
-	var locked_hint := ""
-	if hi <= LevelState.LEVEL_COUNT:
-		locked_hint = Loc.t("Reach COLD or SAFE on level %d to unlock the next.") % hi
-	var names := Records.preset_names()
-	var learned := Records.learned_shelters()
-	var known: Array[String] = []
-	var new_here: Array[String] = []
-	for p in LevelState.available_presets(learned):
-		if p in learned:
-			known.append(String(names.get(p, p)))
-		else:
-			new_here.append(String(names.get(p, p)))
-	var shelters := Loc.t("Shelters you know: %s") % ", ".join(known)
-	shelters += "\n" + _gear_text()
-	if not new_here.is_empty():
-		shelters += "   ·   " + Loc.t("New here: %s") % ", ".join(new_here)
-	return {"index": LevelState.level.index, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed, "shelters": shelters,
-		"chips": chips, "best": Records.level_best(LevelState.level.index) if not LevelState.level.is_free() else Records.text(),
-		"locked_hint": locked_hint, "full_day_option": LevelState.level.is_free()}
 
 ## 简报页装备一行（S6）。
 func _gear_text() -> String:
@@ -417,26 +384,6 @@ func _gear_text() -> String:
 		items.append(", ".join(carried))
 	return Loc.t("Gear: %s") % " · ".join(items)
 
-## 简报页 ←/→：换到相邻的已解锁关，重新抽取并重载场景（地形 / 雪 / 风在 _ready 时构建）。
-func _switch_level(step: int) -> void:
-	if not LevelState.active():
-		return
-	var idx := LevelState.step_unlocked(LevelState.level.index, step, Records.highest_unlocked())
-	if idx != LevelState.level.index:
-		_go_to_level(idx)
-
-func _go_to_level(idx: int) -> void:
-	Records.set_last_level(idx)
-	LevelState.begin(idx)
-	get_tree().reload_current_scene()
-
-## 报告页 [Enter]：下一关（已解锁才有；第 5 关之后 = 自由模式 0）。−1 = 没有。
-func _next_level() -> int:
-	if not LevelState.active() or LevelState.level.is_free():
-		return -1
-	var nxt := LevelState.level.index + 1 if LevelState.level.index < LevelState.LEVEL_COUNT else 0
-	return nxt if LevelState.is_unlocked(nxt, Records.highest_unlocked()) else -1
-
 ## D13 §9.2：用某种庇护所熬过一夜 = 学会它（只在关卡模式里记；测试 / 机器人基准不写）。
 func _learn_after_report(preset: String, outcome: String) -> void:
 	if not LevelState.active():
@@ -446,17 +393,119 @@ func _learn_after_report(preset: String, outcome: String) -> void:
 		ui.toast(Loc.t("You've learned the %s — you can use it on any level now.") % name_, 7.0)
 		ui.add_report_line(Loc.t("Learned: %s") % name_)
 
-func _unlock_after_report(lvl: int, outcome: String) -> void:
-	if lvl < 1:
+# ------------------------------------------------------------------ 章节 × 阶（D13 / S3）
+
+## 重开：章节模式 = 同一阶、同一张图再来一次（换图用简报页 [N]）；否则换到下一个山谷。再重载场景。
+func _restart() -> void:
+	if LevelState.active():
+		LevelState.begin(LevelState.level.index, LevelState.game_seed, LevelState.stage, LevelState.map_index)
+		get_tree().reload_current_scene()
 		return
-	var before := Records.highest_unlocked()
-	var after := Records.record_level_result(lvl, outcome)
-	if after > before:
-		ui.toast(Loc.t("Free play unlocked!") if after > LevelState.LEVEL_COUNT else Loc.t("Level %d unlocked!") % after, 6.0)
-	if LevelState.unlocks_next(outcome):
-		ui.add_report_line(Loc.t("[Enter] next: free play") if lvl == LevelState.LEVEL_COUNT else Loc.t("[Enter] next level"))
-	else:
-		ui.add_report_line(Loc.t("Reach COLD or SAFE to unlock the next level.  [R] try again (new conditions)"))
+	var seeds: Array = TerrainHeight.VALLEY_SEEDS
+	TerrainHeight.SEED = seeds[(seeds.find(TerrainHeight.SEED) + 1) % seeds.size()]
+	get_tree().reload_current_scene()
+
+## 简报页的章节 / 阶信息（GameUI 渲染）；不在关卡模式时为空。
+func _level_info() -> Dictionary:
+	if not LevelState.active():
+		return {}
+	var ch := LevelState.level.index
+	var chips: Array = []
+	for idx in LevelState.ORDER:
+		chips.append({"label": Loc.t("Free") if idx == 0 else str(idx), "current": idx == ch,
+			"unlocked": Records.stage_unlocked(idx, 1)})
+	var stage_chips: Array = []
+	if ch >= 1:
+		for st in range(1, LevelState.STAGES + 1):
+			stage_chips.append({"label": str(st), "current": st == LevelState.stage, "unlocked": Records.stage_unlocked(ch, st)})
+	var locked_hint := ""
+	if ch >= 1:
+		var hi := Records.chapter_highest(ch)
+		if hi < LevelState.STAGES:
+			locked_hint = Loc.t("COLD or SAFE on stage %d opens stage %d.") % [hi, hi + 1]
+		if ch < LevelState.LEVEL_COUNT and not Records.stage_unlocked(ch + 1, 1):
+			locked_hint += ("   ·   " if locked_hint != "" else "") + Loc.t("Pass stage %d to open chapter %d.") % [LevelState.CHAPTER_GATE_STAGE, ch + 1]
+	var names := Records.preset_names()
+	var learned := Records.learned_shelters()
+	var known: Array[String] = []
+	var new_here: Array[String] = []
+	for p in LevelState.available_presets(learned):
+		if p in learned:
+			known.append(String(names.get(p, p)))
+		else:
+			new_here.append(String(names.get(p, p)))
+	var shelters := Loc.t("Shelters you know: %s") % ", ".join(known)
+	shelters += "\n" + _gear_text()
+	if not new_here.is_empty():
+		shelters = shelters.replace("\n", "   ·   " + Loc.t("New here: %s") % ", ".join(new_here) + "\n")
+	var title := Loc.t("Free play") if ch == 0 else Loc.t("Chapter %d · Stage %d  (%d of 50)") % [ch, LevelState.stage, LevelState.global_stage()]
+	return {"index": ch, "title": title, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed,
+		"map": LevelState.map_index + 1, "shelters": shelters, "chips": chips, "stage_chips": stage_chips,
+		"best": Records.stage_best(ch, LevelState.stage) if ch >= 1 else Records.text(),
+		"locked_hint": locked_hint, "full_day_option": ch == 0}
+
+## 简报页 ←/→：换章（到该章已开放的最高阶），↑/↓：本章内换阶，[N]：本阶换一张新图。都会重载场景。
+func _switch_chapter(step: int) -> void:
+	if not LevelState.active():
+		return
+	var pos := LevelState.ORDER.find(LevelState.level.index)
+	for k in range(1, LevelState.ORDER.size()):
+		var idx: int = LevelState.ORDER[posmod(pos + step * k, LevelState.ORDER.size())]
+		if Records.stage_unlocked(idx, 1):
+			_go_to(idx, maxi(Records.chapter_highest(idx), 1) if idx >= 1 else 1)
+			return
+
+func _switch_stage(step: int) -> void:
+	if not LevelState.active() or LevelState.level.is_free():
+		return
+	var ch := LevelState.level.index
+	var st := LevelState.stage + step
+	if st >= 1 and st <= LevelState.STAGES and Records.stage_unlocked(ch, st):
+		_go_to(ch, st)
+
+func _new_map() -> void:
+	if not LevelState.active():
+		return
+	var ch := LevelState.level.index
+	var k := Records.next_map(ch, LevelState.stage)
+	LevelState.begin(ch, -1, LevelState.stage, k)
+	get_tree().reload_current_scene()
+
+func _go_to(ch: int, st: int) -> void:
+	Records.set_last_selection(ch, st)
+	LevelState.begin(ch, -1, st, Records.map_index(ch, st))
+	get_tree().reload_current_scene()
+
+## 报告页 [Enter]：本章下一阶；第 10 阶之后 = 下一章第 1 阶（第 5 章之后 = 自由模式）。Vector2i(-1, -1) = 没有。
+func _next_stage() -> Vector2i:
+	if not LevelState.active() or LevelState.level.is_free():
+		return Vector2i(-1, -1)
+	var ch := LevelState.level.index
+	var st := LevelState.stage
+	if st < LevelState.STAGES and Records.stage_unlocked(ch, st + 1):
+		return Vector2i(ch, st + 1)
+	var nch := ch + 1 if ch < LevelState.LEVEL_COUNT else 0
+	if Records.stage_unlocked(nch, 1):
+		return Vector2i(nch, 1)
+	return Vector2i(-1, -1)
+
+func _unlock_after_report(ch: int, outcome: String) -> void:
+	if ch < 1:
+		return
+	var news := Records.record_stage_result(ch, LevelState.stage, outcome)
+	var msgs: Array[String] = []
+	if int(news["stage"]) > 0:
+		msgs.append(Loc.t("Stage %d unlocked!") % int(news["stage"]))
+	if int(news["chapter"]) > 0:
+		msgs.append(Loc.t("Chapter %d unlocked!") % int(news["chapter"]))
+	if bool(news["free"]):
+		msgs.append(Loc.t("Free play unlocked!"))
+	if not msgs.is_empty():
+		ui.toast("  ".join(msgs), 6.0)
+	if _next_stage().x >= 0 and LevelState.unlocks_next(outcome):
+		ui.add_report_line(Loc.t("[Enter] next stage   ·   [R] same place again"))
+	elif not LevelState.unlocks_next(outcome):
+		ui.add_report_line(Loc.t("Reach COLD or SAFE to unlock the next stage.  [R] try the same place again"))
 
 ## 简报第一句：本局真实的开局时刻、气温、风向风速、日落与剩余天光（关卡会改这些）。
 func _briefing_intro() -> String:
@@ -465,7 +514,8 @@ func _briefing_intro() -> String:
 	return (Loc.t("January 14, %s. %d °C, wind from the %s at %d km/h; the sun sets at %s.\n") % [
 		"%02d:%02d" % [sm / 60, sm % 60], int(round(weather.current_temp_c())),
 		GameRules.wind_word(wind.from_octant()), int(round(weather.current_wind_kmh())), weather.sunset_clock()]) \
-		+ Loc.t("You have about %d hours of light to read the land, gather what you need and build a shelter for the night.\n\n") % hours
+		+ (Loc.t("You have about an hour of light to read the land, gather what you need and build a shelter for the night.\n\n") if hours == 1
+			else Loc.t("You have about %d hours of light to read the land, gather what you need and build a shelter for the night.\n\n") % hours)
 
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]

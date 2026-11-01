@@ -12,14 +12,16 @@ extends Node3D
 func _init() -> void:
 	var t := load("res://resources/tuning.tres") as Tuning
 	TerrainHeight.SADDLE = (t != null and t.ridge_saddle) or "--saddle" in OS.get_cmdline_user_args()
-	# D12：首次加载时进入关卡模式——命令行 --level=N [--seed=S] 优先，否则上次选的关 / 已解锁最高关。
-	# 之后的重开 / 换关由 GameDirector 先 LevelState.begin 再重载场景。测试工具关掉 auto_begin 保留旧基准。
+	# D12 / D13：首次加载时进入章节模式——命令行 --level=章 [--stage=阶] [--seed=S] 优先，否则上次选的章 / 阶（该阶当前那张图）。
+	# 之后的重开 / 换阶 / 换图由 GameDirector 先 LevelState.begin 再重载场景。测试工具关掉 auto_begin 保留旧基准。
 	if not LevelState.active():
 		var a := LevelState.parse_args(OS.get_cmdline_user_args())
 		if int(a["level"]) >= 0:
-			LevelState.begin(int(a["level"]), int(a["seed"]))
+			var st := maxi(int(a["stage"]), 1)
+			LevelState.begin(int(a["level"]), int(a["seed"]), st, Records.map_index(int(a["level"]), st))
 		elif LevelState.auto_begin:
-			LevelState.begin(Records.default_level())
+			var sel := Records.default_selection()
+			LevelState.begin(sel.x, -1, sel.y, Records.map_index(sel.x, sel.y))
 	LevelState.apply_world()
 	# 开发参数（S1）：--shape=basin|lakeshore|cliff_band [--rough=x] [--trees=x] 覆盖地形配方
 	var dev_recipe := TerrainRecipe.from_args(OS.get_cmdline_user_args())

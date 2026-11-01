@@ -45,16 +45,21 @@ func run() -> Dictionary:
 		and is_equal_approx(free.snag_density_scale, 1.0) and is_equal_approx(free.wind_speed_offset_kmh, 0.0), "自由模式环境倍率应全部为 1 / 0")
 
 	# 课题固定条件（CORE_GAMEPLAY §8.1 / §8.2）
-	_check(defs[1].start_minutes == tuning.full_day_start_minutes, "第 1 关 10:00 开局（= Tuning.full_day_start_minutes）")
-	_check(defs[1].wind_speed_offset_kmh < 0.0, "第 1 关风偏弱")
-	_check(defs[1].snow_depth_scale_choices[0] > 1.0, "第 1 关深雪")
-	_check(defs[2].snow_patchiness > 0.0, "第 2 关雪深更斑驳")
-	_check(defs[3].snow_depth_scale_choices[0] < 1.0 and defs[4].snow_depth_scale_choices[0] < defs[3].snow_depth_scale_choices[0], "第 3 / 4 关雪逐级变浅")
-	_check(defs[4].snag_density_scale > 1.0, "第 4 关立枯木更多")
-	_check(defs[5].weather_weight_storm > 0.0 and defs[5].weather_weight_clear == 0.0 and defs[5].weather_weight_overcast == 0.0, "第 5 关只有暴风雪将至")
-	_check(defs[5].snow_depth_scale_choices.size() >= 3, "第 5 关雪深三选一")
+	# 章节固定条件（CORE_GAMEPLAY §9.5）
+	_check(defs[1].theme == "deep_drift" and defs[2].theme == "hidden_pockets" and defs[3].theme == "blowdown"
+		and defs[4].theme == "open_flat" and defs[5].theme == "storm_mix", "五章主题按 §9.5 排列")
+	_check(defs[1].start_minutes == tuning.full_day_start_minutes and defs[1].start_minutes_hard > defs[1].start_minutes, "第 1 章第 1 阶 10:00 开局，第 10 阶更晚")
+	_check(defs[1].wind_speed_offset_kmh < 0.0 and defs[1].snow_depth_scale_choices[0] > 1.0, "第 1 章风偏弱、深雪")
+	_check(defs[2].snow_patchiness > 0.0 and defs[2].snow_patchiness_hard >= defs[2].snow_patchiness, "第 2 章雪深斑驳，越往后越斑驳")
+	_check(defs[3].start_minutes > tuning.start_minutes and defs[3].rootball_bonus > 0 and defs[3].target_presets == PackedStringArray(["LeanTo"]), "第 3 章：开工晚、树根盘多、目标倒棚")
+	_check(not ("ridge_valley" in defs[4].shape_choices) and defs[4].target_presets == PackedStringArray(["SnowTrench"]), "第 4 章：盆地 / 湖岸，目标雪沟")
+	_check(defs[5].weather_weight_storm > 0.0 and defs[5].weather_weight_clear == 0.0 and not defs[5].has_extra_layer and "cliff_band" in defs[5].shape_choices, "第 5 章：暴风雪、无保暖层、可能有悬崖")
+	for i in range(1, 6):
+		_check(defs[i].start_minutes_hard >= defs[i].start_minutes and defs[i].night_temp_offset_c_hard <= defs[i].night_temp_offset_c
+			and defs[i].wind_speed_offset_kmh_hard >= defs[i].wind_speed_offset_kmh and defs[i].snag_density_scale_hard <= defs[i].snag_density_scale,
+			"第 %d 章第 10 阶不比第 1 阶容易（开工、气温、风、柴）" % i)
 	for i in range(1, 5):
-		_check(defs[i].weather_weight_storm == 0.0, "第 %d 关不应出现暴风雪" % i)
+		_check(defs[i].weather_weight_storm == 0.0, "第 %d 章不应出现暴风雪" % i)
 
 	# 抽取：可复现 + 落在范围内 + 有多样性
 	for d in defs:
@@ -66,7 +71,7 @@ func run() -> Dictionary:
 		for s in range(1, SAMPLE_SEEDS + 1):
 			var a := LevelState.roll_for(d, s)
 			var b := LevelState.roll_for(d, s)
-			if a != b:
+			if _sig(a) != _sig(b):
 				_failures.append("关卡 %d 种子 %d 两次抽取不同" % [d.index, s])
 				in_range = false
 				break
@@ -107,32 +112,45 @@ func run() -> Dictionary:
 	_check_texts(defs, tuning)
 	_check_gear(defs, tuning)
 
-	# begin()
+	# begin()：章 / 阶 / 第 k 张图
 	var r := LevelState.begin(3, 4242)
-	_check(LevelState.level != null and LevelState.level.index == 3 and LevelState.game_seed == 4242, "begin(3, 4242) 设置关卡与种子")
-	_check(r == LevelState.roll_for(defs[3], 4242) and r == LevelState.roll, "begin 的结果 = roll_for")
-	LevelState.begin(2)
-	_check(LevelState.game_seed >= 1 and LevelState.game_seed <= LevelState.SEED_MAX, "未给种子时随机生成 1..SEED_MAX")
+	_check(LevelState.level != null and LevelState.level.index == 3 and LevelState.game_seed == 4242 and LevelState.stage == 1, "begin(3, 4242) 设置章、种子，默认第 1 阶")
+	_check(_sig(r) == _sig(LevelState.roll_for(defs[3], 4242, 0.0)) and _sig(r) == _sig(LevelState.roll), "begin 的结果 = roll_for")
+	LevelState.begin(2, -1, 7, 0)
+	var s70 := LevelState.game_seed
+	LevelState.begin(2, -1, 7, 0)
+	_check(LevelState.game_seed == s70 and LevelState.stage == 7, "同一阶同一张图 = 同一个种子（固定图）")
+	LevelState.begin(2, -1, 7, 1)
+	_check(LevelState.game_seed != s70, "[N] 第 2 张图换种子")
+	_check(LevelState.global_stage(2, 7) == 17 and LevelState.global_stage(5, 10) == 50 and LevelState.global_stage(0, 1) == 0, "全局阶号 1–50")
+	_check(is_equal_approx(LevelState.difficulty_of(1), 0.0) and is_equal_approx(LevelState.difficulty_of(10), 1.0), "难度：第 1 阶 0，第 10 阶 1")
+	var easy := LevelState.roll_for(defs[1], 99, 0.0)
+	var hard := LevelState.roll_for(defs[1], 99, 1.0)
+	_check(int(hard["start_minutes"]) > int(easy["start_minutes"]) and float(hard["night_temp_offset_c"]) < float(easy["night_temp_offset_c"])
+		and int(hard["rootball_bonus"]) == int(easy["rootball_bonus"]), "同种子第 10 阶开工更晚、夜更冷")
+	LevelState.begin(1, 5, 10)
+	LevelState.apply_world()
+	_check(MapLayout.DIFFICULTY == 1.0 and MapLayout.rootball_count() == 2, "第 10 阶布局难度 1：树根盘 2 个")
+	LevelState.begin(3, 5, 1)
+	LevelState.apply_world()
+	_check(MapLayout.rootball_count() == 7, "第 3 章第 1 阶风倒区：树根盘 4 + 3 = 7 个")
 	LevelState.begin(99, 7)
-	_check(LevelState.level.index == 0, "非法关卡回退到自由模式")
+	_check(LevelState.level.index == 0, "非法章回退到自由模式")
 	LevelState.reset()
-	_check(TerrainHeight.SNOW_SCALE == 1.0 and TerrainHeight.SNOW_PATCHINESS == 0.0, "reset() 复位雪深旋钮")
+	_check(TerrainHeight.SNOW_SCALE == 1.0 and TerrainHeight.SNOW_PATCHINESS == 0.0 and TerrainHeight.RECIPE.is_default() and MapLayout.DIFFICULTY == 0.0, "reset() 复位所有旋钮")
 
 	# 命令行
-	_check(LevelState.parse_args(PackedStringArray(["--level=3", "--seed=77"])) == {"level": 3, "seed": 77}, "--level=3 --seed=77")
+	_check(LevelState.parse_args(PackedStringArray(["--level=3", "--seed=77", "--stage=4"])) == {"level": 3, "seed": 77, "stage": 4}, "--level=3 --seed=77 --stage=4")
 	_check(LevelState.parse_args(PackedStringArray(["--level=free"]))["level"] == 0, "--level=free")
-	_check(LevelState.parse_args(PackedStringArray(["--level=9", "--seed=x", "--weather=storm"])) == {"level": -1, "seed": -1}, "非法参数忽略")
-	_check(LevelState.parse_args(PackedStringArray()) == {"level": -1, "seed": -1}, "无参数")
+	_check(LevelState.parse_args(PackedStringArray(["--level=9", "--seed=x", "--stage=11", "--weather=storm"])) == {"level": -1, "seed": -1, "stage": -1}, "非法参数忽略")
 
-	# 解锁规则（§8.4）
-	_check(LevelState.unlocks_next("SAFE") and LevelState.unlocks_next("COLD") and not LevelState.unlocks_next("DANGEROUS"), "COLD / SAFE 解锁，DANGEROUS 不解锁")
-	_check(LevelState.unlocked_after(1, 1, "COLD") == 2, "第 1 关 COLD → 解锁第 2 关")
-	_check(LevelState.unlocked_after(1, 1, "DANGEROUS") == 1, "第 1 关 DANGEROUS → 不变")
-	_check(LevelState.unlocked_after(4, 2, "SAFE") == 4, "重玩旧关不降低进度")
-	_check(LevelState.unlocked_after(3, 0, "SAFE") == 3, "自由模式不影响解锁")
-	_check(LevelState.unlocked_after(5, 5, "COLD") == 6, "通过第 5 关 → 开放自由模式")
-	_check(LevelState.is_unlocked(1, 0) and not LevelState.is_unlocked(2, 1), "新存档只开第 1 关")
-	_check(not LevelState.is_unlocked(0, 5) and LevelState.is_unlocked(0, 6), "自由模式在通过第 5 关后开放")
+	# 解锁规则（D13：COLD / SAFE 开下一阶；第 5 阶开下一章；第 5 章第 5 阶开自由模式）
+	_check(LevelState.unlocks_after(1, 1, "COLD") == {"stage": 2, "chapter": 0, "free": false}, "第 1 阶 COLD → 第 2 阶")
+	_check(LevelState.unlocks_after(1, 1, "DANGEROUS") == {"stage": 0, "chapter": 0, "free": false}, "DANGEROUS 不开放")
+	_check(LevelState.unlocks_after(2, 5, "SAFE") == {"stage": 6, "chapter": 3, "free": false}, "第 5 阶 → 第 6 阶 + 下一章")
+	_check(LevelState.unlocks_after(4, 10, "SAFE") == {"stage": 0, "chapter": 5, "free": false}, "第 10 阶之后没有第 11 阶")
+	_check(LevelState.unlocks_after(5, 5, "COLD")["free"] == true and LevelState.unlocks_after(5, 4, "COLD")["free"] == false, "第 5 章第 5 阶开自由模式")
+	_check(LevelState.unlocks_after(0, 1, "SAFE") == {"stage": 0, "chapter": 0, "free": false}, "自由模式不开放任何东西")
 	return {"passed": _passed, "failures": _failures}
 
 
@@ -156,34 +174,44 @@ func _band_fractions(step: float, tuning: Tuning) -> Dictionary:
 	return {"trench": float(ge_trench) / n, "cave": float(ge_cave) / n, "raised": float(ge_raised) / n}
 
 func _check_snow_bands(defs: Array[LevelDef], tuning: Tuning) -> void:
-	var seed0 := TerrainHeight.SEED
-	var base := {}
-	for v in TerrainHeight.VALLEY_SEEDS:
-		TerrainHeight.SEED = v
-		TerrainHeight.SNOW_SCALE = 1.0
-		TerrainHeight.SNOW_PATCHINESS = 0.0
-		base[v] = _band_fractions(2.0, tuning)
-		for li in range(defs.size()):
-			var d := defs[li]
-			for sc in d.snow_depth_scale_choices:
-				TerrainHeight.SNOW_SCALE = sc
-				TerrainHeight.SNOW_PATCHINESS = d.snow_patchiness
+	# D13：每章在真实抽到的图上（第 1 / 10 阶各 4 张）满足本章意图；所有章节都有积雪覆盖
+	for ch in range(1, 6):
+		var theme := defs[ch].theme
+		for st in [1, 10]:
+			for k in range(4):
+				LevelState.begin(ch, -1, st, k)
+				LevelState.apply_world()
 				var f := _band_fractions(2.0, tuning)
-				var tag := "关卡 %d 山谷 %d 倍率 %.2f" % [li, v, sc]
-				if sc == 1.0 and d.snow_patchiness == 0.0:
-					_check(f == base[v], tag + "：倍率 1 时雪深应与基础地图完全一致")
-				elif li == 1:
-					_check(f["cave"] > base[v]["cave"] and f["cave"] >= 0.4, tag + "：深雪（可挖雪洞）面积应更大且 ≥ 40%%（%.1f%%）" % (f["cave"] * 100.0))
-				elif li == 2:
-					_check(f["cave"] < base[v]["cave"] * 0.65 and f["raised"] >= 0.03, tag + "：深雪应明显变少但高床雪洞仍可建（洞 %.1f%% / 高床 %.1f%%）" % [f["cave"] * 100.0, f["raised"] * 100.0])
-				elif sc < 0.2:
-					_check(f["trench"] <= 0.03, tag + "：几乎没有能挖雪沟的地方（%.1f%%）" % (f["trench"] * 100.0))
-				elif sc < 1.0:
-					_check(f["cave"] == 0.0 and f["trench"] >= 0.7, tag + "：雪洞不可建、雪沟大部分可建（沟 %.1f%%）" % (f["trench"] * 100.0))
-	TerrainHeight.SEED = seed0
-	TerrainHeight.SNOW_SCALE = 1.0
-	TerrainHeight.SNOW_PATCHINESS = 0.0
+				var thin := _thin_land_fraction(tuning)
+				var tag := "第 %d 章第 %d 阶第 %d 张图（%s ×%.2f）" % [ch, st, k + 1, TerrainHeight.RECIPE.shape, TerrainHeight.SNOW_SCALE]
+				_check(thin <= 0.25, tag + "：有积雪覆盖（< 0.3 m 的陆地 %.0f%%）" % (thin * 100.0))
+				match theme:
+					"deep_drift":
+						_check(f["cave"] >= 0.3, tag + "：深雪多（雪洞深度 %.0f%%）" % (f["cave"] * 100.0))
+					"hidden_pockets":
+						_check(f["cave"] <= 0.3 and f["raised"] >= 0.02, tag + "：深雪少但高床雪洞仍可建（洞 %.0f%% / 高床 %.0f%%）" % [f["cave"] * 100.0, f["raised"] * 100.0])
+					"blowdown":
+						_check(f["trench"] >= 0.7, tag + "：雪能挖（雪沟深度 %.0f%%）" % (f["trench"] * 100.0))
+					"open_flat":
+						_check(f["cave"] <= 0.01 and thin <= 0.2, tag + "：没有雪洞深度、陆地上雪沟处处可挖（洞 %.1f%% / 陆地薄雪 %.0f%%）" % [f["cave"] * 100.0, thin * 100.0])
+					"storm_mix":
+						_check(f["trench"] >= 0.6, tag + "：至少雪沟可挖（%.0f%%）" % (f["trench"] * 100.0))
+	LevelState.reset()
 
+func _thin_land_fraction(tuning: Tuning) -> float:
+	var n := 0
+	var thin := 0
+	var x := -48.0
+	while x <= 48.0:
+		var z := -48.0
+		while z <= 48.0:
+			if not TerrainHeight.is_lake_at(x, z):
+				n += 1
+				if TerrainHeight.snow_depth_at(x, z) < tuning.snow_depth_trench_wall_min_m:
+					thin += 1
+			z += 4.0
+		x += 4.0
+	return float(thin) / maxf(n, 1)
 
 ## L3：风向 = 整图旋转。旋转后在"同一个地图点"上的高度 / 雪深 / 背风度不变；风向随之转；
 ## 地形结构相对风不变（迎风坡在上风侧、背风深雪在下风侧）。
@@ -231,18 +259,22 @@ func _check_rotation() -> void:
 func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 	for d in defs:
 		_check(Loc.ZH.has(d.lesson), "关卡 %d 课题缺中文：%s" % [d.index, d.lesson])
-	# 第 5 关目标路线随抽到的雪深档位
-	for s in range(1, 40):
-		LevelState.begin(5, s)
-		var sc := float(LevelState.roll["snow_depth_scale"])
+	# 第 5 章（自己判断）：目标 = 本图实测雪深允许的、玩家能用的庇护所
+	for k in range(6):
+		LevelState.begin(5, -1, 1, k)
+		LevelState.apply_world()
+		var f := SnowField.map_facts(t)
 		var tp := LevelState.target_presets()
-		var want := "RaisedCave" if sc >= 1.0 else ("SnowTrench" if sc >= 0.5 else "LeanTo")
-		if tp.size() != 1 or tp[0] != want:
-			_failures.append("第 5 关种子 %d 雪深 %.2f 的目标路线应为 %s，实际 %s" % [s, sc, want, str(tp)])
-			break
-	_passed += 1
-	LevelState.begin(3, 1)
-	_check(LevelState.target_presets() == PackedStringArray(["SnowTrench"]), "第 3 关目标 = 雪沟")
+		var ok := tp.size() == 1
+		if ok and tp[0] == "RaisedCave":
+			ok = float(f["frac_raised"]) >= LevelState.TARGET_MIN_FRACTION
+		elif ok and tp[0] == "BasicCave":
+			ok = float(f["frac_cave"]) >= LevelState.TARGET_MIN_FRACTION and float(f["frac_raised"]) < LevelState.TARGET_MIN_FRACTION or not ("RaisedCave" in LevelState.available_presets(Records.learned_shelters()))
+		elif ok and tp[0] == "SnowTrench":
+			ok = float(f["frac_cave"]) < LevelState.TARGET_MIN_FRACTION or not ("BasicCave" in LevelState.available_presets(Records.learned_shelters()))
+		_check(ok, "第 5 章第 %d 张图（%s，雪洞 %.0f%% / 高床 %.0f%%）的目标 %s 与实测一致" % [k + 1, TerrainHeight.RECIPE.shape, float(f["frac_cave"]) * 100.0, float(f["frac_raised"]) * 100.0, str(tp)])
+	LevelState.begin(4, 1)
+	_check(LevelState.target_presets() == PackedStringArray(["SnowTrench"]), "第 4 章目标 = 雪沟")
 	LevelState.reset()
 	_check(LevelState.target_presets().is_empty(), "非关卡模式没有目标路线")
 
@@ -268,24 +300,28 @@ func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 	lean["map_max_snow_m"] = 2.5
 	_check(NightReportText.build(rep, lean, t)["lesson"].contains("cave"), "有深雪的图上，倒棚教训可以建议雪洞")
 
-	# 报告"本关要点"：条件句引用实测值 + 判断
+	# 报告"本关要点"：章节主题 + 实测值 + 判断
+	var ctx := {"chapter": 4, "stage": 3, "wind_kmh": 32.0, "night_temp_c": -24.0, "start_minutes": 860, "sunset_minutes": 978.0}
 	var facts := {"max_depth": 1.37, "frac_cave": 0.0}
-	var ok3 := NightReportText.level_takeaway(3, PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, 32.0, -24.0, t)
-	_check(ok3.contains("1.4") and ok3.contains("read the land right"), "第 3 关雪沟 COLD：引用最深 1.4 m 并肯定（%s）" % ok3)
-	var wrong3 := NightReportText.level_takeaway(3, PackedStringArray(["SnowTrench"]), "BasicCave", "DANGEROUS", facts, 32.0, -24.0, t)
-	_check(wrong3.contains("Snow cave") and wrong3.contains("Trench"), "第 3 关硬挖雪洞：指出雪沟更合适（%s）" % wrong3)
-	var none4 := NightReportText.level_takeaway(4, PackedStringArray(["LeanTo"]), "None", "DANGEROUS", {"max_depth": 0.31}, 32.0, -24.0, t)
-	_check(none4.contains("0.31") and none4.contains("no shelter"), "第 4 关露天：引用 0.31 m（%s）" % none4)
-	var l2 := NightReportText.level_takeaway(2, PackedStringArray(["RaisedCave"]), "RaisedCave", "DANGEROUS", {"max_depth": 2.6, "frac_cave": 0.14}, 32.0, -24.0, t)
-	_check(l2.contains("14%") and l2.contains("Right choice"), "第 2 关：引用深雪面积 14%%（%s）" % l2)
-	var l5 := NightReportText.level_takeaway(5, PackedStringArray(["LeanTo"]), "LeanTo", "SAFE", {"max_depth": 0.3}, 52.0, -29.0, t)
-	_check(l5.contains("52") and l5.contains("-29") and l5.contains("Lean-to"), "第 5 关：引用风速 / 气温 / 目标（%s）" % l5)
-	_check(NightReportText.level_takeaway(0, PackedStringArray(), "None", "SAFE", facts, 0.0, 0.0, t) == "", "自由模式没有本关要点")
-	# 真实地图实测：第 3 关的图上最深雪 < 雪洞门槛（与文案一致）
-	LevelState.begin(3, 7)
+	var ok4 := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "SnowTrench", "COLD", facts, ctx, t)
+	_check(ok4.contains("1.4") and ok4.contains("read the land right") and ok4.contains("Chapter 4") and ok4.contains("stage 3"), "开阔平地雪沟 COLD：引用最深 1.4 m、章 / 阶并肯定（%s）" % ok4)
+	var wrong4 := NightReportText.level_takeaway("open_flat", PackedStringArray(["SnowTrench"]), "BasicCave", "DANGEROUS", facts, ctx, t)
+	_check(wrong4.contains("Snow cave") and wrong4.contains("Trench"), "开阔平地硬挖雪洞：指出雪沟更合适（%s）" % wrong4)
+	ctx["start_minutes"] = 905
+	var blow := NightReportText.level_takeaway("blowdown", PackedStringArray(["LeanTo"]), "None", "DANGEROUS", {"max_depth": 2.0}, ctx, t)
+	_check(blow.contains("15:05") and blow.contains("73 min") and blow.contains("no shelter"), "风倒区：引用开工时刻与剩余天光（%s）" % blow)
+	var l2 := NightReportText.level_takeaway("hidden_pockets", PackedStringArray(["RaisedCave"]), "RaisedCave", "DANGEROUS", {"max_depth": 2.6, "frac_cave": 0.14}, ctx, t)
+	_check(l2.contains("14%") and l2.contains("Right choice"), "隐藏深雪：引用深雪面积 14%%（%s）" % l2)
+	ctx["wind_kmh"] = 52.0
+	ctx["night_temp_c"] = -29.0
+	var l5 := NightReportText.level_takeaway("storm_mix", PackedStringArray(["LeanTo"]), "LeanTo", "SAFE", {"max_depth": 0.3}, ctx, t)
+	_check(l5.contains("52") and l5.contains("-29") and l5.contains("Lean-to"), "暴风雪：引用风速 / 气温 / 目标（%s）" % l5)
+	_check(NightReportText.level_takeaway("free", PackedStringArray(), "None", "SAFE", facts, ctx, t) == "", "自由模式没有本关要点")
+	# 真实地图实测：第 4 章（开阔平地）的图上最深雪 < 雪洞门槛（与文案一致）
+	LevelState.begin(4, 7)
 	LevelState.apply_world()
 	var f3 := SnowField.map_facts(t)
-	_check(float(f3["max_depth"]) < t.snow_depth_cave_min_m and float(f3["frac_cave"]) == 0.0, "第 3 关实测：没有能挖雪洞的地方（最深 %.2f m）" % float(f3["max_depth"]))
+	_check(float(f3["max_depth"]) < t.snow_depth_cave_min_m and float(f3["frac_cave"]) == 0.0, "第 4 章实测：没有能挖雪洞的地方（最深 %.2f m）" % float(f3["max_depth"]))
 	LevelState.reset()
 	_check(SnowField.map_facts(t)["max_depth"] > t.snow_depth_raised_cave_min_m, "复位后缓存失效：基础地图有高床雪洞深度")
 
@@ -309,3 +345,10 @@ func _check_gear(defs: Array[LevelDef], t: Tuning) -> void:
 	var with_pad := base.duplicate()
 	with_pad["bedding_quality"] = GameRules.bedding_with_pad(0.2, true, t)
 	_check(float(NightSimulator.evaluate(with_pad, t)["scores"]["insulation"]) > float(NightSimulator.evaluate(base, t)["scores"]["insulation"]), "带防潮垫的一夜隔热分更高")
+
+
+## 抽取结果的可比较签名（配方是对象，按描述比较）。
+func _sig(r: Dictionary) -> Dictionary:
+	var out := r.duplicate()
+	out["recipe"] = (r["recipe"] as TerrainRecipe).describe() if r.has("recipe") else ""
+	return out

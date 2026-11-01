@@ -10,6 +10,8 @@ extends Resource
 @export var index: int = 0
 ## [GAME] 简报页课题（英文源串，显示处再包 Loc.t；L5 补中文）。
 @export_multiline var lesson: String = ""
+## [GAME] 章节主题键（D13 §9.5）：deep_drift / hidden_pockets / blowdown / open_flat / storm_mix / free。报告"本关要点"按它选文案。
+@export var theme: String = "free"
 
 @export_group("Clock")
 ## [GAME] 开局时刻（分钟）。14:20 = 860；10:00 = 600（整个白天）。
@@ -32,6 +34,32 @@ extends Resource
 @export_group("Resources")
 ## [TUNE] 立枯木密度倍率（1 = 不变）。
 @export var snag_density_scale: float = 1.0
+
+@export_group("Difficulty (stage 10)")
+## D13 §9.6：同一章内第 1 阶 = 上面各字段的值，第 10 阶 = 下面的值，中间线性插值。[TUNE]
+@export var start_minutes_hard: int = 860
+@export var wind_speed_offset_kmh_hard: float = 0.0
+@export var snag_density_scale_hard: float = 1.0
+@export var snow_patchiness_hard: float = 0.0
+## [TUNE] 夜间气温偏移（°C，负 = 更冷），第 1 / 10 阶。
+@export var night_temp_offset_c: float = 0.0
+@export var night_temp_offset_c_hard: float = 0.0
+## [TUNE] 第 10 阶额外加到阴天权重上的值（光线更差、影子更淡）。
+@export var overcast_bonus_hard: float = 0.0
+
+@export_group("Terrain (D13)")
+## [GAME] 地形形态候选（TerrainRecipe.SHAPES）。
+@export var shape_choices: PackedStringArray = PackedStringArray(["ridge_valley"])
+## [TUNE] 起伏度 / 树木密度（第 1 / 10 阶）。树木密度可 > 1（更密的老林）。
+@export var roughness: float = 1.0
+@export var roughness_hard: float = 1.0
+@export var tree_density: float = 1.0
+@export var tree_density_hard: float = 1.0
+## [TUNE] 形态参数抖动：每张图的脊 / 岸 / 崖位置与高度在预设值附近随机（0 = 用预设值，旧地图）。
+@export var feature_jitter: float = 0.0
+## [GAME] 额外的树根盘（风倒区，第 1 / 10 阶）。
+@export var rootball_bonus: int = 0
+@export var rootball_bonus_hard: int = 0
 
 @export_group("Randomness")
 ## [GAME] 山谷候选（TerrainHeight 噪声种子）；为空 = 全部 TerrainHeight.VALLEY_SEEDS。

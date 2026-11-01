@@ -16,7 +16,7 @@ uniform bool debug_depth = false;
 uniform vec2 wind_blow = vec2(1.0, 0.0);
 // 薄雪露地（L5 如实表现）：雪深低于 bare_full_m 时地面 / 枯草从雪里露出，高于 bare_none_m 完全覆盖（米）。
 uniform float bare_full_m = 0.08;
-uniform float bare_none_m = 0.45;
+uniform float bare_none_m = 0.30;   // = D5 "太薄挖不了" 门槛：≥ 0.3 m 的雪足以盖住地面
 
 varying float snow_depth;
 varying float lake_mask;

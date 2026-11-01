@@ -12,17 +12,17 @@ Requires **Godot 4.3 stable** (Forward+, Vulkan).
 godot --path .            # play (or open the project in the Godot editor and press F5)
 ```
 
-The game starts on a briefing screen. There are **5 levels** of rising difficulty, then free play; each level teaches one thing and draws its own valley, wind direction and weather every time. **←/→** (gamepad LB/RB) = choose an unlocked level, **Enter** = begin, **L** = English / 中文; in free play, **2** = full day (10:00 start). A night that ends **COLD** or **SAFE** unlocks the next level; on the report, **Enter** = next level, **R** = retry with new conditions.
+The game starts on a briefing screen. There are **5 chapters × 10 stages** (stage 1 easy → stage 10 hard), then free play. Each chapter teaches one thing and uses its own kind of terrain (ridge valley, flat basin, lakeshore, cliff band) and gear; each stage keeps the same map until you ask for a new one. **←/→** = chapter, **↑/↓** = stage (gamepad LB/RB, d-pad), **N** = new map for this stage (gamepad Y), **Enter** = begin, **L** = English / 中文; in free play, **2** = full day. A night that ends **COLD** or **SAFE** opens the next stage; passing stage 5 opens the next chapter. On the report, **Enter** = next stage, **R** = same place again. Surviving a night in a shelter teaches it for every chapter (new players know the trench).
 
-| Level | Lesson |
+| Chapter | Lesson |
 | :-- | :-- |
-| 1 | Read the wind and dig a snow cave (deep snow, light wind, whole day from 10:00) |
-| 2 | Deep snow hides in a few places: probe before you dig |
-| 3 | Thin snow: no cave fits, dig a trench |
-| 4 | Barely any snow: lean-to by a root plate, gather wood for an all-night fire |
-| 5 | A storm is coming: read the land and pick the shelter it allows |
+| 1 | Read the wind and dig a snow cave (deep drifts, full kit, starts 10:00 at stage 1) |
+| 2 | Deep snow hides in a few pockets: probe before you dig |
+| 3 | Blowdown, little light: a root plate is half a shelter (lean-to + fire) |
+| 4 | Open flat ground or a lakeshore, shallow snow: dig a trench |
+| 5 | A storm, no extra layer: read the land and pick the shelter it allows |
 
-Developer flags (after `--`): `--level=N|free`, `--seed=S`, `--unlock-all`.
+Developer flags (after `--`): `--level=N|free` (chapter), `--stage=S`, `--seed=S`, `--unlock-all`, `--shape=basin|lakeshore|cliff_band`.
 
 ## How a game goes
 
