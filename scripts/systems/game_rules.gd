@@ -44,8 +44,24 @@ static func entrance_wind_angle(entrance_dir: Vector3, wind_from: Vector3) -> fl
 
 ## 火位 / 人的迎风暴露 0（背风 / 有挡风物）..1（完全迎风）。
 ## tree_cover 0..1：附近林木挡风（Read the Land：林子里风小）。
-static func fire_exposure(lee_factor: float, near_windbreak: bool, tree_cover: float = 0.0) -> float:
-	return clampf(1.0 - lee_factor - (0.45 if near_windbreak else 0.0) - 0.5 * clampf(tree_cover, 0.0, 1.0), 0.0, 1.0)
+## 暴露度 0..1。windbreak = 树根盘的挡风度 0..1（有方向：只有下风一侧被挡住，见 windbreak_shelter）。
+static func fire_exposure(lee_factor: float, windbreak: float, tree_cover: float = 0.0) -> float:
+	return clampf(1.0 - lee_factor - 0.75 * clampf(windbreak, 0.0, 1.0) - 0.5 * clampf(tree_cover, 0.0, 1.0), 0.0, 1.0)
+
+## 树根盘对 p 点的挡风度 0..1（第二次评审：以前 3.5 m 内一律算挡风，正对风的一侧也算——火照样被吹灭，规则和"去树根背风处"的提示对不上）。
+## 只挡下风一侧：p 在树根盘的正下风方 = 1，侧面逐渐减弱，迎风面 = 0；越靠近越挡得住。
+static func windbreak_shelter(windbreak_points: Array, p: Vector2, blow: Vector2, radius: float) -> float:
+	var best := 0.0
+	var b := blow.normalized()
+	for w in windbreak_points:
+		var off: Vector2 = p - (w as Vector2)
+		var d := off.length()
+		if d >= radius:
+			continue
+		var side := 1.0 if d < 0.3 else off.normalized().dot(b)
+		var s := smoothstep(-0.1, 0.6, side) * (1.0 - pow(d / radius, 2.0))
+		best = maxf(best, s)
+	return clampf(best, 0.0, 1.0)
 
 
 ## 林木挡风度：半径 r 内的树数量折算 0..1（每棵约 0.15，封顶 1）。
@@ -70,7 +86,7 @@ static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool
 		return {"ok": false, "reason": Loc.t("Fire put out by snow falling from the branches above. Move out from under the tree.")}
 	# 与 NightSimulator 同一条规则：暴露度超过 fire_blowout_dot 火就会被吹灭（白天 / 夜里一致）
 	if exposure > t.fire_blowout_dot:
-		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Find a leeward spot or a rootball to shelter it.")}
+		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Go right behind a root plate on its downwind side, or into a leeward hollow.")}
 	return {"ok": true, "reason": Loc.t("Fire lit.")}
 
 
@@ -130,7 +146,7 @@ static func work_efficiency(warmth_eff: float, minutes_to_sunset: float, t: Tuni
 ##       missing: String（下一阶段缺的材料，空 = 不缺）, next_stage: String, minutes_to_sunset: float, preset: String}
 static func next_objective(ctx: Dictionary, t: Tuning) -> String:
 	if bool(ctx.get("clothes_wet", false)):
-		return Loc.t("Your layers are wet and no longer warm — dry them by a fire [F].")
+		return Loc.t("Your layers are wet and no longer warm — dry them by a fire [F]: right behind a root plate on its downwind side, away from spruce branches.")
 	if bool(ctx.get("complete", false)):
 		if bool(ctx.get("needs_vent_stick", false)):
 			return Loc.t("Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).")

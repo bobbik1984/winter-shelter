@@ -93,6 +93,15 @@ func next_stage_cost() -> Dictionary:
 		return {}
 	return STAGE_COSTS.get(preset_id, [{}, {}, {}, {}, {}])[s]
 
+## 从下一阶到完工还需要的全部材料（第二次评审：倒棚最后一阶要桦皮，玩家到第 4 阶才发现）。
+func remaining_cost() -> Dictionary:
+	var out := {}
+	var costs: Array = STAGE_COSTS.get(preset_id, [{}, {}, {}, {}, {}])
+	for i in range(builder.current_stage, costs.size()):
+		for k in costs[i]:
+			out[k] = int(out.get(k, 0)) + int(costs[i][k])
+	return out
+
 func next_stage_title() -> String:
 	var p := builder.active_preset()
 	var s := builder.current_stage

@@ -39,7 +39,16 @@ func run() -> Dictionary:
 	_check(not GameRules.fire_check(4, 2, 0.95, false, false, t)["ok"], "迎风被吹灭")
 	_check(GameRules.fire_check(4, 2, 0.2, false, false, t)["ok"], "背风、材料齐全应能点燃")
 	_check(not GameRules.fire_check(4, 2, t.fire_blowout_dot + 0.05, false, false, t)["ok"], "白天吹灭阈值须与 NightSimulator 一致")
-	_check(GameRules.fire_exposure(0.2, true) < GameRules.fire_exposure(0.2, false), "挡风物降低暴露")
+	_check(GameRules.fire_exposure(0.2, 1.0) < GameRules.fire_exposure(0.2, 0.0), "挡风物降低暴露")
+	# 第二次评审：树根盘只挡下风一侧
+	var wbp: Array = [Vector2(0, 0)]
+	var blow := Vector2(1, 0)
+	_check(GameRules.windbreak_shelter(wbp, Vector2(1.5, 0), blow, 3.5) > 0.5, "树根盘正下风 1.5 m：挡得住")
+	_check(GameRules.windbreak_shelter(wbp, Vector2(-1.5, 0), blow, 3.5) == 0.0, "树根盘迎风一侧：挡不住")
+	_check(GameRules.windbreak_shelter(wbp, Vector2(0, 1.5), blow, 3.5) < GameRules.windbreak_shelter(wbp, Vector2(1.5, 0), blow, 3.5), "侧面比正下风挡得少")
+	_check(GameRules.windbreak_shelter(wbp, Vector2(5, 0), blow, 3.5) == 0.0, "离太远挡不住")
+	_check(GameRules.fire_exposure(0.0, GameRules.windbreak_shelter(wbp, Vector2(1.2, 0), blow, 3.5)) <= t.fire_blowout_dot, "开阔地上，紧贴树根盘下风一侧能生火（不被吹灭）")
+	_check(GameRules.fire_exposure(0.0, GameRules.windbreak_shelter(wbp, Vector2(-1.2, 0), blow, 3.5)) > t.fire_blowout_dot, "开阔地上，树根盘迎风一侧会被吹灭")
 
 	# 提示（V3）
 	_check(GameRules.tip_for(50.0, 6.0, 90.0, false, false, t).contains("lengthening"), "日落前 50 分钟应提示影子变长")

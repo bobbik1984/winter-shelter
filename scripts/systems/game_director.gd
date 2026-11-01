@@ -46,6 +46,10 @@ func _mark(event: String) -> void:
 var _saved_time_scale := 12.0
 var _sleep_confirm_t := 0.0
 var _fade_t := 0.0
+var _fade_start_ms := 0
+## 教程里标出的"可生火位置"（缓存，2 s 刷新）。
+var _fire_spot := Vector3.INF
+var _fire_spot_ms := -100000
 var _last_minutes := 0.0
 var _markers: Array[Node3D] = []
 var _deeper_count := 0
@@ -212,6 +216,7 @@ func _sleep(forced: bool) -> void:
 	_mark("sleep")
 	state = State.NIGHT_FADE
 	_fade_t = 0.0
+	_fade_start_ms = Time.get_ticks_msec()
 	player.controls_enabled = false
 	interaction.enabled = false
 	weather.time_scale = 0.0
@@ -579,7 +584,8 @@ func _process(delta: float) -> void:
 		State.PLAYING:
 			_tick_playing(delta)
 		State.NIGHT_FADE:
-			_fade_t += delta
+			# 按真实时间推进（第二次评审：软件渲染下每帧很慢，按帧 delta 累计会让黑屏卡很久）
+			_fade_t = float(Time.get_ticks_msec() - _fade_start_ms) / 1000.0
 			ui.set_fade(clampf(_fade_t / 1.2, 0.0, 1.0))
 			var vignette := _vignette_texture()
 			var total := tuning.night_fade_seconds + (3.5 if vignette else 0.0)
@@ -686,9 +692,9 @@ func _inside_site() -> bool:
 func _warmth_inputs() -> Dictionary:
 	var pos := player.global_position
 	var lee := SnowField.lee_factor_at(pos.x, pos.z)
-	var wb_d := ResourceSpawner.nearest_windbreak_distance(get_tree(), pos)
 	var cover := _tree_cover(pos)
-	var windbreak := maxf(1.0 - GameRules.fire_exposure(lee, wb_d < 3.0, cover), 0.0)
+	var wb := ResourceSpawner.windbreak_shelter(get_tree(), pos, wind.get_blow_direction_3d(), 3.0)
+	var windbreak := maxf(1.0 - GameRules.fire_exposure(lee, wb, cover), 0.0)
 	var level := site.shelter_level() if _inside_site() else 0
 	var fire := 0.0
 	for f in get_tree().get_nodes_in_group("campfires"):
@@ -911,13 +917,14 @@ func _place_site() -> void:
 	site = ShelterSite.new()
 	site.name = "ShelterSite"
 	site.setup(build.preset_id, build.entrance_dir, build.depth, build.slope, build.near_windbreak)
-	_site_probed = GameRules.probed_near(_probe_points, site.global_position, PROBE_NEAR_SITE_M)
 	if build.is_snow_preset():
 		site.quick_roof = build.quick_roof
 		site.vent_count = build.vent_count
 		site.time_factor = tuning.quick_roof_time_factor if build.quick_roof else 1.0
 	site.position = build.site_pos
 	main.add_child(site)
+	# R2 / 第二次评审：必须在工地就位之后再判断"附近探过没有"（之前在就位前判断，量的是原点 → 几乎总说没探过）
+	_site_probed = GameRules.probed_near(_probe_points, build.site_pos, PROBE_NEAR_SITE_M)
 	site.interactable.hold_seconds = tuning.stage_hold_seconds
 	site.interactable.prompt_fn = _site_prompt
 	site.interactable.handler = _on_build_stage
@@ -942,7 +949,16 @@ func _site_prompt() -> String:
 		for k in cost:
 			parts.append("%d %s" % [cost[k], k])
 		need = Loc.t("  (needs ") + ", ".join(parts) + ")"
-	return Loc.t("%s%s  ·  ~%d min") % [site.next_stage_title(), need, int(_stage_minutes() / _efficiency())]
+	var line := Loc.t("%s%s  ·  ~%d min") % [site.next_stage_title(), need, int(_stage_minutes() / _efficiency())]
+	var rest := site.remaining_cost()
+	var short: Array[String] = []
+	for k in rest:
+		var have := int(inventory.get(k)) if k in ["wood", "bark", "bedding"] else 0
+		if have < int(rest[k]):
+			short.append("%d %s" % [int(rest[k]) - have, k])
+	if not short.is_empty():
+		line += "\n" + Loc.t("To finish the shelter you still need: %s") % ", ".join(short)
+	return line
 
 ## 本阶段工时（含装备：没有雪铲挖雪庇护所更慢，S6）。
 func _stage_minutes() -> float:
@@ -996,6 +1012,26 @@ func _nearest_fire(max_d: float) -> Campfire:
 			best = c
 	return best
 
+## 离 from 最近的"按火规则点得着"的地方：每个树根盘紧贴下风一侧找（不看材料，只看风与树冠）。没有返回 INF。
+func _sheltered_fire_spot(from: Vector3) -> Vector3:
+	var blow := wind.get_blow_direction_3d()
+	var best := Vector3.INF
+	var bd := INF
+	for n in get_tree().get_nodes_in_group("windbreaks"):
+		var c := (n as Node3D).global_position
+		for dist in [1.0, 1.4, 1.9]:
+			for ang in [0.0, 25.0, -25.0, 50.0, -50.0]:
+				var p: Vector3 = c + blow.rotated(Vector3.UP, deg_to_rad(ang)) * float(dist)
+				p.y = TerrainHeight.height_at(p.x, p.z)
+				var exposure := GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z),
+					ResourceSpawner.windbreak_shelter(get_tree(), p, blow), _tree_cover(p))
+				if exposure <= tuning.fire_blowout_dot and not _under_canopy(p):
+					var d := p.distance_to(from)
+					if d < bd:
+						bd = d
+						best = p
+	return best
+
 func _under_canopy(p: Vector3) -> bool:
 	var forest := get_tree().get_first_node_in_group("forest")
 	if forest == null:
@@ -1033,8 +1069,8 @@ func _tick_fire_hold(delta: float) -> void:
 ## 在 p 点生火能否成功（与 _try_fire 同一套规则：背风 / 树根挡风 / 林木、树冠落雪、雪庇护所内禁火、材料）。
 func fire_check_at(p: Vector3) -> Dictionary:
 	var lee := SnowField.lee_factor_at(p.x, p.z)
-	var near_wb := ResourceSpawner.nearest_windbreak_distance(get_tree(), p) < 3.5
-	var exposure := GameRules.fire_exposure(lee, near_wb, _tree_cover(p))
+	var wb := ResourceSpawner.windbreak_shelter(get_tree(), p, wind.get_blow_direction_3d())
+	var exposure := GameRules.fire_exposure(lee, wb, _tree_cover(p))
 	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
 	return GameRules.fire_check(inventory.wood, inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
 
@@ -1108,11 +1144,26 @@ func _update_world_callouts() -> void:
 			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0))
 	elif callouts.has_callout("deadwood"):
 		callouts.remove_callout("deadwood")
+	# 第二次评审：第 1 章（教程）里衣服湿了又没有火 → 标出最近的、按同一套火规则真的点得着的地方，教会"烘干"这一步
+	var teach_fire := LevelState.active() and LevelState.level.index == 1 and GameRules.clothing_state(dampness, tuning) != "dry" \
+		and get_tree().get_nodes_in_group("campfires").is_empty()
+	if teach_fire:
+		if Time.get_ticks_msec() - _fire_spot_ms > 2000:
+			_fire_spot = _sheltered_fire_spot(pos)
+			_fire_spot_ms = Time.get_ticks_msec()
+		if _fire_spot != Vector3.INF:
+			callouts.set_callout("fire_spot", _fire_spot + Vector3(0, 0.6, 0), Loc.t("Sheltered fire spot"),
+				Loc.t("Out of the wind, no branches above · [F] here"), Color(1.0, 0.5, 0.2), Vector2(24.0, -30.0))
+	if not teach_fire or _fire_spot == Vector3.INF:
+		if callouts.has_callout("fire_spot"):
+			callouts.remove_callout("fire_spot")
 	# R3：完工的庇护所一直有标签——玩家在任何机位都能认出"这是我的庇护所、入口在哪"
-	if site != null and site.is_complete() and not _inside_site():
+	# 第二次评审：树井的"工地中心"是树干，站在树旁就算"在里面"，标签从来不出现——现在完工后一直显示，在里面时换一句
+	if site != null and site.is_complete():
 		var entrance := site.global_position + site.entrance_dir * 1.8 + Vector3(0, 0.8, 0)
+		var sub_text := Loc.t("You're in it · [N] rest when ready") if _inside_site() else Loc.t("Entrance here · [N] rest when ready")
 		callouts.set_callout("my_shelter", entrance, Loc.t("Your %s") % Loc.t(site.builder.active_preset().display_name),
-			Loc.t("Entrance here · [N] rest when ready"), Color(1.0, 0.7, 0.35), Vector2(-150.0, -40.0))
+			sub_text, Color(1.0, 0.7, 0.35), Vector2(-150.0, -40.0))
 	elif callouts.has_callout("my_shelter"):
 		callouts.remove_callout("my_shelter")
 
@@ -1149,7 +1200,7 @@ func night_input() -> Dictionary:
 			input["fire_held"] = lit
 			input["firewood_logs"] = float(inventory.wood)
 			input["fuel_hours"] = float(inventory.wood) * tuning.fire_fuel_hours_per_log
-			input["fire_exposure"] = GameRules.fire_exposure(lee, site.near_windbreak, _tree_cover(sp))
+			input["fire_exposure"] = GameRules.fire_exposure(lee, 1.0 if site.near_windbreak else 0.0, _tree_cover(sp))
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
 	input["dampness"] = dampness   # R1：入睡时受潮进入过夜结算

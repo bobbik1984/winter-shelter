@@ -78,6 +78,8 @@ func _run() -> void:
 	p.global_position = Vector3(19.0, TerrainHeight.height_at(19, 8) + 0.5, 8.0)
 	p.visual_node.rotation.y = atan2(1.0, 0.0)
 	for i in 5: await physics_frame
+	# 第二次评审：在这里探一次雪，再在这里放样——报告必须承认"在挖的地方探过"
+	await hold("probe", 1.2)
 	await key(KEY_B)
 	check(d.build.active, "B enters build mode")
 	var pre: String = d.build.preset_id
@@ -91,6 +93,7 @@ func _run() -> void:
 	Input.action_release("interact")
 	await process_frame
 	check(d.site != null, "E places the site (%s)" % d.build.reason)
+	check(d._site_probed, "probing right before placing the site counts as 'probed where you dug' (report fact consistency)")
 	# 施工：站在工地按住 E
 	if d.site:
 		p.global_position = d.site.interactable.global_position + Vector3(0.3, 0.5, 0.3)

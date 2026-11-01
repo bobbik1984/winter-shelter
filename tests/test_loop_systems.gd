@@ -141,6 +141,18 @@ func run() -> Dictionary:
 	if String(wet_rep["details"]["min_axis"]) == "heat":
 		_check(String(wet_txt["lesson"]).contains("Dry them by a fire"), "最弱项是 Heat 且湿着睡：教训 = 睡前烘干")
 
+	# 第二次评审：施工提示要提前说出"完工还缺什么"（倒棚最后一阶要桦皮）
+	var ss := ShelterSite.new()
+	ss.builder = ShelterBuilder.new()
+	ss.preset_id = "LeanTo"
+	ss.builder.current_stage = 3
+	var rc := ss.remaining_cost()
+	_check(int(rc.get("bark", 0)) == 1 and int(rc.get("wood", 0)) == 4, "倒棚第 3 阶后：完工还要 4 木 + 1 桦皮（%s）" % str(rc))
+	ss.builder.current_stage = 5
+	_check(ss.remaining_cost().is_empty(), "完工后不再缺材料")
+	ss.builder.free()
+	ss.free()
+
 	# AtmosphereState 昼夜系数
 	var a := AtmosphereState.new()
 	a.update(720.0, Vector3.UP, 20.0, 180.0, 0.0)
