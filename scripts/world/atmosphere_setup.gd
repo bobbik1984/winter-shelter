@@ -40,7 +40,7 @@ func set_cloud(c: float) -> void:
 	if _sky_mat:
 		_sky_mat.set_shader_parameter("cloud", c)
 	if environment:
-		environment.fog_density = lerpf(0.0011, 0.004, c)
+		environment.fog_density = lerpf(0.0007, 0.004, c)
 
 func _ready() -> void:
 	var env := Environment.new()
@@ -80,8 +80,8 @@ func _ready() -> void:
 	env.fog_light_color = Color(0.58, 0.70, 0.90)
 	env.fog_light_energy = 0.75
 	env.fog_sun_scatter = 0.25
-	env.fog_density = 0.0011
-	env.fog_aerial_perspective = 0.55
+	env.fog_density = 0.0007
+	env.fog_aerial_perspective = 0.4
 	env.fog_sky_affect = 0.12
 
 	env.adjustment_enabled = true

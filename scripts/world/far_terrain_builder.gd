@@ -123,7 +123,7 @@ func _build() -> void:
 	mat.shader = SNOW_COVER_SHADER
 	mat.set_shader_parameter("base_color", Color(0.16, 0.20, 0.32))
 	mat.set_shader_parameter("snow_color", Color(0.82, 0.88, 0.98))
-	mat.set_shader_parameter("snow_amount", 0.58)
+	mat.set_shader_parameter("snow_amount", 0.68)
 	mat.set_shader_parameter("snow_softness", 0.22)
 	mat.set_shader_parameter("noise_scale", 0.03)
 	mat.set_shader_parameter("noise_strength", 0.35)
@@ -189,12 +189,12 @@ func _build_lake() -> void:
 	disc.radial_segments = 40
 	mi.mesh = disc
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.62, 0.74, 0.86)
-	mat.roughness = 0.18
+	mat.albedo_color = Color(0.70, 0.82, 0.95)
+	mat.roughness = 0.08
 	mat.metallic_specular = 0.8
 	mi.material_override = mat
 	mi.position = Vector3(best.x, best_h + 1.2, best.y)
-	mi.scale = Vector3(70.0, 1.0, 38.0)
+	mi.scale = Vector3(90.0, 1.0, 50.0)
 	mi.rotation.y = atan2(VISTA_DIR.x, VISTA_DIR.y)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
