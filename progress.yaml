@@ -7,7 +7,7 @@ project:
   version: "0.2-alpha"
   status: dev
   tech: [Godot 4.3 stable, GDScript, Tilt-shift perspective (ortho fallback), SunModel real solar arc, NightSimulator 6-axis]
-  current_milestone: "M2 Playable：完整循环已可玩（scripted 验证）→ 等 PT02 试玩与 M3"
+  current_milestone: "M2 Playable：完整循环已可玩（scripted 验证）→ D12 关卡阶梯（L 轨道）→ 关卡版 PT01/PT02"
   branch: "claude/visual-pass-1（未合并、未推送）"
   blocker: "人工 F5 试玩（V1 / T0.3）与 PT01/PT02 试玩；分支未合并"
   updated: "2026-11-01"
@@ -102,6 +102,16 @@ phases:
       - {id: V7, text: "AtmosphereState 收拢 + 天气接入", status: written-unverified, note: "WeatherController 唯一写入；天空 / 雪面 / 罗盘 / 降雪 / 头灯订阅；每局天气：晴 / 阴（云量）/ 暴风雪将至（风 +20 km/h、早雪、夜 -5 °C），简报预报"}
       - {id: V8, text: "脚印与拖痕", status: written-unverified, note: "Footprints 环形 MultiMesh；背负 >= 6 木材时出现拖痕"}
       - {id: V9, text: "相机参数入 Tuning（替代 T1.3）", status: written-unverified, note: "Tuning Camera 组 tilt_*；热键对比未做"}
+  - id: L
+    name: "关卡阶梯轨道（D12，PRODUCTION_PLAN §4.L）"
+    tasks:
+      - {id: L1, text: "LevelDef 资源 + 5 关 / 自由模式 .tres + LevelState + 种子", status: todo}
+      - {id: L2, text: "环境旋钮接入（雪深倍率 / 对比度、枯木密度、天气池、开局时间）", status: todo, depends: [L1]}
+      - {id: L3, text: "风向随机 = 整图旋转（退路 ±30° 抖动）", status: todo, depends: [L1, L2]}
+      - {id: L4, text: "简报页关卡选择 + 解锁（COLD/SAFE）+ 每关记录 + 自由模式", status: todo, depends: [L1]}
+      - {id: L5, text: "课题文案（简报一句 + 报告本关要点，EN/ZH）", status: todo, depends: [L4]}
+      - {id: L6, text: "关卡平衡：playtest_bot --level，4 山谷 × 3 种子；CI 回归", status: todo, depends: [L2, L3, L4]}
+      - {id: L7, text: "关卡版试玩（并入 PT01/PT02）", status: todo, depends: [L6], note: "人工"}
 
 polish:
   - {id: P1, text: "中英双语界面（Loc，[L] 切换并保存）", status: written-unverified, note: "约 190 条；中文报告用 NightSimulator 中文归因；依赖系统 CJK 字体"}

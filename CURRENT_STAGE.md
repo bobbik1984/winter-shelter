@@ -1,8 +1,47 @@
 # CURRENT_STAGE.md — 当前施工合同
 
-> **修订**：2026-11-01（晚）· **当前阶段**：M2 Playable 循环已完成（written-unverified）→ **人工试玩 PT01/PT02** → M3 内容与收尾
+> **修订**：2026-11-01（晚）· **当前阶段**：M2 Playable 循环已完成（written-unverified）→ **D12 关卡阶梯（L 轨道）** → 关卡版人工试玩 PT01/PT02 → M3 内容与收尾
 > **上游**：任务定义与闸门见 [`PRODUCTION_PLAN.md`](PRODUCTION_PLAN.md) §4（V 轨道在 §4.V）；协作规则见 [`AGENTS.md`](AGENTS.md) §5–§7；状态投影见 [`progress.yaml`](progress.yaml)。
 > 本文件只回答"**现在做什么、谁来做、按什么顺序、做到什么算完**"。
+
+---
+
+## 0″. D12 关卡阶梯（2026-11-01，用户拍板，覆盖 §0′ 第 3 行的"不加系统"）
+
+用户决定：单局结构改为 **5 关逐级提高难度 + 关内随机 + 通关后自由模式**（`PRODUCTION_PLAN.md` D12，规则 `CORE_GAMEPLAY.md` §8，任务 §4.L）。L 轨道可以在 PT01/PT02 之前施工；试玩直接试关卡版。
+
+| 顺序 | 任务 | 执行者 | 说明 |
+| :--- | :--- | :--- | :--- |
+| 1 | L1 关卡数据 + 种子 | godot-dev | 先写测试 |
+| 2 | L2 环境旋钮 ‖ L4 关卡选择与解锁 | godot-dev ×2 | L2 改 world 脚本，L4 改 UI / records，不冲突；`game_director.gd` 两边都改 → 主控合并 |
+| 3 | L3 风向 = 整图旋转 | godot-dev | 风险最大；有 ±30° 抖动退路 |
+| 4 | L5 课题文案 | godot-dev | EN + ZH |
+| 5 | L6 关卡平衡 + CI | godot-dev → verifier | 每关 4 山谷 × 3 种子 |
+| 6 | L7 试玩（关卡版 PT01/PT02） | 你 + 测试者 | 替代 §0′ 第 1–2 行的试玩内容 |
+
+```text
+Task:       L1 关卡数据
+Read first: CORE_GAMEPLAY.md §8, ARCHITECTURE_GODOT.md §3.9
+Files:      scripts/resources/level_def.gd (new), resources/levels/*.tres (new), scripts/systems/level_state.gd (new),
+            tests/test_levels.gd (new), tests/run_all.gd
+Depends:    —
+Done when:  5 关 + 自由模式 .tres（数值按 §8.2，标 [GAME]/[TUNE]）；同种子抽取可复现；抽取落在本关范围；
+            --level / --seed 解析；run_all 全绿
+Do NOT:     改任何 world / UI 脚本（L2 / L4 的事）；手写 uid
+Needs Godot: 是（headless 测试）
+```
+
+```text
+Task:       L3 风向 = 整图旋转
+Read first: CORE_GAMEPLAY.md §8.3, ARCHITECTURE_GODOT.md §3.9, AGENTS.md §4.1（相机红线）
+Files:      terrain_height.gd, snow_field.gd, forest_scatter.gd, scenery_builder.gd, drift_scatter.gd, resource_spawner.gd,
+            far_terrain_builder.gd（如需）, tests/test_terrain.gd
+Depends:    L1, L2
+Done when:  旋转在一处坐标转换完成；0/90/180/270° 截图各一张（树冠偏向、雪枕、背风深雪一致，罗盘风向正确，太阳不动）；
+            旋转 0° 时所有现有测试与机器人结果不变；回执附 FPS
+Do NOT:     改相机偏航（D8）；改太阳（D9）；改评分
+Needs Godot: 是（截图需窗口）
+```
 
 ---
 

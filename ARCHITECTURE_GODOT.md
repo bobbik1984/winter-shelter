@@ -172,6 +172,14 @@ static func evaluate_shelter(
 - **致谢与许可**：暂停菜单 [C]，Godot MIT 文本来自 `Engine.get_license_text()`；随包字体许可在 `assets/fonts/`。
 - **QA**：`tools/playtest_bot.gd` 用 GameDirector API 跑 8 种策略，打印结局与 6 维分数（平衡回归）。
 
+### 3.9 关卡阶梯（D12，规划中，L 轨道）
+
+- **`LevelDef`**（`scripts/resources/level_def.gd`，`Resource`）：`id`、课题文案键、`start_minutes`、天气池（权重）、`wind_speed_offset_kmh`、`snow_depth_scale` / `snow_contrast`、`snag_density_scale`、`wind_rotation_choices`（或抖动范围）、`target_presets`（只给机器人与报告文案用，不限制玩家）。实例在 `resources/levels/level_01.tres … level_05.tres`；自由模式 = `level_free.tres`（全部为现有默认值）。
+- **`LevelState`**（静态，同 `TerrainHeight.SEED` 的生命周期）：当前 `LevelDef` + 本局种子 + 抽取结果（山谷、风向旋转、天气、第 5 关雪深档位）。**必须在重载 `main.tscn` 之前设置**，因为地形、雪深场、森林、雪枕、资源都在 `_ready` 时构建。
+- **读取方**：`SnowField`（倍率 / 对比度）、`TerrainHeight` 与所有散布器（布局旋转：统一在"地图坐标 ↔ 世界坐标"处转换，不在各脚本里各自旋转）、`WeatherController`（天气池、开局时间、风速）、`ResourceSpawner`（枯木密度）、`GameDirector`（解锁、记录、简报 / 报告文案）。
+- **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。
+- **测试**：`tests/test_levels.gd`（种子可复现、抽取在范围内、解锁规则）；`tools/playtest_bot.gd -- --level=N --seed=S`。
+
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
 > 本清单直接对齐参考图 *North Star v0.1* 的全部视觉、听觉与程序要素，作为建模、美术、Shader、音效与代码的真实生产指导单。
