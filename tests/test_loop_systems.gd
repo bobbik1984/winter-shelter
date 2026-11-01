@@ -114,6 +114,33 @@ func run() -> Dictionary:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Records.path = real_path
 
+	# R1（第一次评审）：入睡时衣服湿 → 过夜 Heat 下降，报告说明原因，教训指向烘干
+	var cave := {"shelter_type": "RaisedCave", "snow_depth_meters": 2.6, "terrain_shelter": 1.0, "completion_ratio": 1.0,
+		"wind_angle_diff": 180.0, "bedding_quality": 0.9, "starting_warmth": 90.0, "prewarmed": false, "vent_count": 1, "has_vent": true,
+		"has_cold_pit": true, "has_raised_bed": true, "roof_thickness_meters": 0.45, "slope_deg": 25.0}
+	var dry_rep := NightSimulator.evaluate(cave, t)
+	var wet_in := cave.duplicate()
+	wet_in["dampness"] = 1.0
+	var wet_rep := NightSimulator.evaluate(wet_in, t)
+	_check(float(wet_rep["scores"]["heat"]) <= float(dry_rep["scores"]["heat"]) * (1.0 - t.night_wet_heat_penalty) + 1.0, "湿透入睡：Heat 下降约 %.0f%%（%d → %d）" % [t.night_wet_heat_penalty * 100.0, int(dry_rep["scores"]["heat"]), int(wet_rep["scores"]["heat"])])
+	_check(String(dry_rep["outcome"]) == "SAFE" and String(wet_rep["outcome"]) == "COLD", "评审那一局：深雪高床洞干衣 SAFE，湿衣 COLD（%s / %s）" % [String(dry_rep["outcome"]), String(wet_rep["outcome"])])
+	var weak := cave.duplicate()
+	weak["shelter_type"] = "SnowTrench"
+	weak["snow_depth_meters"] = 0.9
+	weak["bedding_quality"] = 0.2
+	weak["dampness"] = 1.0
+	var weak_rep := NightSimulator.evaluate(weak, t)
+	if String(weak_rep["outcome"]) == "DANGEROUS" and String(weak_rep["details"]["min_axis"]) == "heat":
+		_check(String(weak_rep["outcome_title"]).begins_with("SOAKED"), "湿衣导致失败时标题如实说湿透，而不是庇护所失效（%s）" % String(weak_rep["outcome_title"]))
+	var damp_in := cave.duplicate()
+	damp_in["dampness"] = 0.1
+	_check(int(NightSimulator.evaluate(damp_in, t)["scores"]["heat"]) == int(dry_rep["scores"]["heat"]), "轻微受潮（< 门槛一半）不扣分")
+	var wet_txt := NightReportText.build(wet_rep, wet_in, t)
+	_check(String(wet_txt["rows"][5]["note"]).contains("wet"), "报告 Heat 一行说明衣服湿了")
+	_check(String(wet_rep["notes"][5]).contains("湿透"), "中文归因也说明湿透")
+	if String(wet_rep["details"]["min_axis"]) == "heat":
+		_check(String(wet_txt["lesson"]).contains("Dry them by a fire"), "最弱项是 Heat 且湿着睡：教训 = 睡前烘干")
+
 	# AtmosphereState 昼夜系数
 	var a := AtmosphereState.new()
 	a.update(720.0, Vector3.UP, 20.0, 180.0, 0.0)

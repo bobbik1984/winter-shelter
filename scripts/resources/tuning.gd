@@ -543,6 +543,10 @@ extends Resource
 @export var dry_rate_fire: float = 0.05
 ## [GAME] 受潮 >= 0.5 时保暖层失去减缓效果（CORE_GAMEPLAY §4：只有干燥蓬松的纤维才锁住静止空气）。
 @export var damp_threshold: float = 0.5
+## [TUNE] 入睡时衣服受潮对整夜 Heat 的削减（湿透 = 全额；受潮 = 部分；干 = 0）。
+## 依据（[REAL] 方向，数值待 research/ 核实）：湿的衣物几乎不保暖、蒸发持续带走热量——
+## 白天 HUD 说"湿了、不再保暖"，过夜结算必须一致（第一次评审 R1）。
+@export var night_wet_heat_penalty: float = 0.35
 
 ## [GAME] T4.7 方案 A：迎风脊开低垭口，出生点即可看到远景山谷 / 冰湖。默认关（方案 B：爬上脊线才看到）。
 @export var ridge_saddle: bool = false

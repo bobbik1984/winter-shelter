@@ -67,7 +67,7 @@ T1.4 移动阻尼 · T1.6 探针 + 标记（D4 采纳默认）· T1.5 暴露度 
 
 **夜雪堵通风**：入睡时降雪 ≥ 0.5 且只有一根通风管、没插木棍 → 空气分封顶 55（COLD 级，不致命）；完工后目标行提示插木棍（1 木）。
 
-**平衡基线**（`godot --path . -s res://tools/playtest_bot.gd -- --s=<策略>`）：深雪高床洞 + 暖身 = SAFE；刚够深度 = COLD；入口迎风 / 开工太晚 / 露天 = DANGEROUS；雪沟 / 倒棚 = COLD。改 Tuning 后重跑。
+**平衡基线**（`godot --path . -s res://tools/playtest_bot.gd -- --s=<策略>`，2026-11-01 R1 后）：深雪高床洞 + 树根盘背风处生火烘干 + 通风木棍（deep_stick）/ 两根通风管（twovent）= SAFE；good / deep / quick（降雪堵通风）= COLD（最弱 Air）；雪沟（烘干）/ 倒棚 = COLD；入口迎风 / 开工太晚 / 露天 = DANGEROUS。挖雪庇护所后不烘干就睡 = 湿衣，Heat −35%。改 Tuning 后重跑。
 
 **现在做什么**
 

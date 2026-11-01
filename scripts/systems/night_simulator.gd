@@ -40,6 +40,7 @@ extends RefCounted
 ##   night_hours: float            名义夜长，默认取 Tuning.night_duration_hours。
 ##   prewarmed: bool               睡前篝火是否完成入夜前暖身（pre-warm）。
 ##   starting_warmth: float        入夜时的 0–100 核心体温，默认 Tuning.warmth_max；低体温会惩罚 Heat。
+##   dampness: float               入睡时衣服受潮程度 0..1（白天挖雪 / 大雪受潮，火旁烘干）；受潮会削减 Heat（R1）。
 ##
 ## 火规则（D2/D3）：
 ##   * 雪庇护所内不允许生火；fire_lit/fuel_hours 不参与整夜供热，只接受 prewarmed 的入夜修正。
@@ -293,6 +294,9 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 	heat = clampf(heat, 0.0, 1.0)
 	# 入夜低体温 → 初始热量赤字；这是玩家白天 0–100 Warmth 直接传导到 NightSimulator 的接口。
 	heat = clampf(heat * (1.0 - warmth_deficit * t.warmth_night_heat_penalty), 0.0, 1.0)
+	# 入睡时衣服受潮 → 保暖层失效、蒸发带走热量（与白天 HUD 的"湿了、不再保暖"同一条规则）
+	var wet_frac := wet_fraction(_input_float(input, "dampness", 0.0), t)
+	heat = clampf(heat * (1.0 - wet_frac * t.night_wet_heat_penalty), 0.0, 1.0)
 
 	# ---------------------------------------------------------------- 六维评分
 	var scores := {
@@ -340,7 +344,11 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		outcome_title = "PERISHED IN FROST (严重失温致死)"
 	elif float(min_score) < t.cold_min_axis:
 		outcome = OUTCOME_DANGEROUS
-		outcome_title = "SHELTER FAILED (庇护所失效)"
+		# 如实归因：最弱项是 Heat 且主要因为湿衣入睡时，不说"庇护所失效"
+		if min_key == "heat" and wet_frac > 0.5:
+			outcome_title = "SOAKED THROUGH (湿透失温)"
+		else:
+			outcome_title = "SHELTER FAILED (庇护所失效)"
 	elif float(min_score) >= t.safe_min_axis and weighted_average >= t.safe_min_weighted_average:
 		outcome = OUTCOME_SAFE
 		outcome_title = "SURVIVED COZY (舒适安全过夜)"
@@ -365,6 +373,10 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		fire_exposure, fuel_hours, night_hours, fire_reaches_dawn, fire_out_clock,
 		fire_ignored, prewarmed, has_reflector_wall, snow_depth, t
 	))
+	if wet_frac > 0.01:
+		notes[5] = notes[5] + " 入睡时衣服%s，保暖表现下降约 %.0f%%——睡前在火边烘干。" % [
+			"湿透" if wet_frac >= 0.99 else "受潮", wet_frac * t.night_wet_heat_penalty * 100.0
+		]
 	if warmth_deficit > 0.01:
 		notes[5] = notes[5] + " 入夜核心体温 %.0f/100，初始热量赤字使保暖表现下降约 %.0f%%。" % [
 			starting_warmth, warmth_deficit * t.warmth_night_heat_penalty * 100.0
@@ -775,3 +787,7 @@ static func _missing_tuning_report() -> Dictionary:
 		"outcome_title": "MISSING TUNING (缺少调参资源)",
 		"details": {"error": "null_tuning"},
 	}
+
+## 受潮程度 → 过夜削减比例 0..1：受潮一半门槛以下 = 干（0），到门槛（HUD 显示 WET）= 1。
+static func wet_fraction(dampness: float, t: Tuning) -> float:
+	return smoothstep(t.damp_threshold * 0.5, t.damp_threshold, clampf(dampness, 0.0, 1.0))

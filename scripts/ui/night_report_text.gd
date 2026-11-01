@@ -53,6 +53,8 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		elif min_axis == "heat":
 			lesson = Loc.t("The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.") % [
 				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
+	elif min_axis == "heat" and NightSimulator.wet_fraction(float(input.get("dampness", 0.0)), t) > 0.5:
+		lesson = Loc.t("Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.")
 	elif min_axis == "air" and bool(input.get("vent_snow_clogged", false)):
 		lesson = Loc.t("When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent.")
 	elif preset == "None":
@@ -183,6 +185,11 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 					s = "The wood ran out around %s; the rest of the night was bitter." % String(d.get("fire_out_clock", "midnight"))
 			else:
 				s = "Nothing kept your heat in."
+			var wf := NightSimulator.wet_fraction(float(i.get("dampness", 0.0)), t)
+			if wf >= 0.99:
+				s += " Your clothes were wet when you lay down — wet layers hold almost no heat."
+			elif wf > 0.01:
+				s += " Your clothes were damp at bedtime, which cost you some warmth."
 			var w := float(i.get("starting_warmth", 100.0))
 			if w < t.warmth_tier_warm:
 				s += " You went to bed already chilled (%d/100)." % int(w)

@@ -39,7 +39,7 @@ func _run() -> void:
 		"late": d._skip(120.0); preset = "BasicCave"
 		"leanto_short": preset = "LeanTo"; wood_need = 8; spot = Vector3(-1.2, 0, 10.5)
 		"leanto_full": preset = "LeanTo"; wood_need = 12; spot = Vector3(-1.2, 0, 10.5)
-		"trench": preset = "SnowTrench"; wood_need = 2; bedding_need = 1
+		"trench": preset = "SnowTrench"; wood_need = 5; bedding_need = 1   # 2 根雪沟 + 3 根睡前烤干衣服（R1）
 	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
 	while d.inventory.bedding < bedding_need:
 		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
@@ -72,19 +72,41 @@ func _run() -> void:
 			if strat == "late" and d.weather.current_time_minutes > 1060.0:
 				break
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
-		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick"]:
-			# 篝火 + 热饮（站到背风开阔处）
-			p.global_position = d.site.global_position + Vector3(3.5, 0.5, -3.5)
+		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench"]:
+			# 篝火 + 热饮：像玩家一样找最近的树根盘，站到它的背风侧生火（原先站的开阔处风太大，火一直点不着）
+			var best_r := Vector2.ZERO
+			var best_d := INF
+			for r in MapLayout.get_layout()["rootballs"]:
+				var dd: float = (r as Vector2).distance_to(Vector2(d.site.global_position.x, d.site.global_position.z))
+				if dd < best_d:
+					best_d = dd
+					best_r = r
+			# 在树根盘背风一侧找一个能点着的地方（不在树冠下、挡得住风），像玩家一样多走几步
+			var blow: Vector3 = d.wind.get_blow_direction_3d()
+			var fire_spot := Vector3.INF
+			for dist in [1.4, 2.0, 2.8]:
+				for ang in [0.0, 40.0, -40.0, 80.0, -80.0]:
+					var c: Vector3 = Vector3(best_r.x, 0.0, best_r.y) + blow.rotated(Vector3.UP, deg_to_rad(ang)) * dist
+					c.y = TerrainHeight.height_at(c.x, c.z)
+					if fire_spot == Vector3.INF and bool(d.fire_check_at(c)["ok"]):
+						fire_spot = c
+			if fire_spot == Vector3.INF:
+				printerr("  no lightable fire fire_spot near the root plate")
+				fire_spot = Vector3(best_r.x, 0.0, best_r.y) + blow * 1.6
+			var fp: Vector3 = fire_spot - p.facing() * 1.3
+			p.global_position = Vector3(fp.x, TerrainHeight.height_at(fp.x, fp.z) + 0.5, fp.z)
 			await physics_frame
 			d._try_fire()
 			for n in get_nodes_in_group("interactables"):
 				if n.kind == "fire" and n.current_prompt() != "":
 					d._on_interaction_completed(n, n.trigger())
-					if strat == "deep":
+					# 挖雪庇护所会湿透：第二杯热水 = 把衣服烤干再睡（R1；倒棚不挖雪、不湿）
+					if strat != "leanto_full" and GameRules.clothing_state(d.dampness, d.tuning) != "dry":
 						d._on_interaction_completed(n, n.trigger())
 					break
 		if strat == "deep_stick" and d._needs_vent_stick():
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
+		printerr("  dampness before bed=%.2f wood=%d prewarmed=%s" % [d.dampness, d.inventory.wood, str(d.prewarmed)])
 		d._sleep(false)
 	var inp = d.night_input()
 	var rep = NightSimulator.evaluate(inp, d.tuning)

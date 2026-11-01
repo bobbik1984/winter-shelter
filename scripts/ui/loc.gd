@@ -255,6 +255,7 @@ const ZH := {
 	"[↓] STAGE [↑]": "[↓] 阶 [↑]",
 	"Map %d  [N] new map   ·   Seed %d": "第 %d 张图  [N] 换一张   ·   种子 %d",
 	"You have about an hour of light to read the land, gather what you need and build a shelter for the night.\n\n": "你大约只有 1 个小时的天光：读懂这片地、收集所需，在天黑前建好过夜的庇护所。\n\n",
+	"Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.": "挖雪会弄湿保暖层。钻进去之前先在火边烘干——湿衣服几乎不保暖。",
 	"Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ": "读懂大地：树冠背风倾斜，背风坡积雪最深，立枯木是干柴——",
 	"and the shadows tell you how much daylight is left.": "影子告诉你还剩多少天光。",
 	"[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n": "[WASD] 移动    [Space] 按住探雪    [E] 按住采集 / 施工    [F10] 画质    [L] English\n",

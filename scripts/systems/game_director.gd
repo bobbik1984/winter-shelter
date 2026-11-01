@@ -1021,6 +1021,14 @@ func _tick_fire_hold(delta: float) -> void:
 		player.controls_enabled = true
 		_try_fire()
 
+## 在 p 点生火能否成功（与 _try_fire 同一套规则：背风 / 树根挡风 / 林木、树冠落雪、雪庇护所内禁火、材料）。
+func fire_check_at(p: Vector3) -> Dictionary:
+	var lee := SnowField.lee_factor_at(p.x, p.z)
+	var near_wb := ResourceSpawner.nearest_windbreak_distance(get_tree(), p) < 3.5
+	var exposure := GameRules.fire_exposure(lee, near_wb, _tree_cover(p))
+	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
+	return GameRules.fire_check(inventory.wood, inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
+
 func _try_fire() -> void:
 	var near := _nearest_fire(2.6)
 	if near:
@@ -1033,11 +1041,7 @@ func _try_fire() -> void:
 		_skip(2.0)
 		return
 	var p := player.global_position + player.facing() * 1.3
-	var lee := SnowField.lee_factor_at(p.x, p.z)
-	var near_wb := ResourceSpawner.nearest_windbreak_distance(get_tree(), p) < 3.5
-	var exposure := GameRules.fire_exposure(lee, near_wb, _tree_cover(p))
-	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
-	var check := GameRules.fire_check(inventory.wood, inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
+	var check := fire_check_at(p)
 	if not bool(check["ok"]):
 		var reason := String(check["reason"])
 		# 被风吹灭 / 落雪压灭：引火物已经烧掉了（代价让教训可记住）
@@ -1132,6 +1136,7 @@ func night_input() -> Dictionary:
 			input["fire_exposure"] = GameRules.fire_exposure(lee, site.near_windbreak, _tree_cover(sp))
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
+	input["dampness"] = dampness   # R1：入睡时受潮进入过夜结算
 	# 装备（S6）：防潮垫加到地面隔热
 	input["bedding_quality"] = GameRules.bedding_with_pad(float(input.get("bedding_quality", 0.0)), bool(gear["pad"]), tuning)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
