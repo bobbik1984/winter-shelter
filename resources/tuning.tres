@@ -204,6 +204,7 @@ night_fire_wake_loss_per_h = 10.0
 night_fire_reach_m = 6.0
 max_wood = 4
 max_bedding = 4
+night_daylight_loss_factor = 0.5
 night_exercise_warmth = 10.0
 night_exercise_repeat_factor = 0.5
 night_exercise_fatigue = 0.08

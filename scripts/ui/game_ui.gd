@@ -686,10 +686,10 @@ func show_night_hud(on: bool) -> void:
 	if _night_hud:
 		_night_hud.visible = on
 
-func update_night_hud(clock: String, warmth: int, points: PackedVector2Array, duration: float, events: Array, now_minute: float) -> void:
+func update_night_hud(before_sunset: bool, clock: String, warmth: int, points: PackedVector2Array, duration: float, events: Array, now_minute: float) -> void:
 	if _night_hud == null:
 		return
-	_night_clock.text = Loc.t("Night · %s · body warmth %d") % [clock, warmth]
+	_night_clock.text = (Loc.t("Before dark, trying to sleep · %s · body warmth %d") if before_sunset else Loc.t("Night · %s · body warmth %d")) % [clock, warmth]
 	_night_graph.set_data(points, duration, events, now_minute)
 
 ## 醒来面板：标题（为什么醒）、一句说明、带编号的可选行动。

@@ -314,7 +314,7 @@ func _tick_night(delta: float) -> void:
 		elif night.is_over():
 			_end_night()
 			return
-	ui.update_night_hud(weather.clock_string(), int(night.warmth), night.curve + PackedVector2Array([Vector2(night.minute, night.warmth)]),
+	ui.update_night_hud(weather.minutes_to_sunset() > 0.0, weather.clock_string(), int(night.warmth), night.curve + PackedVector2Array([Vector2(night.minute, night.warmth)]),
 		night.duration, night.timeline.filter(func(e): return e["kind"] == "event"), night.minute)
 
 ## 夜里的火：模型说烧着就烧着、说灭了就灭（倒棚反射火 / 睡前篝火）。
@@ -375,7 +375,7 @@ func _show_report(night_res: Dictionary = {}) -> void:
 	data["title"] = NightText.title(night_res, wet)
 	data["conclusion"] = NightText.conclusion(night_res, NightReportText._label(String(report["details"].get("min_axis", "heat"))))
 	data["night_curve"] = night_res["curve"]
-	data["night_duration"] = tuning.night_duration_hours * 60.0
+	data["night_duration"] = night.duration if night != null else tuning.night_duration_hours * 60.0
 	data["night_events"] = (night_res["timeline"] as Array).filter(func(e): return e["kind"] == "event")
 	var extra: Array[String] = [NightText.timeline(night_res, _bed_minutes if _bed_minutes > 0.0 else weather.current_time_minutes)]
 	for line in [NightText.three_comforts(input, night_res, tuning), NightText.boots_line(night_res)]:
@@ -1717,4 +1717,8 @@ func night_input() -> Dictionary:
 		bool(gear["pad"]), bool(gear.get("hides", false)), tuning)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()
+	# 夜晚到明天日出为止（早睡要熬更久）；日落前那段还没到夜间气温
+	var sunrise := SunModel.sunrise_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes) + 1440.0
+	input["night_hours"] = maxf(sunrise - weather.current_time_minutes, 60.0) / 60.0
+	input["daylight_minutes"] = maxf(weather.minutes_to_sunset(), 0.0)
 	return input

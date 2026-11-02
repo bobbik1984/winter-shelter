@@ -62,6 +62,8 @@ var clog_unresolved := false
 
 ## 火最后一次熄灭的时刻（入睡后分钟；-1 = 一直烧到天亮）。
 var fire_out_at := -1.0
+## 入睡时离日落还有多少分钟：这段时间还没到夜间气温，失温打折。
+var daylight_minutes := 0.0
 ## 一根柴能烧多少分钟（风、雪越大越短）。
 var log_minutes := 120.0
 ## 没有火可添时的原因（给玩家看）："" / "no_fire" / "no_logs" / "wind"。
@@ -79,7 +81,9 @@ var _shelter := "None"
 func _init(p_input: Dictionary, p_t: Tuning) -> void:
 	input = p_input
 	t = p_t
-	duration = t.night_duration_hours * 60.0
+	# 夜晚到真实日出为止（第三次评审后）：早睡 = 要熬更久；不给 night_hours（测试）时用名义夜长
+	duration = float(input.get("night_hours", t.night_duration_hours)) * 60.0
+	daylight_minutes = maxf(float(input.get("daylight_minutes", 0.0)), 0.0)
 	warmth = clampf(float(input.get("starting_warmth", t.warmth_max)), 0.0, t.warmth_max)
 	min_warmth = warmth
 	dampness = clampf(float(input.get("dampness", 0.0)), 0.0, 1.0)
@@ -146,6 +150,8 @@ func is_over() -> bool:
 ## 当前每小时净失温（正 = 在掉）。
 func loss_per_hour() -> float:
 	var loss := base_loss
+	if minute < daylight_minutes:
+		loss *= t.night_daylight_loss_factor
 	if snow_load_active:
 		loss *= t.night_snow_load_penalty
 	if minute < t.night_prewarm_hours * 60.0 and bool(input.get("prewarmed", false)):

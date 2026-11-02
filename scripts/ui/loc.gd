@@ -465,4 +465,5 @@ const ZH := {
 	"No spare logs for the fire.": "没有多余的柴可以添。",
 	"No fire to tend: the wind here is too strong to keep one going.": "没有火可添：这里风太大，火留不住。",
 	"No fire to tend: you didn't build one near your bed.": "没有火可添：你没有在睡的地方附近生火。",
+	"Before dark, trying to sleep · %s · body warmth %d": "天还没黑，想睡一觉 · %s · 体温 %d",
 }

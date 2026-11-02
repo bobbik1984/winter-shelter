@@ -300,6 +300,25 @@ func _build_focus_part(m, d, p) -> void:
 	await key(KEY_ESCAPE)
 	check(not d.session.focused() and d.state == d.State.PLAYING, "Esc steps back instead of pausing")
 	for i in 3: await process_frame
+	# 第三次评审：正常逐阶施工——每次按住只进一阶，材料按预设扣，完工后回到远景
+	d.site.pile.stock["wood"] = 8
+	d.site.pile.stock["bedding"] = 8
+	p.global_position = back
+	for i in 5: await physics_frame
+	for i in 3: await process_frame
+	var costs: Array = d.site.builder.active_preset().stage_costs
+	for st in [3, 4]:
+		var w0: int = d.site.pile.amount("wood")
+		var b0: int = d.site.pile.amount("bedding")
+		await hold("interact", d.tuning.stage_hold_seconds + 0.3)
+		for i in 3: await process_frame
+		check(d.site.stage() == st + 1, "one hold = exactly one stage (%d -> %d)" % [st, d.site.stage()])
+		check(d.site.pile.amount("wood") == w0 - int(costs[st].get("wood", 0)) and d.site.pile.amount("bedding") == b0 - int(costs[st].get("bedding", 0)), "stage %d spends exactly its cost from the pile" % (st + 1))
+	check(d.site.is_complete() and d.session.state == BuildSession.State.COMPLETE, "the last stage finishes the shelter")
+	var t0 := Time.get_ticks_msec()
+	while d.session.focused() and Time.get_ticks_msec() - t0 < 8000:
+		await process_frame
+	check(not d.session.focused() and p.controls_enabled and not d.rig.is_focusing(), "after completion the camera returns to the player")
 
 ## D12 / D13：章节 × 阶选择、解锁、换图、重玩（真实按键）。存档是测试文件，开始时只有第 1 章第 1 阶。
 func _levels_part() -> void:

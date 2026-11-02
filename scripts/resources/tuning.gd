@@ -112,6 +112,8 @@ extends Resource
 @export var night_fire_wake_loss_per_h: float = 10.0
 ## 火堆离睡的地方多远算"你的火"（米）[TUNE]。
 @export var night_fire_reach_m: float = 6.0
+## 日落前就躺下：还没到夜间气温，这段时间失温 × 这个系数 [TUNE]。
+@export var night_daylight_loss_factor: float = 0.5
 @export var night_exercise_warmth: float = 10.0
 ## N5：同一次醒来再活动，每次效果 × 这个系数 [GAME]（不能靠连按活动代替庇护所）。
 @export var night_exercise_repeat_factor: float = 0.5

@@ -242,6 +242,26 @@ func _n5(c: Dictionary, t: Tuning) -> void:
 	var cave_fire: Dictionary = (c["raised_dry"] as Dictionary).duplicate()
 	cave_fire.merge({"campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.15}, true)
 	_check(is_equal_approx(NightCurve.new(cave_fire, t).loss_per_hour(), NightCurve.new(c["raised_dry"], t).loss_per_hour()), "雪洞：火在外面，睡着时没有作用（D3）")
+	# 第三次评审后：夜晚到日出为止；早睡要熬更久，但日落前那段还没到夜间气温
+	var early: Dictionary = (c["trench"] as Dictionary).duplicate()
+	early.merge({"night_hours": 16.0, "daylight_minutes": 60.0}, true)
+	var en := NightCurve.new(early, t)
+	_check(is_equal_approx(en.duration, 16.0 * 60.0), "给了 night_hours 就按它算夜长")
+	_check(is_equal_approx(en.loss_per_hour(), en.base_loss * t.night_daylight_loss_factor), "日落前失温打折")
+	en.advance_to(70.0)
+	_check(is_equal_approx(en.loss_per_hour(), en.base_loss), "日落后恢复夜间失温")
+	var late: Dictionary = (c["trench"] as Dictionary).duplicate()
+	late["night_hours"] = t.night_duration_hours
+	_check(float(NightCurve.run(early, t, "sleep")["min_warmth"]) < float(NightCurve.run(late, t, "sleep")["min_warmth"]), "太早躺下：要多熬几个小时，比天黑才睡更冷")
+	# 第三次评审（核实后不是 bug）：时间线严格按时间、跨午夜写 00:xx，不会出现 24:xx
+	var lr := NightCurve.run(c["trench"], t, "smart")
+	var mono := true
+	var last_min := -1.0
+	for e in lr["timeline"]:
+		mono = mono and float(e["minute"]) >= last_min
+		last_min = float(e["minute"])
+	_check(mono, "夜间时间线按时间递增")
+	_check(NightText.clock(1000.0, 500.0) == "01:00" and NightText.clock(959.0, 481.0) == "00:00", "跨午夜的时钟写 00:xx（%s）" % NightText.clock(1000.0, 500.0))
 	# 冻醒不受上限限制：醒的次数用完后，也不会一路睡到极危才醒
 	var wet: Dictionary = (c["trench"] as Dictionary).duplicate()
 	wet["dampness"] = 1.0
