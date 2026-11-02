@@ -25,6 +25,9 @@ var callouts: WorldCallouts
 var session := BuildSession.new()
 var rig: IsometricCameraRig
 var _hiker_ghost := 0.0
+## 特写时角色的模型画在工地旁边（只改外观，玩家真实位置不动）。
+var _figure_spot := Vector3.INF
+var _figure_home := Vector3.ZERO
 var _focus_complete_ms := 0
 var site: ShelterSite
 var graphics: GraphicsSettings
@@ -180,6 +183,7 @@ func _ready() -> void:
 	if callouts:
 		callouts.rect_provider = _hud_rects
 	rig = get_tree().get_first_node_in_group("camera_rig") as IsometricCameraRig
+	_figure_home = player.visual_node.position
 	_cutaway_panel = hud.get_parent().get_node_or_null("ShelterCutawayPanel") as Control
 	_compass = hud.get_node_or_null("Compass") as Control
 	if _cutaway_panel:
@@ -1173,10 +1177,10 @@ func _enter_focus() -> void:
 	interaction.enabled = true
 	interaction.forced = site.interactable
 	_unload_to_site()
-	# 只转角色外观面向工地，不动位置
-	var to := site.global_position - player.global_position
-	if player.visual_node:
-		player.visual_node.rotation.y = atan2(to.x, to.z)
+	# §12.2：角色的模型画到工地旁边、面向工地干活；玩家真实位置、碰撞、控制都不变
+	_figure_spot = _pick_figure_spot()
+	var to := site.global_position - _figure_spot
+	player.visual_node.rotation.y = atan2(to.x, to.z)
 	if rig:
 		var aim := _focus_aim()
 		rig.set_focus(aim, _focus_zoom_for(aim))
@@ -1202,7 +1206,43 @@ func _replace_site() -> void:
 	ui.set_shelter_card("", "", false)
 	_enter_build()
 
+## 角色画在哪里：工地在屏幕上的一侧，离入口近的那边（材料堆在另一边），略靠后；有树就换一边。
+func _pick_figure_spot() -> Vector3:
+	var c := site.global_position
+	var right := rig.global_transform.basis.x if rig else Vector3.RIGHT
+	var away := -rig.global_transform.basis.z if rig else Vector3.FORWARD
+	away.y = 0.0
+	away = away.normalized()
+	var e_side := (site.entrance_point() - c).dot(right)
+	var first := signf(e_side) if absf(e_side) > 0.01 else 1.0
+	var dist := site.footprint_radius() + tuning.build_focus_figure_gap_m + absf(e_side) * 0.5
+	var trees := build._tree_points()
+	for g in ["forest", "scenery"]:
+		for n in get_tree().get_nodes_in_group(g):
+			for key in ["snag_points", "deadwood_points"]:
+				if key in n:
+					trees.append_array(n.get(key))
+	# 依次试：两侧、再往外一点。站的地方和它朝镜头方向（树干会挡住人）都要没有树。
+	var best := Vector3.INF
+	for extra in [0.0, 1.0, 2.0]:
+		for s in [first, -first]:
+			var q: Vector3 = c + right * s * (dist + extra) + away * 0.6
+			var clear := true
+			for along in [0.0, 1.5, 3.0]:
+				var a: Vector3 = q - away * along
+				for t in trees:
+					if t.distance_to(Vector2(a.x, a.z)) < 1.0:
+						clear = false
+						break
+			if best == Vector3.INF:
+				best = q
+			if clear:
+				return Vector3(q.x, SnowField.height_at(q.x, q.z), q.z)
+	return Vector3(best.x, SnowField.height_at(best.x, best.z), best.z)
+
 func _release_focus() -> void:
+	_figure_spot = Vector3.INF
+	player.visual_node.position = _figure_home
 	player.controls_enabled = state == State.PLAYING
 	interaction.forced = null
 	interaction.enabled = state == State.PLAYING
@@ -1225,10 +1265,9 @@ func _set_focus_hud(on: bool) -> void:
 func _focus_aim() -> Vector3:
 	var p := site.global_position + site.entrance_dir * 0.6
 	p.y = SnowField.height_at(p.x, p.z) + 0.4
-	if rig:
+	if rig and _figure_spot != Vector3.INF:
 		var right := rig.global_transform.basis.x
-		var side := signf((player.global_position - p).dot(right))
-		p += right * side * tuning.build_focus_side_m
+		p += right * signf((_figure_spot - p).dot(right)) * tuning.build_focus_side_m
 	return p
 
 ## 按庇护所体量取特写距离（§12.2）。
@@ -1250,26 +1289,27 @@ func site_screen_rect(camera: Camera3D) -> Rect2:
 	var c := site.global_position
 	var y := SnowField.height_at(c.x, c.z)
 	var r := Rect2(camera.unproject_position(Vector3(c.x, y, c.z)), Vector2.ZERO)
-	var e := site.entrance_dir * 1.8
-	for q in [Vector3(1.5, 0, 0), Vector3(-1.5, 0, 0), Vector3(0, 0, 1.5), Vector3(0, 0, -1.5), Vector3(0, 1.2, 0), e, e + Vector3(0, 1.0, 0)]:
+	var e := site.entrance_point() - Vector3(c.x, y, c.z)
+	var f := site.footprint_radius() * 0.75
+	for q in [Vector3(f, 0, 0), Vector3(-f, 0, 0), Vector3(0, 0, f), Vector3(0, 0, -f), Vector3(0, 1.2, 0), e, e + Vector3(0, 1.0, 0)]:
 		r = r.expand(camera.unproject_position(Vector3(c.x, y, c.z) + q))
 	return r
 
 ## 角色（含背包）的屏幕包围盒。
 func character_screen_rect(camera: Camera3D) -> Rect2:
-	var p := player.global_position
+	var p: Vector3 = player.visual_node.global_position
 	var r := Rect2(camera.unproject_position(p), Vector2.ZERO)
 	for q in [Vector3(0, 1.9, 0), Vector3(0.55, 1.0, 0), Vector3(-0.55, 1.0, 0), Vector3(0, 1.0, 0.55), Vector3(0, 1.0, -0.55)]:
 		r = r.expand(camera.unproject_position(p + q))
 	return r
 
-## B2 硬规则：角色挡住工地就淡出；只改外观。
+## B2 硬规则：角色不挡工地。模型已经画在旁边（_pick_figure_spot），这里是兜底判定。
 func character_blocks_site() -> bool:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null or site == null:
 		return false
 	var cam := camera.global_position
-	return BuildSession.blocks_site(character_screen_rect(camera), site_screen_rect(camera), cam.distance_to(player.global_position), cam.distance_to(site.global_position))
+	return BuildSession.blocks_site(character_screen_rect(camera), site_screen_rect(camera), cam.distance_to(player.visual_node.global_position), cam.distance_to(site.global_position))
 
 func _tick_focus(delta: float) -> void:
 	var hide := false
@@ -1278,6 +1318,9 @@ func _tick_focus(delta: float) -> void:
 			session.reset()
 			_release_focus()
 		else:
+			if _figure_spot != Vector3.INF:
+				var v: Node3D = player.visual_node
+				v.global_position = v.global_position.lerp(_figure_spot, minf(delta * 5.0, 1.0))
 			hide = character_blocks_site()
 			if site.is_complete() and session.state == BuildSession.State.FOCUSED:
 				session.complete()
@@ -1290,7 +1333,7 @@ func _tick_focus(delta: float) -> void:
 				hide = false
 			else:
 				_update_focus_panel()
-	var want := 1.0 if hide else 0.0
+	var want := tuning.build_focus_ghost_amount if hide else 0.0
 	if _hiker_ghost != want and player.visual_node is HikerVisual:
 		_hiker_ghost = move_toward(_hiker_ghost, want, delta / maxf(tuning.build_focus_ghost_seconds, 0.01))
 		(player.visual_node as HikerVisual).set_ghost(_hiker_ghost)
@@ -1613,8 +1656,7 @@ func _update_world_callouts() -> void:
 	callouts.player_world = player.global_position + Vector3(0, 0.9, 0)
 	# R3 + 第三次评审：庇护所 = 固定 HUD 卡片（名字 · 阶段 · 入口朝向 · 下一步）；世界里只在入口画环和箭头
 	if site != null:
-		var entrance := site.global_position + site.entrance_dir * 1.8 + Vector3(0, 0.8, 0)
-		callouts.set_marker("my_shelter", entrance, Color(1.0, 0.7, 0.35))
+		callouts.set_marker("my_shelter", site.entrance_point(), Color(1.0, 0.7, 0.35))
 		var t := _shelter_card_text()
 		ui.set_shelter_card(t[0], t[1], site.is_complete())
 	else:

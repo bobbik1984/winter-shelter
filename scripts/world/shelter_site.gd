@@ -84,6 +84,23 @@ func is_snow_shelter() -> bool:
 ## 下一阶开工前还要等到什么时候（游戏分钟；0 = 不用等）。
 var ready_at := 0.0
 
+## 入口在世界里的位置（地面上）：每种庇护所的开口离中心不一样远，标记要真的指着开口。
+func entrance_point() -> Vector3:
+	var dist := 1.5
+	match preset_id:
+		"SnowTrench": dist = 0.7
+		"LeanTo": dist = 1.0
+		"TreeWell": dist = 1.6
+		"Quinzhee": dist = 2.2
+		"RockOverhang": dist = 1.1
+		"FallenLog": dist = 0.9
+	var p := global_position + entrance_dir * dist
+	return Vector3(p.x, SnowField.height_at(p.x, p.z) + 0.12, p.z)
+
+## 工地在地面上大约占多大半径（米）。
+func footprint_radius() -> float:
+	return 2.4 if preset_id == "Quinzhee" else 2.0
+
 func next_stage_cost() -> Dictionary:
 	var s := builder.current_stage
 	if s >= ShelterBuilder.STAGES_MAX:

@@ -251,10 +251,13 @@ func _build_focus_part(m, d, p) -> void:
 	p.global_position = Vector3(stand.x, TerrainHeight.height_at(stand.x, stand.z) + 0.5, stand.z)
 	for i in 5: await physics_frame
 	var held: Vector3 = p.global_position
-	check(d.character_blocks_site(), "standing between camera and site counts as blocking it")
 	for i in 60: await process_frame
-	check(not p.visual_node.visible, "a blocking character is hidden in the close-up")
-	check(Vector2(p.global_position.x - held.x, p.global_position.z - held.z).length() < 0.05 and not p.get_node("CollisionShape3D").disabled, "hiding changes looks only: position and collision stay")
+	var fig_d: float = Vector2(p.visual_node.global_position.x - d.site.global_position.x, p.visual_node.global_position.z - d.site.global_position.z).length()
+	check(p.visual_node.visible and fig_d >= d.site.footprint_radius(), "the figure stays visible, drawn beside the site (%.1f m away)" % fig_d)
+	check(not d.character_blocks_site(), "the figure does not cover the site, even if the player stood in front of it")
+	check(Vector2(p.global_position.x - held.x, p.global_position.z - held.z).length() < 0.05 and not p.get_node("CollisionShape3D").disabled, "this changes looks only: real position and collision stay")
+	var ep: Vector3 = d.site.entrance_point()
+	check(d.callouts.has_callout("my_shelter") and is_equal_approx(d.callouts._entries["my_shelter"]["world"].y, ep.y), "the ring sits at the real opening, on the ground")
 	# 材料不足：不扣料、不推进、面板写明
 	d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
 	check(d.site.stage() == 2, "stage 2 done, the next stage needs bedding")
@@ -276,7 +279,7 @@ func _build_focus_part(m, d, p) -> void:
 	check(p.controls_enabled and not d.rig.is_focusing(), "stepping back restores movement and the camera")
 	check(d.site == site_ref and d.site.stage() == 2, "the site and its progress stay")
 	for i in 40: await process_frame
-	check(p.visual_node.visible, "the character is visible again")
+	check(p.visual_node.visible and p.visual_node.position.distance_to(d._figure_home) < 0.01, "the figure is back at the player")
 	check(card.visible and m.find_child("ShelterLine", true, false).text.contains("gather"), "the far-view card shows what is still needed")
 	# 同一时间一个工地：走远了按 B 不会新建
 	p.global_position = Vector3(stand.x + 15.0, TerrainHeight.height_at(stand.x + 15.0, stand.z) + 0.5, stand.z)
