@@ -88,7 +88,7 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 	min_warmth = warmth
 	dampness = clampf(float(input.get("dampness", 0.0)), 0.0, 1.0)
 	_shelter = String(input.get("shelter_type", "None"))
-	_is_snow = _shelter in ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell"]
+	_is_snow = _shelter in NightSimulator.SNOW_TYPES
 	protection = protection_of(input, t)
 	var night_temp := float(input.get("night_temp_c", t.temp_at_night_c))
 	var temp_k := maxf(0.2, 1.0 + (t.night_temp_ref_c - night_temp) * t.night_temp_sensitivity)
@@ -119,7 +119,7 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 			vent_clogged_pending = true
 			vent_clog_due = t.night_clog_wake_min
 	var snowfall := float(input.get("night_snowfall", 0.0))
-	if snowfall >= t.night_snow_load_snowfall and _shelter in ["SnowTrench", "TreeWell", "LeanTo"]:
+	if snowfall >= t.night_snow_load_snowfall and _shelter in ["SnowTrench", "TreeWell", "LeanTo", "FallenLog", "RockOverhang"]:
 		snow_load_due = t.night_snow_load_wake_min
 	if NightSimulator.wet_fraction(dampness, t) >= 0.99:
 		wet_feet_due = t.night_wet_feet_wake_min
@@ -165,7 +165,7 @@ func loss_per_hour() -> float:
 ## 火对这个庇护所起多大作用 0..1。
 func _fire_factor() -> float:
 	match _shelter:
-		"RaisedCave", "BasicCave": return 0.0
+		"RaisedCave", "BasicCave", "Quinzhee": return 0.0
 		"SnowTrench", "TreeWell": return t.night_fire_factor_snow_open
 	return t.night_fire_factor_reflector if bool(input.get("has_reflector_wall", false)) else t.night_fire_factor_open
 
@@ -273,7 +273,7 @@ func available_actions() -> PackedStringArray:
 		out.append(ACT_ADD_WOOD)
 	if vent_none or vent_clogged_pending:
 		out.append(ACT_CLEAR_VENT)
-	if snow_load_due <= minute and not snow_load_active and _shelter in ["SnowTrench", "TreeWell", "LeanTo"] and _pending_event == EV_SNOW_LOAD:
+	if snow_load_due <= minute and not snow_load_active and _shelter in ["SnowTrench", "TreeWell", "LeanTo", "FallenLog", "RockOverhang"] and _pending_event == EV_SNOW_LOAD:
 		out.append(ACT_KNOCK_SNOW)
 	if has_fire_place and fire_minutes > 0.0 and NightSimulator.wet_fraction(dampness, t) > 0.0:
 		out.append(ACT_DRY_SOCKS)
@@ -352,7 +352,7 @@ func result() -> Dictionary:
 	return {"outcome": outcome, "cause": cause, "min_warmth": min_warmth, "end_warmth": warmth, "wakes": wakes + critical_wakes,
 		"sleep_quality": sleep_quality, "protection": protection, "base_loss": base_loss, "curve": curve, "timeline": timeline,
 		"boots_frozen": NightSimulator.wet_fraction(dampness, t) > 0.5 and not has_fire_place,
-		"had_fire": has_fire_place, "fire_out_at": fire_out_at, "logs_left": stock_logs}
+		"had_fire": has_fire_place, "fire_out_at": fire_out_at, "logs_left": stock_logs, "end_damp": dampness}
 
 ## 测试 / 机器人用：按策略跑完整夜。policy: "sleep"（醒了什么都不做）或 "smart"（能做的都做）。
 static func run(p_input: Dictionary, p_t: Tuning, policy: String = "smart") -> Dictionary:

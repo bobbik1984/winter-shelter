@@ -33,12 +33,12 @@ grep -q "RESULT PASS" /tmp/ws_ci_smoke.log || fail=1
 
 if [ "${1:-}" != "--quick" ]; then
   step "balance bots"
-  for s in deep_stick trench treewell leanto_full wind none; do
+  for s in deep_stick trench treewell leanto_full quinzhee rock fallen wind none; do
     line=$(win --path . -s res://tools/playtest_bot.gd -- --s=$s --weather=clear 2>&1 | grep -E "^depth|PLACE FAILED")
     echo "$line"
     case "$s" in
       deep_stick) echo "$line" | grep -q " SAFE " || { echo "  expected SAFE"; fail=1; } ;;
-      trench|treewell|leanto_full) echo "$line" | grep -qE " (COLD|SAFE) " || { echo "  expected COLD or better"; fail=1; } ;;
+      trench|treewell|leanto_full|quinzhee|rock|fallen) echo "$line" | grep -qE " (COLD|SAFE) " || { echo "  expected COLD or better"; fail=1; } ;;
       wind|none) echo "$line" | grep -q " DANGEROUS " || { echo "  bad play must fail: expected DANGEROUS"; fail=1; } ;;
     esac
     # N5：目标路线的结局不因基础失温 ±10% 翻转

@@ -35,7 +35,7 @@ func _ready() -> void:
 	k = _scatter(tuning.birch_spots, 8.0, 34.0, 23, _spawn_birch)
 	k = _scatter(int(tuning.bedding_spots * 0.6), 4.0, 26.0, 37, _spawn_grass)
 	k = _scatter(tuning.bedding_spots - int(tuning.bedding_spots * 0.6), 6.0, 30.0, 41, _spawn_bough)
-	k = _scatter(3, 6.0, 30.0, 53, _spawn_wet_log)
+	k = _scatter(tuning.fallen_log_spots, 6.0, 30.0, 53, _spawn_wet_log)
 	_attach_existing_snags.call_deferred()
 
 ## "occlusion_fade" 组回调：立枯木挡住玩家 / 工地时镂空。（立枯木材质早就开了镂空，但一直没收到焦点，所以从未生效。）
@@ -186,12 +186,14 @@ func _spawn_bough(p: Vector2, i: int) -> void:
 	_interactable(root, "bough", Loc.t("Cut low spruce boughs (bedding)"), 2, 1.0)
 
 func _spawn_wet_log(p: Vector2, i: int) -> void:
+	LandFeatures.logs.append(p)
 	var root := _root("WetLog", p)
 	root.position.y -= 0.08
 	_mesh(root, PropMeshes.wet_log(110 + i), _mat_log, TerrainHeight.hash2(i, 3, 9) * TAU)
 	_interactable(root, "wet_log", Loc.t("Chop fallen log"), 1, 1.2)
 
 func _spawn_rootball(p: Vector2, i: int) -> void:
+	LandFeatures.logs.append(p)   # 翻倒的树干也是现成的脊梁
 	var root := _root("Rootball", p)
 	root.add_to_group("windbreaks")
 	# 树根盘面朝西（迎风），倒伏树干朝东躺下：背风侧（东）形成避风凹窝

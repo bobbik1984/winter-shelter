@@ -51,7 +51,14 @@ const PRESET_BASIC_CAVE := "BasicCave"
 const PRESET_SNOW_TRENCH := "SnowTrench"
 const PRESET_LEAN_TO := "LeanTo"
 const PRESET_TREE_WELL := "TreeWell"
+const PRESET_QUINZHEE := "Quinzhee"
+const PRESET_ROCK := "RockOverhang"
+const PRESET_FALLEN := "FallenLog"
 const PRESET_NONE := "None"
+## 雪做的庇护所（挖雪、受潮、里面不能生火）。
+const SNOW_TYPES := ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell", "Quinzhee"]
+## 开放框架（结构分看完工 + 支撑，通风不是问题）。
+const FRAME_TYPES := ["LeanTo", "RockOverhang", "FallenLog"]
 
 const OUTCOME_SAFE := "SAFE"
 const OUTCOME_COLD := "COLD"
@@ -74,7 +81,7 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 	var shelter_type: String = str(resolved.get("type", PRESET_NONE))
 	var known_preset: bool = bool(resolved.get("known", true))
 	var is_snow := _is_snow_shelter(shelter_type)
-	var is_lean_to := shelter_type == PRESET_LEAN_TO
+	var is_lean_to := shelter_type in FRAME_TYPES
 
 	var wind_angle_diff := clampf(_input_float(input, "wind_angle_diff", 180.0), 0.0, 180.0)
 	var wind_speed := maxf(_input_float(input, "wind_speed_kmh", t.wind_speed_kmh), 0.0)
@@ -203,6 +210,12 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		isolation = t.isolation_lean_to_base
 	elif shelter_type == PRESET_TREE_WELL:
 		isolation = t.tree_well_isolation_base
+	elif shelter_type == PRESET_QUINZHEE:
+		isolation = t.quinzhee_isolation_base
+	elif shelter_type == PRESET_ROCK:
+		isolation = t.rock_isolation_base
+	elif shelter_type == PRESET_FALLEN:
+		isolation = t.fallen_log_isolation_base
 	if is_snow:
 		if has_cold_pit:
 			isolation += t.isolation_cold_pit_bonus
@@ -641,19 +654,19 @@ static func _resolve_preset(raw: String) -> Dictionary:
 		return {"type": PRESET_LEAN_TO, "known": true}
 	if key == "treewell" or key == "tree_well" or key == "tree-well":
 		return {"type": PRESET_TREE_WELL, "known": true}
+	if key == "quinzhee":
+		return {"type": PRESET_QUINZHEE, "known": true}
+	if key == "rockoverhang":
+		return {"type": PRESET_ROCK, "known": true}
+	if key == "fallenlog":
+		return {"type": PRESET_FALLEN, "known": true}
 	if key == "" or key == "none" or key == "no_shelter":
 		return {"type": PRESET_NONE, "known": true}
 	return {"type": PRESET_NONE, "known": false}
 
 
 static func _is_snow_shelter(shelter_type: String) -> bool:
-	return (
-		shelter_type == PRESET_RAISED_CAVE
-		or shelter_type == PRESET_BASIC_CAVE
-		or shelter_type == PRESET_SNOW_TRENCH
-		or shelter_type == PRESET_TREE_WELL
-	)
-
+	return shelter_type in SNOW_TYPES
 
 static func _preset_label(shelter_type: String) -> String:
 	if shelter_type == PRESET_RAISED_CAVE:
@@ -666,6 +679,12 @@ static func _preset_label(shelter_type: String) -> String:
 		return "倒棚"
 	if shelter_type == PRESET_TREE_WELL:
 		return "树井"
+	if shelter_type == PRESET_QUINZHEE:
+		return "雪堆屋"
+	if shelter_type == PRESET_ROCK:
+		return "岩檐"
+	if shelter_type == PRESET_FALLEN:
+		return "倒木斜棚"
 	return "None"
 
 
@@ -678,6 +697,8 @@ static func _preset_min_depth(shelter_type: String, t: Tuning) -> float:
 		return t.snow_depth_trench_standard_m
 	if shelter_type == PRESET_TREE_WELL:
 		return t.tree_well_min_snow_m
+	if shelter_type == PRESET_QUINZHEE:
+		return t.quinzhee_pile_height_m * 0.75   # 墙厚看雪丘，不看地面雪深
 	return 0.0
 
 
@@ -698,7 +719,7 @@ static func _preset_wood_cost(shelter_type: String, t: Tuning) -> int:
 		return t.basic_cave_wood_cost
 	if shelter_type == PRESET_SNOW_TRENCH:
 		return t.snow_trench_wood_cost
-	if shelter_type == PRESET_LEAN_TO:
+	if shelter_type in FRAME_TYPES:
 		return t.lean_to_wood_cost
 	return 0
 
@@ -714,6 +735,12 @@ static func _preset_base_thermal(shelter_type: String, t: Tuning) -> float:
 		return t.lean_to_base_thermal
 	if shelter_type == PRESET_TREE_WELL:
 		return t.tree_well_base_thermal
+	if shelter_type == PRESET_QUINZHEE:
+		return t.quinzhee_base_thermal
+	if shelter_type == PRESET_ROCK:
+		return t.rock_base_thermal
+	if shelter_type == PRESET_FALLEN:
+		return t.fallen_log_base_thermal
 	return 0.0
 
 
@@ -728,6 +755,12 @@ static func _preset_base_structure(shelter_type: String, t: Tuning) -> float:
 		return t.lean_to_base_structure
 	if shelter_type == PRESET_TREE_WELL:
 		return t.tree_well_base_structure
+	if shelter_type == PRESET_QUINZHEE:
+		return t.quinzhee_base_structure
+	if shelter_type == PRESET_ROCK:
+		return t.rock_base_structure
+	if shelter_type == PRESET_FALLEN:
+		return t.fallen_log_base_structure
 	return 0.0
 
 
@@ -742,6 +775,12 @@ static func _preset_volume(shelter_type: String, t: Tuning) -> float:
 		return t.lean_to_volume_m3
 	if shelter_type == PRESET_TREE_WELL:
 		return t.tree_well_volume_m3
+	if shelter_type == PRESET_QUINZHEE:
+		return t.quinzhee_volume_m3
+	if shelter_type == PRESET_ROCK:
+		return t.rock_volume_m3
+	if shelter_type == PRESET_FALLEN:
+		return t.fallen_log_volume_m3
 	return 0.0
 
 

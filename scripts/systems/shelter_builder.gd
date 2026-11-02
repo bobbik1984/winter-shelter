@@ -122,8 +122,8 @@ func build_night_sim_input(warmth_ctrl: WarmthController = null) -> Dictionary:
 	_ensure_presets()
 	var preset := active_preset()
 	var is_lean_to := active_preset_id == "LeanTo"
-	var is_snow := active_preset_id == "RaisedCave" or active_preset_id == "BasicCave" \
-		or active_preset_id == "SnowTrench" or active_preset_id == "TreeWell"
+	var is_snow := active_preset_id in NightSimulator.SNOW_TYPES
+	var is_quinzhee := active_preset_id == "Quinzhee"
 	var is_tree_well := active_preset_id == "TreeWell"
 	var stage := current_stage
 	var is_complete := stage >= STAGES_MAX
@@ -136,11 +136,14 @@ func build_night_sim_input(warmth_ctrl: WarmthController = null) -> Dictionary:
 	var has_vent := stage >= 4 and is_snow and not is_tree_well   # 树井：枝条屋顶透气，没有通风管
 	var has_snow_wall := active_preset_id == "SnowTrench" and _site_snow_depth < 1.0 \
 		and stage >= 2
-	var has_reflector_wall := is_lean_to and stage >= 4
+	# 岩壁本身就是反射面：只要搭好就算（倒棚要砌反射墙）
+	var has_reflector_wall := (is_lean_to and stage >= 4) or (active_preset_id == "RockOverhang" and stage >= 2)
 	var bedding := 1.0 if stage >= 3 else 0.0
 	var roof := 0.0
 	if is_tree_well:
 		roof = 0.35 if stage >= 4 else 0.2   # 枝条屋顶：补顶后约等于薄雪顶
+	elif is_quinzhee:
+		roof = 0.35 if stage >= 3 else 0.0   # 墙厚 = 掏空时留到木棍的厚度
 	elif is_snow and stage >= 1:
 		roof = clampf(_site_snow_depth * 0.22, 0.30, 0.55)
 	var fuel_hours := 0.0
@@ -154,7 +157,7 @@ func build_night_sim_input(warmth_ctrl: WarmthController = null) -> Dictionary:
 		"shelter_type": active_preset_id,
 		"wind_angle_diff": 180.0 if _site_near_rootball else 150.0,
 		"terrain_shelter": 0.7 if _site_near_rootball else 0.35,
-		"snow_depth_meters": _site_snow_depth,
+		"snow_depth_meters": maxf(_site_snow_depth, OldSpruces.tuning().quinzhee_pile_height_m) if is_quinzhee else _site_snow_depth,
 		"slope_deg": _site_slope_deg,
 		"roof_thickness_meters": roof,
 		"completion_ratio": completion_ratio,

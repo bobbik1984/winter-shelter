@@ -107,7 +107,7 @@ static func level_takeaway(theme: String, targets: PackedStringArray, preset: St
 			verdict = Loc.t("Right choice of shelter — the weakest score above is what to fix.")
 		else:
 			# R2：结果对 ≠ 过程对。雪庇护所要在选址处探过雪；入口要背风（≥ 120°）。
-			var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell"]
+			var is_snow := preset in NightSimulator.SNOW_TYPES
 			var entrance := float(ctx.get("entrance_deg", 180.0))
 			if is_snow and not bool(ctx.get("probed_site", true)):
 				verdict = Loc.t("Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.")
@@ -128,8 +128,8 @@ static func _label(key: String) -> String:
 	return key
 
 static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning, report_scores: Dictionary = {}) -> String:
-	var is_snow := preset in ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell"]
-	var lean := preset == "LeanTo"
+	var is_snow := preset in NightSimulator.SNOW_TYPES
+	var lean := preset in NightSimulator.FRAME_TYPES
 	var none := not (is_snow or lean)
 	var angle := float(i.get("wind_angle_diff", 90.0))
 	var completion := float(i.get("completion_ratio", 0.0))

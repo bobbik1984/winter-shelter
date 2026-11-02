@@ -242,6 +242,31 @@ func _n5(c: Dictionary, t: Tuning) -> void:
 	var cave_fire: Dictionary = (c["raised_dry"] as Dictionary).duplicate()
 	cave_fire.merge({"campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.15}, true)
 	_check(is_equal_approx(NightCurve.new(cave_fire, t).loss_per_hour(), NightCurve.new(c["raised_dry"], t).loss_per_hour()), "雪洞：火在外面，睡着时没有作用（D3）")
+	# 第三次评审后：报告说具体原因，不说分数名
+	var leak_in := {"shelter_type": "SnowTrench", "completion_ratio": 1.0, "prewarmed": true}
+	var leak_res := {"had_fire": false, "fire_out_at": -1.0, "logs_left": 0, "end_damp": 0.0}
+	_check(NightText.heat_leak(leak_in, {"end_damp": 1.0}, "heat", t) == "wet clothes", "湿透：热量漏在湿衣服")
+	_check(NightText.heat_leak({"shelter_type": "None"}, leak_res, "heat", t) == "no shelter at all", "没有庇护所")
+	_check(NightText.heat_leak({"shelter_type": "SnowTrench", "completion_ratio": 0.4}, leak_res, "heat", t) == "an unfinished shelter", "没建完")
+	_check(NightText.heat_leak(leak_in, {"had_fire": true, "fire_out_at": 300.0, "logs_left": 0, "end_damp": 0.0}, "heat", t) == "a fire that ran out of wood", "柴烧完了")
+	_check(NightText.heat_leak(leak_in, leak_res, "isolation", t).contains("cold air"), "隔冷最弱：说冷空气")
+	# S5：其余三种庇护所的夜晚
+	var qz := _case({"shelter_type": "Quinzhee", "snow_depth_meters": 1.4, "bedding_quality": 0.95, "vent_count": 1, "has_vent": true, "roof_thickness_meters": 0.35})
+	var rk := _case({"shelter_type": "RockOverhang", "snow_depth_meters": 0.4, "bedding_quality": 0.95, "terrain_shelter": 0.9, "wind_angle_diff": 180.0, "has_reflector_wall": true, "campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.1})
+	var fl := _case({"shelter_type": "FallenLog", "snow_depth_meters": 0.6, "bedding_quality": 0.95, "wind_angle_diff": 180.0, "campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.15})
+	for pair in [["雪堆屋", qz], ["岩檐", rk], ["倒木斜棚", fl]]:
+		_check(String(NightCurve.run(pair[1], t, "smart")["outcome"]) != "DANGEROUS", "%s：完工、准备好：至少 COLD（%s，最低 %d）" % [pair[0], NightCurve.run(pair[1], t, "smart")["outcome"], int(NightCurve.run(pair[1], t, "smart")["min_warmth"])])
+	var qz_novent: Dictionary = qz.duplicate()
+	qz_novent["vent_count"] = 0
+	qz_novent["has_vent"] = false
+	_check(String(NightCurve.run(qz_novent, t, "sleep")["cause"]) == "suffocated", "雪堆屋也是密闭雪室：没通风孔一样窒息")
+	var qz_fire: Dictionary = qz.duplicate()
+	qz_fire.merge({"campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.1}, true)
+	_check(is_equal_approx(NightCurve.new(qz_fire, t).loss_per_hour(), NightCurve.new(qz, t).loss_per_hour()), "雪堆屋：火在外面，睡着时没有作用（D3）")
+	var fl_nofire: Dictionary = fl.duplicate()
+	fl_nofire.erase("campfire_near")
+	_check(float(NightCurve.run(fl, t, "smart")["min_warmth"]) >= float(NightCurve.run(fl_nofire, t, "sleep")["min_warmth"]), "倒木斜棚：有火比没火好")
+	_check(NightCurve.new(rk, t).loss_per_hour() < NightCurve.new(fl, t).loss_per_hour(), "岩壁反射火的热量：同样有火，岩檐比倒木斜棚暖")
 	# 第三次评审后：夜晚到日出为止；早睡要熬更久，但日落前那段还没到夜间气温
 	var early: Dictionary = (c["trench"] as Dictionary).duplicate()
 	early.merge({"night_hours": 16.0, "daylight_minutes": 60.0}, true)

@@ -79,7 +79,10 @@ func is_complete() -> bool:
 	return builder.current_stage >= ShelterBuilder.STAGES_MAX
 
 func is_snow_shelter() -> bool:
-	return preset_id != "LeanTo"
+	return preset_id in NightSimulator.SNOW_TYPES
+
+## 下一阶开工前还要等到什么时候（游戏分钟；0 = 不用等）。
+var ready_at := 0.0
 
 func next_stage_cost() -> Dictionary:
 	var s := builder.current_stage
@@ -102,7 +105,18 @@ func next_stage_title() -> String:
 	return Loc.t(p.stage_titles[s]) if s < p.stage_titles.size() else ""
 
 func stage_minutes() -> float:
-	return builder.active_preset().build_minutes_total / float(ShelterBuilder.STAGES_MAX) * time_factor
+	var p := builder.active_preset()
+	var s := mini(builder.current_stage, ShelterBuilder.STAGES_MAX - 1)
+	var share := float(p.stage_weights[s]) if s < p.stage_weights.size() else 1.0 / float(ShelterBuilder.STAGES_MAX)
+	return p.build_minutes_total * share * time_factor
+
+## 下一阶开工前要等多久（游戏分钟）。
+func wait_before_next_stage() -> float:
+	var p := builder.active_preset()
+	var s := builder.current_stage
+	if s >= p.stage_wait_minutes.size() or float(p.stage_wait_minutes[s]) <= 0.0:
+		return 0.0
+	return OldSpruces.tuning().quinzhee_set_minutes if p.preset_id == "Quinzhee" else float(p.stage_wait_minutes[s])
 
 ## 0 露天 / 1 锁温 / 2 回温（来自预设的各阶段保温等级）。
 func shelter_level() -> int:
@@ -142,6 +156,12 @@ func _refresh() -> void:
 			_leanto_visual(s)
 		"TreeWell":
 			_treewell_visual(s)
+		"Quinzhee":
+			_quinzhee_visual(s)
+		"RockOverhang":
+			_rock_visual(s)
+		"FallenLog":
+			_fallen_visual(s)
 	if s == 0:
 		# 工地标桩：四根小木桩 + 入口方向
 		for c in [Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
@@ -365,6 +385,58 @@ func _process(_delta: float) -> void:
 		_entrance_light.light_energy = lerpf(1.4, 3.2, clampf((6.0 - elev) / 8.0, 0.0, 1.0))
 
 ## S5 树井外观（工地中心 = 树干）：树干周围挖开的浅坑、修剪后的低枝、枝条地板、补顶的枝条裙、封门。
+## 雪堆屋：雪丘一阶阶长高；插着当厚度标记的木棍；掏空后才有洞口。本节点入口 = +Z。
+func _quinzhee_visual(s: int) -> void:
+	if s <= 0:
+		return
+	_mound = _sphere(Vector3(0, 0.0, 0), 2.0, Vector3(1.15, 0.45 if s == 1 else 0.7, 1.15), _snow)
+	if s >= 2 and s < 3:
+		for c in [Vector3(0.6, 1.25, 0.3), Vector3(-0.5, 1.3, -0.3), Vector3(0.1, 1.42, 0.0), Vector3(-0.2, 1.2, 0.7)]:
+			_cyl(c, 0.025, 0.4, _wood)
+	if s >= 3:
+		_sphere(Vector3(0, 0.34, 2.05), 0.5, Vector3(1.0, 0.8, 0.4), _dark)
+		_box(Vector3(0, 0.03, 2.7), Vector3(0.9, 0.08, 1.2), _dark)
+	if s >= 4:
+		_cyl(Vector3(0.2, 1.45, -0.2), 0.05, 0.3, _dark)
+	if s >= 5:
+		_box(Vector3(0.75, 0.25, 2.25), Vector3(0.5, 0.5, 0.35), _snow)
+		_entrance_light = OmniLight3D.new()
+		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
+		_entrance_light.omni_range = 4.0
+		_entrance_light.light_energy = 1.2
+		_entrance_light.position = Vector3(0, 0.45, 2.3)
+		_visual.add_child(_entrance_light)
+
+## 岩檐：岩体在 -Z 一侧（本节点入口 = +Z，朝下风）。
+func _rock_visual(s: int) -> void:
+	if s <= 0:
+		return
+	_box(Vector3(0, 0.03, 0), Vector3(2.4, 0.06, 2.2), _dark)
+	if s >= 2:
+		for x in [-0.9, 0.0, 0.9]:
+			_cyl(Vector3(x, 0.7, 0.2), 0.05, 1.9, _wood, Vector3(-0.75, 0, 0))
+	if s >= 3:
+		_box(Vector3(0, 0.1, -0.2), Vector3(1.9, 0.14, 1.3), _bough)
+	if s >= 4:
+		_box(Vector3(0, 0.72, 0.2), Vector3(2.3, 0.1, 1.9), _bough, Vector3(-43.0, 0, 0))
+	if s >= 5:
+		_cyl(Vector3(1.25, 0.32, 0.5), 0.14, 1.5, _wood, Vector3(PI * 0.5, 0, 0))
+
+## 倒木斜棚：倒木作脊梁（横在 -Z 侧），肋条和枝条斜靠上去。
+func _fallen_visual(s: int) -> void:
+	if s <= 0:
+		return
+	_cyl(Vector3(0, 0.75, -0.7), 0.13, 3.2, _wood, Vector3(0, 0, PI * 0.5))
+	if s >= 2:
+		for x in [-1.2, -0.4, 0.4, 1.2]:
+			_cyl(Vector3(x, 0.42, 0.0), 0.04, 1.75, _wood, Vector3(0.95, 0, 0))
+	if s >= 3:
+		_box(Vector3(0, 0.45, 0.0), Vector3(3.0, 0.1, 1.7), _bough, Vector3(55.0, 0, 0))
+	if s >= 4:
+		_box(Vector3(0, 0.1, -0.2), Vector3(2.2, 0.14, 1.0), _bough)
+	if s >= 5:
+		_sphere(Vector3(0, 0.1, -1.25), 1.0, Vector3(1.8, 0.5, 0.45), _snow)
+
 func _treewell_visual(s: int) -> void:
 	if s <= 0:
 		return

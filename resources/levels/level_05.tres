@@ -34,5 +34,5 @@ valley_seeds = PackedInt32Array()
 wind_rotation_choices_deg = PackedFloat32Array(0, 90, 180, 270)
 wind_jitter_deg = 0.0
 target_presets = PackedStringArray("RaisedCave", "SnowTrench")
-introduced_presets = PackedStringArray()
+introduced_presets = PackedStringArray("RockOverhang")
 has_extra_layer = false

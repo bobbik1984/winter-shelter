@@ -2,7 +2,7 @@ extends RefCounted
 
 ## L1（D12）：关卡数据与抽取。种子可复现、抽取落在本关范围、自由模式 = 现有默认值、命令行解析、解锁规则。
 
-const VALID_PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell"]
+const VALID_PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell", "Quinzhee", "RockOverhang", "FallenLog"]
 const WEATHERS := ["clear", "overcast", "storm"]
 const SAMPLE_SEEDS := 300
 

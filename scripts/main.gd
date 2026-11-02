@@ -23,6 +23,7 @@ func _init() -> void:
 			var sel := Records.default_selection()
 			LevelState.begin(sel.x, -1, sel.y, Records.map_index(sel.x, sel.y))
 	LevelState.apply_world()
+	LandFeatures.reset()
 	OldSpruces.reset()   # 老云杉由 ForestScatter / SceneryBuilder 在 _ready 时重新登记（S5）
 	# 开发参数（S1）：--shape=basin|lakeshore|cliff_band [--rough=x] [--trees=x] 覆盖地形配方
 	var dev_recipe := TerrainRecipe.from_args(OS.get_cmdline_user_args())

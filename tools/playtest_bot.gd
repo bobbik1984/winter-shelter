@@ -40,6 +40,23 @@ func _run() -> void:
 		"leanto_short": preset = "LeanTo"; wood_need = 9; bedding_need = 4; spot = Vector3(-1.2, 0, 10.5)   # 7 根施工 + 2 根过夜
 		"leanto_full": preset = "LeanTo"; wood_need = 15; bedding_need = 4; spot = Vector3(-1.2, 0, 10.5)   # 7 根施工 + 8 根过夜
 		"trench": preset = "SnowTrench"; wood_need = 3; bedding_need = 3
+		"quinzhee":
+			preset = "Quinzhee"; wood_need = 3; bedding_need = 4
+			var bq := INF
+			for x in range(-30, 31, 3):
+				for z in range(-30, 31, 3):
+					var dq: float = Vector2(x, z).distance_to(MapLayout.spawn())
+					if dq < bq and SnowField.snow_at(x, z) >= d.tuning.quinzhee_min_snow_m and SnowField.slope_at(x, z) < d.tuning.quinzhee_max_slope_deg - 3.0:
+						bq = dq
+						spot = Vector3(x, 0, z)
+		"rock":
+			preset = "RockOverhang"; wood_need = 8; bedding_need = 5
+			var rn: Dictionary = LandFeatures.nearest(LandFeatures.rocks, MapLayout.spawn())
+			spot = Vector3(rn["point"].x, 0, rn["point"].y)
+		"fallen":
+			preset = "FallenLog"; wood_need = 8; bedding_need = 5
+			var ln: Dictionary = LandFeatures.nearest(LandFeatures.logs, MapLayout.spawn())
+			spot = Vector3(ln["point"].x, 0, ln["point"].y)
 		"treewell":
 			# S5：离出生点最近、周围积雪够厚的老云杉；树井不花木头，3 根留着睡前烤干
 			preset = "TreeWell"; wood_need = 0; bedding_need = 6
@@ -79,17 +96,25 @@ func _run() -> void:
 		d._place_site()
 		if d.site == null:
 			printerr("PLACE FAILED ", d.build.reason); quit(1); return
-		_haul(d, "grass", "bedding", bedding_need)
-		_haul(d, "deadwood", "wood", total_wood)
+		if strat != "quinzhee":   # 雪堆屋：放样时带的够前两阶，剩下的趁雪凝结时去采
+			_haul(d, "grass", "bedding", bedding_need)
+			_haul(d, "deadwood", "wood", total_wood)
 		d._unload_to_site()
 		var stages := 5
 		for s in stages:
 			if strat == "late" and d.weather.current_time_minutes > 1060.0:
 				break
+			if d.site.ready_at > d.weather.current_time_minutes:
+				_haul(d, "grass", "bedding", bedding_need)
+				_haul(d, "deadwood", "wood", total_wood)
+				d._unload_to_site()
+				while d.inventory.wood < 3:
+					d._on_interaction_completed(_fake("deadwood"), d._on_harvest(_fake("deadwood")))
+				d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())   # 雪堆屋：等雪凝结
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
-		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench", "treewell"]:
+		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench", "treewell", "quinzhee", "rock", "fallen"]:
 			# 去生火要带上柴（放在工地的柴离得远就用不上）
-			while d.inventory.wood < 3 and strat != "leanto_full":
+			while d.inventory.wood < 3 and not (strat in ["leanto_full", "rock", "fallen", "quinzhee"]):
 				d._on_interaction_completed(_fake("deadwood"), d._on_harvest(_fake("deadwood")))
 			# 篝火 + 热饮：像玩家一样找最近的树根盘，站到它的背风侧生火（原先站的开阔处风太大，火一直点不着）
 			var best_r := Vector2.ZERO
@@ -100,6 +125,9 @@ func _run() -> void:
 					best_d = dd
 					best_r = r
 			# 在树根盘背风一侧找一个能点着的地方（不在树冠下、挡得住风），像玩家一样多走几步
+			# 岩檐 / 倒木斜棚：火就生在工地旁（要给棚子供热，也用得上工地的柴）
+			if strat in ["rock", "fallen"]:
+				best_r = Vector2(d.site.global_position.x, d.site.global_position.z)
 			var blow: Vector3 = d.wind.get_blow_direction_3d()
 			var fire_spot := Vector3.INF
 			for dist in [1.4, 2.0, 2.8]:
@@ -119,7 +147,7 @@ func _run() -> void:
 				if n.kind == "fire" and n.current_prompt() != "":
 					d._on_interaction_completed(n, n.trigger())
 					# 挖雪庇护所会湿透：第二杯热水 = 把衣服烤干再睡（R1；倒棚不挖雪、不湿）
-					if strat != "leanto_full" and GameRules.clothing_state(d.dampness, d.tuning) != "dry":
+					if not (strat in ["leanto_full", "rock", "fallen"]) and GameRules.clothing_state(d.dampness, d.tuning) != "dry":
 						d._on_interaction_completed(n, n.trigger())
 					break
 		if strat == "deep_stick" and d._needs_vent_stick():

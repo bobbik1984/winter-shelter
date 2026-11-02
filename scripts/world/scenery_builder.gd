@@ -234,9 +234,12 @@ func _build_clusters() -> void:
 				0.0,
 				center.z + sin(angle) * (2.2 + float(rock_idx) * 0.8)
 			)
+			# 每个林团第一块是够高的岩体（约 2 m）：S5 岩檐能躲在它后面；其余是矮石块
+			if rock_idx == 0:
+				LandFeatures.rocks.append(Vector2(p.x, p.z))
 			_rock_outcrop(
 				p,
-				Vector3(0.8 + float(rock_idx) * 0.25, 0.55 + float(cluster_idx % 3) * 0.12, 0.95),
+				Vector3(0.8 + float(rock_idx) * 0.25, (0.55 + float(cluster_idx % 3) * 0.12) * (2.0 if rock_idx == 0 else 1.0), 0.95),
 				float(cluster_idx) * 31.0 + float(rock_idx) * 47.0
 			)
 

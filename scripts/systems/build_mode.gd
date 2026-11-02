@@ -5,7 +5,7 @@ extends Node3D
 ## 不合格时显示**第一条原因**；入口朝向可旋转（R），预设可切换（Tab）。
 ## 本节点只做预览与校验；确认放置由 GameDirector 处理（材料、唯一工地）。
 
-const PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell"]
+const PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell", "Quinzhee", "RockOverhang", "FallenLog"]
 
 var player: Node3D
 var visual: Node3D          # 玩家朝向来源（player.visual_node）
@@ -63,6 +63,15 @@ func _ready() -> void:
 	_ghost.add_child(_arrow)
 	_ghost.visible = false
 
+## 地图上的树（工地避开树干用）。
+func _tree_points() -> PackedVector2Array:
+	var out := PackedVector2Array(OldSpruces.points)
+	for g in ["forest", "scenery"]:
+		for n in get_tree().get_nodes_in_group(g):
+			if "spruce_points" in n:
+				out.append_array(n.get("spruce_points"))
+	return out
+
 func enter() -> void:
 	active = true
 	# 默认入口朝下风（背风），并推荐适合当前雪深的预设
@@ -99,9 +108,13 @@ func toggle_vents() -> void:
 	vent_count = 2 if vent_count == 1 else 1
 
 func is_snow_preset() -> bool:
-	return preset_id != "LeanTo"
+	return preset_id in NightSimulator.SNOW_TYPES
 
 func interior_text() -> String:
+	if preset_id == "RockOverhang":
+		return Loc.t("The rock is your wall and reflects a fire's heat, but cold stone drinks warmth: pile the bed thick.")
+	if preset_id == "FallenLog":
+		return Loc.t("The trunk is your ridgepole. No wall to reflect a fire, so keep your back to the wind.")
 	if not is_snow_preset():
 		return Loc.t("Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log).") % tuning.fire_fuel_hours_per_log
 	var roof := Loc.t("Quick roof %.2f m (−%d%% time, weaker)") % [tuning.roof_thickness_min_m, int(round((1.0 - tuning.quick_roof_time_factor) * 100.0))] if quick_roof else Loc.t("Solid roof %.2f m") % tuning.roof_thickness_good_m
@@ -143,6 +156,31 @@ func _update_site() -> void:
 		depth = TerrainHeight.snow_depth_at(tp.x, tp.y)
 		slope = SnowField.slope_at(tp.x, tp.y)
 	near_windbreak = ResourceSpawner.nearest_windbreak_distance(get_tree(), site_pos) < tuning.windbreak_radius_m
+	if preset_id == "RockOverhang":
+		# 岩檐：工地贴在最近岩体的下风侧；悬崖脚就地算（上风方向要真的有崖）
+		var rn := LandFeatures.nearest(LandFeatures.rocks, Vector2(p.x, p.z))
+		if float(rn["distance"]) <= tuning.rock_max_dist_m:
+			var rp: Vector2 = rn["point"]
+			var at := LandFeatures.clear_spot_downwind(rp, wind_from, 2.4, _tree_points(), 2.2)
+			site_pos = Vector3(at.x, SnowField.height_at(at.x, at.y), at.y)
+		elif not LandFeatures.cliff_upwind(p.x, p.z, wind_from, tuning.rock_cliff_run_m, tuning.rock_cliff_rise_m):
+			valid = false
+			reason = Loc.t("No rock or cliff to shelter behind here: it has to stand between you and the wind.")
+			return
+		near_windbreak = true
+		depth = SnowField.snow_at(site_pos.x, site_pos.z)
+		slope = SnowField.slope_at(site_pos.x, site_pos.z)
+	elif preset_id == "FallenLog":
+		var ln := LandFeatures.nearest(LandFeatures.logs, Vector2(p.x, p.z))
+		if float(ln["distance"]) > tuning.fallen_log_max_dist_m:
+			valid = false
+			reason = Loc.t("No fallen trunk here to use as a ridgepole: look for a log lying in the snow.")
+			return
+		var lp: Vector2 = ln["point"]
+		var la := LandFeatures.clear_spot_downwind(lp, wind_from, 1.4, _tree_points(), 2.2)
+		site_pos = Vector3(la.x, SnowField.height_at(la.x, la.y), la.y)
+		depth = SnowField.snow_at(site_pos.x, site_pos.z)
+		slope = SnowField.slope_at(site_pos.x, site_pos.z)
 	wind_angle = GameRules.entrance_wind_angle(entrance_dir, wind_from)
 	var v := _builder.validate_site(preset_id, depth, slope, near_windbreak)
 	valid = bool(v.get("ok", false))

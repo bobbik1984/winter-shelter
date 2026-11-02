@@ -97,6 +97,28 @@ static func title(res: Dictionary, wet: bool) -> String:
 		return Loc.t("SUFFOCATED")
 	return Loc.t("SOAKED THROUGH") if wet else Loc.t("SEVERE HYPOTHERMIA")
 
+## 这一夜热量主要从哪里漏掉：说具体原因，不说"Heat"这种分数名（第三次评审）。
+static func heat_leak(input: Dictionary, res: Dictionary, weakest_axis: String, t: Tuning) -> String:
+	if NightSimulator.wet_fraction(float(res.get("end_damp", input.get("dampness", 0.0))), t) > 0.5:
+		return Loc.t("wet clothes")
+	if String(input.get("shelter_type", "None")) == "None":
+		return Loc.t("no shelter at all")
+	if float(input.get("completion_ratio", 1.0)) < 1.0:
+		return Loc.t("an unfinished shelter")
+	if bool(res.get("had_fire", false)) and float(res.get("fire_out_at", -1.0)) >= 0.0 and int(res.get("logs_left", 0)) <= 0:
+		return Loc.t("a fire that ran out of wood")
+	match weakest_axis:
+		"site": return Loc.t("wind getting into the entrance")
+		"structure": return Loc.t("a thin roof")
+		"insulation": return Loc.t("thin bedding under you")
+		"isolation": return Loc.t("cold air pooling around your bed")
+		"air": return Loc.t("the vent you had to keep open")
+		"heat":
+			if not bool(input.get("prewarmed", false)) and not bool(res.get("had_fire", false)):
+				return Loc.t("no fire or hot drink before bed")
+			return Loc.t("thin snow walls")
+	return Loc.t("the cold")
+
 static func conclusion(res: Dictionary, weakest: String) -> String:
 	var lo := int(res["min_warmth"])
 	var w := int(res["wakes"])

@@ -514,6 +514,36 @@ extends Resource
 # 预设：倒棚 + 反射火（A，T0.6 新增，D2）
 # -----------------------------------------------------------------------------
 
+@export_group("Preset: Quinzhee")
+## S5 雪堆屋：不挑地方，把雪堆成约 1.4 m 的丘、等它凝结、再掏空。没有好雪堆但时间够时的答案。
+@export var quinzhee_min_snow_m: float = 0.3      ## [TUNE] 地上至少要有这么多雪可以堆
+@export var quinzhee_max_slope_deg: float = 15.0  ## [TUNE] 平地才堆得住
+@export var quinzhee_pile_height_m: float = 1.4   ## [REAL] 雪丘高度量级，出处待补；墙厚由它决定，不看地面雪深
+@export var quinzhee_set_minutes: float = 60.0    ## [REAL] 凝结 1–2 h，取下限；出处待补
+@export var quinzhee_base_thermal: float = 0.74
+@export var quinzhee_base_structure: float = 0.72
+@export var quinzhee_isolation_base: float = 0.38
+@export var quinzhee_volume_m3: float = 2.4
+
+@export_group("Preset: Rock Overhang")
+## S5 岩檐：背风岩体 / 悬崖脚。干燥挡风、省力，火的热量被岩壁反射；冷岩吸热，必须铺厚。
+@export var rock_max_dist_m: float = 4.0          ## [TUNE] 离岩体多远算"在岩檐下"
+@export var rock_cliff_run_m: float = 4.0         ## [TUNE] 上风方向多少米内
+@export var rock_cliff_rise_m: float = 2.0        ## [TUNE] 升高多少算悬崖
+@export var rock_base_thermal: float = 0.38
+@export var rock_base_structure: float = 0.66
+@export var rock_isolation_base: float = 0.42
+@export var rock_volume_m3: float = 2.0
+
+@export_group("Preset: Fallen-Log Lean-To")
+## S5 倒木斜棚：倒木 / 翻倒的树干当现成脊梁，枝条搭顶。比树根倒棚省柴，但没有现成风墙和反射面。
+@export var fallen_log_spots: int = 6             ## [TUNE] 每张图散落的倒木数
+@export var fallen_log_max_dist_m: float = 3.0    ## [TUNE]
+@export var fallen_log_base_thermal: float = 0.36
+@export var fallen_log_base_structure: float = 0.6
+@export var fallen_log_isolation_base: float = 0.42
+@export var fallen_log_volume_m3: float = 1.6
+
 @export_group("Preset: Tree Well")
 ## [REAL] 方向 / [TUNE] 数值：老云杉浓密的树冠接住落雪，树干周围积雪明显更浅（tree well）。
 ## 树干处削薄比例与树冠半径（m）。出处待 research/ 核实（Paul Kirtley 等冬季森林庇护所资料）。

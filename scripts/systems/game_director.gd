@@ -373,7 +373,7 @@ func _show_report(night_res: Dictionary = {}) -> void:
 	var wet := NightSimulator.wet_fraction(float(input.get("dampness", 0.0)), tuning) > 0.5
 	data["outcome"] = String(night_res["outcome"])
 	data["title"] = NightText.title(night_res, wet)
-	data["conclusion"] = NightText.conclusion(night_res, NightReportText._label(String(report["details"].get("min_axis", "heat"))))
+	data["conclusion"] = NightText.conclusion(night_res, NightText.heat_leak(input, night_res, String(report["details"].get("min_axis", "heat")), tuning))
 	data["night_curve"] = night_res["curve"]
 	data["night_duration"] = night.duration if night != null else tuning.night_duration_hours * 60.0
 	data["night_events"] = (night_res["timeline"] as Array).filter(func(e): return e["kind"] == "event")
@@ -1237,7 +1237,7 @@ func _focus_zoom_for(aim: Vector3) -> float:
 	match site.preset_id:
 		"SnowTrench": want = tuning.build_focus_zoom_trench
 		"TreeWell": want = tuning.build_focus_zoom_treewell
-		"LeanTo": want = tuning.build_focus_zoom_leanto
+		"LeanTo", "RockOverhang", "FallenLog": want = tuning.build_focus_zoom_leanto
 	# 视线不穿地形：先试理想距离，再拉远 / 推近（偏航不能动，只能改距离）
 	var height := func(x: float, z: float) -> float: return SnowField.height_at(x, z)
 	for z in BuildSession.zoom_candidates(want, tuning.build_focus_min_ratio, tuning.build_focus_max_ratio):
@@ -1333,6 +1333,13 @@ func _update_focus_panel() -> void:
 	if session.state == BuildSession.State.COMPLETE:
 		ui.show_build_focus("%s  ·  %d/%d  ✓" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX], Loc.t("Shelter complete."), "", "", false, 1.0)
 		return
+	var wait_left := site.ready_at - weather.current_time_minutes
+	if wait_left > 0.0:
+		interaction.enabled = true
+		ui.show_build_focus("%s  ·  %d/%d  ·  %s" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX, site.next_stage_title()],
+			Loc.t("The snow is setting: %d min left.") % int(ceil(wait_left)), Loc.t("Hollow it too soon and it collapses."),
+			Loc.t("[B] Step back & gather meanwhile   ·   Hold [E] to wait it out"), false, interaction.progress)
+		return
 	var cost := site.next_stage_cost()
 	var short := not site.pile.has_all(cost, inventory)
 	interaction.enabled = not short
@@ -1399,6 +1406,11 @@ func _on_build_stage() -> Dictionary:
 	if site.is_complete():
 		_unload_to_site()
 		return {"ok": true, "minutes": 1.0, "msg": ""}
+	# 雪堆屋：堆好的雪要凝结。可以去采集，也可以按住 [E] 干等
+	var wait_left := site.ready_at - weather.current_time_minutes
+	if wait_left > 0.0:
+		_skip(wait_left)
+		return {"ok": true, "minutes": 0.0, "msg": Loc.t("You wait for the snow to set.")}
 	var cost := site.next_stage_cost()
 	if not site.pile.has_all(cost, inventory):
 		return {"ok": false, "msg": Loc.t("Not enough materials — still need %s.") % site.pile.missing_text(cost, inventory)}
@@ -1411,6 +1423,7 @@ func _on_build_stage() -> Dictionary:
 		dampness = minf(1.0, dampness + GameRules.dig_dampness(GameRules.dig_tool(gear), tuning))
 		_update_cloth_label()
 	var r := site.advance()
+	site.ready_at = weather.current_time_minutes + site.wait_before_next_stage()
 	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
 		# 阶段完成时才点燃（工时已流逝）；之后由玩家 [F] 添柴维持
 		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
@@ -1492,10 +1505,19 @@ func _tick_fire_hold(delta: float) -> void:
 		player.controls_enabled = true
 		_try_fire()
 
+## p 点的挡风度：树根盘、岩体的下风侧，或者悬崖脚（同一条规则，都只挡下风一侧）。
+func _windbreak_at(p: Vector3) -> float:
+	var blow := wind.get_blow_direction_3d()
+	var wb := ResourceSpawner.windbreak_shelter(get_tree(), p, blow)
+	wb = maxf(wb, GameRules.windbreak_shelter(Array(LandFeatures.rocks), Vector2(p.x, p.z), Vector2(blow.x, blow.z), tuning.rock_max_dist_m))
+	if LandFeatures.cliff_upwind(p.x, p.z, wind.get_wind_direction_3d(), tuning.rock_cliff_run_m, tuning.rock_cliff_rise_m):
+		wb = 1.0
+	return wb
+
 ## 在 p 点生火能否成功（与 _try_fire 同一套规则：背风 / 树根挡风 / 林木、树冠落雪、雪庇护所内禁火、材料）。
 func fire_check_at(p: Vector3) -> Dictionary:
 	var lee := SnowField.lee_factor_at(p.x, p.z)
-	var wb := ResourceSpawner.windbreak_shelter(get_tree(), p, wind.get_blow_direction_3d())
+	var wb := _windbreak_at(p)
 	var exposure := GameRules.fire_exposure(lee, wb, _tree_cover(p))
 	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
 	return GameRules.fire_check(_fire_wood(), inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
@@ -1613,6 +1635,9 @@ func _shelter_card_text() -> Array:
 		parts.append(Loc.t("You're in it · [N] rest when ready") if _inside_site() else Loc.t("[N] rest when ready"))
 	else:
 		parts.append(Loc.t("Next: %s") % site.next_stage_title())
+		var setting := site.ready_at - weather.current_time_minutes
+		if setting > 0.0:
+			parts.append(Loc.t("snow setting: %d min") % int(ceil(setting)))
 		var rest := site.remaining_cost()
 		var names := _material_names()
 		var miss: Array[String] = []
@@ -1671,7 +1696,7 @@ func _add_campfire_to_night(input: Dictionary) -> void:
 	input["campfire_near"] = true
 	input["firewood_logs"] = float(inventory.wood + (site.pile.amount("wood") if site != null else 0))
 	input["fire_minutes_left"] = best.fuel_minutes if best.lit else 0.0
-	input["fire_exposure"] = GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z), ResourceSpawner.windbreak_shelter(get_tree(), p, wind.get_blow_direction_3d()), _tree_cover(p))
+	input["fire_exposure"] = GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z), _windbreak_at(p), _tree_cover(p))
 
 func night_input() -> Dictionary:
 	var input: Dictionary

@@ -11,6 +11,10 @@ extends Resource
 @export var display_name: String = "Raised Snow Cave"
 ## 每阶材料（索引 0..4）[GAME] / [TUNE]。背包上限见 Tuning.max_wood / max_bedding（D16 §12.5）。
 @export var stage_costs: Array = [{}, {}, {}, {}, {}]
+## 每阶占总工时的比例（空 = 平均）。雪堆屋堆雪最费力，通风孔只要几分钟。
+@export var stage_weights: Array = []
+## 这一阶开工前要等多久（游戏分钟，空 = 不等）。雪堆屋：堆好的雪要凝结才能掏空。
+@export var stage_wait_minutes: Array = []
 @export var min_snow_depth: float = 2.0       ## [REAL]->[TUNE] 最低雪深门槛 (m)
 @export var max_snow_depth: float = 10.0      ## 适用雪深上限 (m)
 @export var requires_natural_windbreak: bool = false ## 是否可吸附于倒木树根 (Rootball) 旁
@@ -124,7 +128,72 @@ static func create_all_presets() -> Dictionary:
 	treewell.stage_shelter_levels = PackedInt32Array([1, 1, 2, 2, 2])
 	treewell.stage_wind_muffle = PackedFloat32Array([0.45, 0.5, 0.55, 0.62, 0.66])
 
+	# S5 雪堆屋：不挑地方，堆雪 → 凝结（这段时间可以去采集）→ 掏空。最费时的庇护所。
+	var quinzhee := ShelterPreset.new()
+	quinzhee.preset_id = "Quinzhee"
+	quinzhee.display_name = "Quinzhee"
+	quinzhee.min_snow_depth = 0.3   ## 被 validate_site 用 Tuning.quinzhee_min_snow_m 覆盖
+	quinzhee.allows_open_fire = false
+	quinzhee.build_minutes_total = 80.0   ## [TUNE] 不含凝结等待（[GAME] 压缩，现实要数小时）；保持顺序：树井 < 雪沟 < 倒棚 ≈ 小雪洞 < 高床雪洞 < 雪堆屋（含等待）
+	quinzhee.wood_cost = 3
+	quinzhee.bedding_cost = 4
+	quinzhee.stage_costs = [{}, {"wood": 2}, {}, {"wood": 1}, {"bedding": 4}]
+	quinzhee.stage_weights = [0.45, 0.1, 0.35, 0.05, 0.05]
+	quinzhee.stage_wait_minutes = [0.0, 0.0, 60.0, 0.0, 0.0]   ## 被 Tuning.quinzhee_set_minutes 覆盖
+	quinzhee.stage_titles = PackedStringArray([
+		"1. Heap a snow mound about 1.4 m high",
+		"2. Push in sticks as depth gauges, then let it set",
+		"3. Hollow it out from the low side, down to the sticks",
+		"4. Poke a vent through the roof",
+		"5. Bough floor and a snow-block door",
+	])
+	quinzhee.stage_shelter_levels = PackedInt32Array([0, 0, 1, 2, 2])
+	quinzhee.stage_wind_muffle = PackedFloat32Array([0.0, 0.1, 0.6, 0.7, 0.8])
+
+	# S5 岩檐：岩体 / 悬崖脚的背风处。省力、干燥，但冷岩吸热，靠厚垫层和火。
+	var rock := ShelterPreset.new()
+	rock.preset_id = "RockOverhang"
+	rock.display_name = "Rock Overhang"
+	rock.min_snow_depth = 0.0
+	rock.allows_open_fire = true
+	rock.build_minutes_total = 30.0   ## [TUNE] 岩体就是墙：清雪、搭枝条、铺床
+	rock.wood_cost = 3
+	rock.bedding_cost = 5
+	rock.stage_costs = [{}, {"wood": 2}, {"bedding": 3}, {"bedding": 2}, {"wood": 1}]
+	rock.stage_titles = PackedStringArray([
+		"1. Clear the snow from under the rock",
+		"2. Lean poles against the rock face",
+		"3. Thick bough bed: cold rock drinks your heat",
+		"4. Thatch the poles with boughs",
+		"5. Block the open end with a log",
+	])
+	rock.stage_shelter_levels = PackedInt32Array([0, 1, 1, 2, 2])
+	rock.stage_wind_muffle = PackedFloat32Array([0.3, 0.4, 0.4, 0.6, 0.65])
+
+	# S5 倒木斜棚：倒木当脊梁，枝条搭顶。没有根盘那样的风墙和反射面。
+	var fallen := ShelterPreset.new()
+	fallen.preset_id = "FallenLog"
+	fallen.display_name = "Fallen-Log Lean-To"
+	fallen.min_snow_depth = 0.0
+	fallen.allows_open_fire = true
+	fallen.build_minutes_total = 40.0   ## [TUNE] 现成脊梁，比树根倒棚（55 min）快
+	fallen.wood_cost = 3
+	fallen.bedding_cost = 5
+	fallen.stage_costs = [{"wood": 1}, {"wood": 2}, {"bedding": 3}, {"bedding": 2}, {}]
+	fallen.stage_titles = PackedStringArray([
+		"1. Check the trunk is stable and clear under it",
+		"2. Lean ribs along the trunk",
+		"3. Thatch the ribs with boughs",
+		"4. Bough bed off the snow",
+		"5. Pile snow against the windward side",
+	])
+	fallen.stage_shelter_levels = PackedInt32Array([0, 1, 1, 2, 2])
+	fallen.stage_wind_muffle = PackedFloat32Array([0.1, 0.3, 0.5, 0.5, 0.65])
+
 	return {
+		"Quinzhee": quinzhee,
+		"RockOverhang": rock,
+		"FallenLog": fallen,
 		"RaisedCave": raised,
 		"TreeWell": treewell,
 		"BasicCave": basic,
@@ -141,6 +210,13 @@ func validate_site(snow_depth: float, slope_deg: float, near_windbreak: bool = f
 			return {"ok": false, "reason": Loc.t("Snow around this spruce is too shallow for a tree well (%.2f m < %.2f m)") % [snow_depth, need]}
 		if slope_deg > 30.0:
 			return {"ok": false, "reason": Loc.t("Too steep around this trunk for a tree well")}
+		return {"ok": true, "reason": Loc.t("Site suitable for %s") % Loc.t(display_name)}
+	if preset_id == "Quinzhee":
+		var tq := OldSpruces.tuning()
+		if snow_depth < tq.quinzhee_min_snow_m:
+			return {"ok": false, "reason": Loc.t("Not enough snow on the ground to heap a quinzhee (%.2f m < %.2f m)") % [snow_depth, tq.quinzhee_min_snow_m]}
+		if slope_deg > tq.quinzhee_max_slope_deg:
+			return {"ok": false, "reason": Loc.t("Too steep to heap a quinzhee (%d° > %d°): find flat ground") % [int(slope_deg), int(tq.quinzhee_max_slope_deg)]}
 		return {"ok": true, "reason": Loc.t("Site suitable for %s") % Loc.t(display_name)}
 	if snow_depth < min_snow_depth:
 		return {

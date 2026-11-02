@@ -96,7 +96,7 @@ func run() -> Dictionary:
 	_check(not Records.learn_shelter("BasicCave", "SAFE"), "学会后不再重复提示")
 	LevelState.begin(4, 1)
 	var av := LevelState.available_presets(Records.learned_shelters())
-	_check(av == PackedStringArray(["BasicCave", "SnowTrench"]), "第 4 章可用 = 已会（雪沟、雪洞）∪ 本章引入（雪沟）：%s" % str(av))
+	_check(av == PackedStringArray(["BasicCave", "SnowTrench", "Quinzhee"]), "第 4 章可用 = 已会（雪沟、雪洞）∪ 本章引入（雪沟、雪堆屋）：%s" % str(av))
 	LevelState.begin(3, 1)
 	_check("LeanTo" in LevelState.available_presets(Records.learned_shelters()) and not ("RaisedCave" in LevelState.available_presets(Records.learned_shelters())), "第 3 章（风倒区）引入倒棚；没学过的高床雪洞不可用")
 	LevelState.begin(1, 1)
@@ -166,6 +166,17 @@ func run() -> Dictionary:
 	for preset in _presets:
 		_check(_presets[preset].stage_costs.size() == 5, "%s 应有 5 阶材料" % preset)
 	_check(_presets["RaisedCave"].stage_costs[2].has("bedding"), "高床第 3 阶需要垫层")
+	# S5 其余庇护所：材料、时间顺序、雪堆屋的凝结等待
+	_check(_presets["Quinzhee"].validate_site(0.4, 5.0).get("ok", false), "雪堆屋：0.4 m 浅雪的平地就能堆")
+	_check(not _presets["Quinzhee"].validate_site(0.1, 5.0).get("ok", false), "雪堆屋：地上要有雪")
+	_check(not _presets["Quinzhee"].validate_site(1.0, 25.0).get("ok", false), "雪堆屋：坡太陡堆不住")
+	_check(_presets["Quinzhee"].stage_wait_minutes[2] > 0.0, "雪堆屋：掏空之前要等雪凝结")
+	var ww := 0.0
+	for x in _presets["Quinzhee"].stage_weights:
+		ww += float(x)
+	_check(is_equal_approx(ww, 1.0), "雪堆屋各阶工时比例合计 1")
+	_check(_presets["Quinzhee"].build_minutes_total + _presets["Quinzhee"].stage_wait_minutes[2] > _presets["RaisedCave"].build_minutes_total, "雪堆屋（含等待）是最费时的庇护所")
+	_check(_presets["RockOverhang"].build_minutes_total < _presets["LeanTo"].build_minutes_total and _presets["FallenLog"].build_minutes_total < _presets["LeanTo"].build_minutes_total, "岩檐、倒木斜棚：地物省了功夫，比树根倒棚快")
 	var lean_wood := 0
 	for c in _presets["LeanTo"].stage_costs:
 		lean_wood += int(c.get("wood", 0))
