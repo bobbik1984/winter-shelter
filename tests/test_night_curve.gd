@@ -42,7 +42,7 @@ func run() -> Dictionary:
 	# 1. 标定表（§10.2）
 	var expect := {
 		"none": ["DANGEROUS", "DANGEROUS"], "raised_dry": ["SAFE", "SAFE"], "raised_wet": ["COLD", "COLD"],
-		"trench": ["COLD", "COLD"], "treewell": ["COLD", "COLD"], "leanto_fire": ["COLD", "COLD"], "cave_novent": ["DANGEROUS", "COLD"],
+		"trench": ["COLD", "COLD"], "treewell": ["COLD", "COLD"], "leanto_fire": ["COLD", "SAFE"], "cave_novent": ["DANGEROUS", "COLD"],
 	}
 	for k in expect:
 		var sleep := NightCurve.run(c[k], t, "sleep")
@@ -60,8 +60,8 @@ func run() -> Dictionary:
 	var lf_sleep := NightCurve.run(c["leanto_fire"], t, "sleep")
 	var lf_smart := NightCurve.run(c["leanto_fire"], t, "smart")
 	_check(float(lf_smart["min_warmth"]) > float(lf_sleep["min_warmth"]) + 20.0, "倒棚：醒来添柴比一直睡暖得多（%d vs %d）" % [int(lf_smart["min_warmth"]), int(lf_sleep["min_warmth"])])
-	_check(int(lf_smart["wakes"]) >= 2, "倒棚的火要半夜添柴：至少醒 2 次（%d）" % int(lf_smart["wakes"]))
-	_check(float(lf_smart["fire_out_at"]) < 0.0 and float(lf_sleep["fire_out_at"]) > 0.0, "添柴的火烧到天亮；不添柴的火半夜灭（记录熄灭时刻 %.0f）" % float(lf_sleep["fire_out_at"]))
+	_check(int(lf_smart["wakes"]) >= 1, "倒棚：火灭后冷下来会醒（%d）" % int(lf_smart["wakes"]))
+	_check(float(lf_smart["fire_out_at"]) < 0.0 or float(lf_smart["fire_out_at"]) > float(lf_sleep["fire_out_at"]), "添过柴的火烧得更久（%.0f vs %.0f）" % [lf_smart["fire_out_at"], lf_sleep["fire_out_at"]])
 	# 湿衣：好雪洞也会变冷（与 R1 一致）
 	_check(float(NightCurve.run(c["raised_wet"], t, "sleep")["min_warmth"]) < float(NightCurve.run(c["raised_dry"], t, "sleep")["min_warmth"]) - 30.0, "湿衣入睡：同一个雪洞冷得多")
 
@@ -120,7 +120,7 @@ func run() -> Dictionary:
 	var lean := NightCurve.new(c["leanto_fire"], t)
 	_check(lean.fire_minutes <= t.night_fire_initial_hours * 60.0 + 0.1 and lean.stock_logs > 0, "入睡时火里只架 %.1f h 的柴，其余是备柴（%d 根）" % [t.night_fire_initial_hours, lean.stock_logs])
 	var ev := lean.step()
-	_check(ev == NightCurve.EV_FIRE_DYING, "倒棚：火快灭时醒来（%s）" % ev)
+	_check(ev == NightCurve.EV_FIRE_OUT and lean.fire_minutes <= 0.0, "倒棚：暖和时火灭不叫醒人，冷下来才醒（%s）" % ev)
 	var fm := lean.fire_minutes
 	_check(lean.act(NightCurve.ACT_ADD_WOOD) and lean.fire_minutes > fm + 60.0, "添柴让火多烧（%.0f → %.0f min）" % [fm, lean.fire_minutes])
 	var blown: Dictionary = (c["leanto_fire"] as Dictionary).duplicate()
@@ -189,9 +189,59 @@ func _n5(c: Dictionary, t: Tuning) -> void:
 	lean.dampness = 1.0
 	lean.act(NightCurve.ACT_DRY_SOCKS)
 	_check(is_equal_approx(lean.fire_minutes, fm - 15.0), "烘袜子 15 分钟，火也烧了 15 分钟")
-	var w0 := lean.warmth
-	lean.act(NightCurve.ACT_DRY_SOCKS)
-	_check(lean.warmth < w0, "醒着做事时体温照样在掉")
+	var awake := NightCurve.new(c["trench"], t)
+	var w0 := awake.warmth
+	awake.act(NightCurve.ACT_EXERCISE)
+	_check(awake.warmth < w0 + t.night_exercise_warmth, "醒着做事时体温照样在掉")
+	# 火：所有庇护所同一条规则（用户定调 2026-11-02）
+	var fire_base: Dictionary = (c["leanto_fire"] as Dictionary).duplicate()
+	var calm: Dictionary = fire_base.duplicate()
+	calm["wind_speed_kmh"] = t.night_fire_wind_ref_kmh
+	var gale: Dictionary = fire_base.duplicate()
+	gale["wind_speed_kmh"] = t.night_fire_wind_ref_kmh * 1.6
+	var snowing: Dictionary = fire_base.duplicate()
+	snowing["night_snowfall"] = 0.9
+	var lm := NightCurve.new(calm, t).log_minutes
+	_check(NightCurve.new(gale, t).log_minutes < lm, "风越大，一根柴烧得越快")
+	_check(NightCurve.new(snowing, t).log_minutes < lm, "下雪时，一根柴烧得更快")
+	var exposed: Dictionary = gale.duplicate()
+	exposed["fire_exposure"] = t.fire_blowout_dot * 0.8
+	var ok_now: Dictionary = exposed.duplicate()
+	ok_now["wind_speed_kmh"] = t.night_fire_wind_ref_kmh
+	_check(NightCurve.new(ok_now, t).has_fire_place and NightCurve.new(exposed, t).fire_blocked == "wind", "同一个火位：平常留得住，大风留不住")
+	# 火灭：暖和就接着睡，有柴能重新点
+	var warm: Dictionary = calm.duplicate()
+	warm["starting_warmth"] = 100.0
+	var wn := NightCurve.new(warm, t)
+	var first_ev := wn.step()
+	_check(wn.fire_minutes <= 0.0 and wn.minute > wn.log_minutes + 60.0 and wn.warmth <= t.night_fire_wake_w + 1.0, "火灭之后还暖和，不会醒（%s，%d 分钟，W=%d）" % [first_ev, int(wn.minute), int(wn.warmth)])
+	var w_before := wn.warmth
+	_check(wn.act(NightCurve.ACT_ADD_WOOD) and wn.fire_minutes > 0.0 and wn.fire_out_at < 0.0, "火灭了，有柴就能重新点")
+	wn.act(NightCurve.ACT_SLEEP)
+	wn.advance_to(wn.minute + 60.0)
+	_check(wn.warmth > w_before, "重新点着后回暖（%d → %d）" % [int(w_before), int(wn.warmth)])
+	var no_logs: Dictionary = calm.duplicate()
+	no_logs["firewood_logs"] = 1.0
+	var nl := NightCurve.new(no_logs, t)
+	_check(not (NightCurve.ACT_ADD_WOOD in nl.available_actions()), "没有备柴就没有添柴选项")
+	# 极寒 / 很差的庇护所：火快灭时一定叫醒
+	var harsh: Dictionary = calm.duplicate()
+	harsh["terrain_shelter"] = -0.5
+	harsh["wind_angle_diff"] = 40.0
+	harsh["bedding_quality"] = 0.3
+	harsh["night_temp_c"] = -38.0
+	var hn := NightCurve.new(harsh, t)
+	if hn.has_fire_place and hn._fireless_loss() >= t.night_fire_wake_loss_per_h:
+		_check(hn.step() == NightCurve.EV_FIRE_DYING, "没火时掉得很快：火快灭就会醒")
+	else:
+		_check(false, "极寒用例应当有火且失温很快（失温 %.1f/h）" % hn._fireless_loss())
+	# 雪沟 / 树井门口的火有帮助；雪洞里没有（D3）
+	var tr_fire: Dictionary = (c["trench"] as Dictionary).duplicate()
+	tr_fire.merge({"campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.15}, true)
+	_check(float(NightCurve.run(tr_fire, t, "smart")["min_warmth"]) >= float(NightCurve.run(c["trench"], t, "smart")["min_warmth"]) and NightCurve.new(tr_fire, t).loss_per_hour() < NightCurve.new(c["trench"], t).loss_per_hour(), "雪沟门口有火：失温更慢")
+	var cave_fire: Dictionary = (c["raised_dry"] as Dictionary).duplicate()
+	cave_fire.merge({"campfire_near": true, "firewood_logs": 6.0, "fire_exposure": 0.15}, true)
+	_check(is_equal_approx(NightCurve.new(cave_fire, t).loss_per_hour(), NightCurve.new(c["raised_dry"], t).loss_per_hour()), "雪洞：火在外面，睡着时没有作用（D3）")
 	# 冻醒不受上限限制：醒的次数用完后，也不会一路睡到极危才醒
 	var wet: Dictionary = (c["trench"] as Dictionary).duplicate()
 	wet["dampness"] = 1.0

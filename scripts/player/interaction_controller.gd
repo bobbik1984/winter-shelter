@@ -63,7 +63,7 @@ func _set_current(it: Interactable) -> void:
 	if it != current:
 		progress = 0.0
 	current = it
-	_ring.visible = it != null
+	_ring.visible = it != null and forced == null   # 特写时不画高亮圈，免得压住工地
 
 func _find_nearest() -> Interactable:
 	var best: Interactable = null

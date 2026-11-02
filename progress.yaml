@@ -118,7 +118,7 @@ phases:
       - {id: B1, text: "Build Focus 相机：放样后拉近、B / Esc 退回、移轴 + 正交、按庇护所设距离、不穿树 / 地形", status: written-unverified, depends: [], evidence: "snapshots/b1_focus_{BasicCave,SnowTrench,TreeWell,LeanTo}.png（1280×720）；smoke：拉近、偏航不变、正交可用、用户缩放不变", note: "截图是软件渲染；真实显卡 FPS 与过渡观感未验。树井自己的低枝仍挡住部分内部"}
       - {id: B2, text: "角色不遮工地：屏幕包围盒判定 + 淡出，只改外观", status: written-unverified, depends: [B1], evidence: "test_build_session；smoke：站到镜头与工地之间 → 隐藏、位置与碰撞不变、退回后恢复", note: "偏航固定，侧移拉不开距离，实际靠淡出；淡出观感未在真实显卡上看"}
       - {id: B3, text: "暂停 / 恢复 / 工地卡：不足不扣料、Step back & gather、未完工 HUD 卡 + 环 / 箭头、禁止第二工地", status: done, depends: [B1], evidence: "smoke（真实按键）：不足不推进不扣料、面板写明缺口、B 退回工地保留、远处按 B 不新建、回来按 E 继续、Esc 不暂停；snapshots/b3_far_site_card.png"}
-      - {id: B4, text: "材料经济：成本迁入预设 / Tuning，一次携带 2–3 阶", status: blocked, depends: [B3], note: "等用户决定携带上限与柴堆（CURRENT_STAGE §0⁶）"}
+      - {id: B4, text: "材料经济：成本迁入预设；背包上限；工地材料堆；一次携带 2–3 阶", status: written-unverified, depends: [B3], evidence: "ShelterPreset.stage_costs；test_game_rules（上限、SitePile）；smoke（装不下、放到堆、从堆里用）；机器人跑趟后目标路线仍 ≥ COLD", note: "每章 × 真实地图的时间是否够归 S7；高床雪洞加全部准备从 14:20 开工超时约 9 分钟；真人试玩未做"}
   - id: N
     name: "可玩的夜晚轨道（D14，PRODUCTION_PLAN §4.N）"
     tasks:

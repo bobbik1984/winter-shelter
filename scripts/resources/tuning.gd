@@ -97,6 +97,21 @@ extends Resource
 @export var night_wake_spacing_min: float = 90.0
 @export var night_max_wakes: int = 5
 ## 起来活动：体温 +W，出汗受潮 +，睡眠质量 −1。
+## 火（用户定调 2026-11-02，所有庇护所同一条规则）：有火堆就留到夜里，柴烧完会灭，有柴就能重新点。
+## 风和雪决定烧多快：每根柴的时长 ÷ (1 + 风 × 超出参考风速的比例 + 雪 × 降雪量) [TUNE]。
+@export var night_fire_wind_ref_kmh: float = 32.0
+@export var night_fire_wind_burn: float = 0.5
+@export var night_fire_snow_burn: float = 0.5
+## 雪沟 / 树井：火在外面，只有开口一侧受益 [TUNE]。雪洞里是 0（D3：火在洞外，只有醒着出去才用得上）。
+@export var night_fire_factor_snow_open: float = 0.3
+## 火燃烧时每小时回多少体温（× 火的作用）；只回到这个上限，火不会让人比这更暖 [TUNE]。
+@export var night_fire_heat_per_h: float = 6.0
+@export var night_fire_warm_cap: float = 80.0
+## 火灭不会自动叫醒人：只有已经冷（W ≤ 这个值）或者没火时失温很快（极寒 / 很差的庇护所）才会醒 [TUNE]。
+@export var night_fire_wake_w: float = 55.0
+@export var night_fire_wake_loss_per_h: float = 10.0
+## 火堆离睡的地方多远算"你的火"（米）[TUNE]。
+@export var night_fire_reach_m: float = 6.0
 @export var night_exercise_warmth: float = 10.0
 ## N5：同一次醒来再活动，每次效果 × 这个系数 [GAME]（不能靠连按活动代替庇护所）。
 @export var night_exercise_repeat_factor: float = 0.5
@@ -588,7 +603,9 @@ extends Resource
 @export var birch_spots: int = 4
 @export var bedding_spots: int = 8
 ## [GAME] 背包上限（木材）。
-@export var max_wood: int = 12
+## D16 / B4：背包上限 [TUNE]。一次带的够 2–3 阶，大庇护所和通宵的柴要跑几趟；放下只能放在工地旁（SitePile）。
+@export var max_wood: int = 4
+@export var max_bedding: int = 4
 
 @export_group("Building")
 ## [GAME] 每个施工阶段按住交互键的现实秒数（按住时游戏时间按工时跳进）。

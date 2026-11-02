@@ -12,6 +12,7 @@ static func event_title(ev: String) -> String:
 		NightCurve.EV_COLD: return Loc.t("You wake up cold")
 		NightCurve.EV_CRITICAL: return Loc.t("You wake up shivering violently")
 		NightCurve.EV_FIRE_DYING: return Loc.t("The fire is burning down")
+		NightCurve.EV_FIRE_OUT: return Loc.t("The fire has gone out and the cold is creeping in")
 		NightCurve.EV_WET_FEET: return Loc.t("Your feet are freezing")
 		NightCurve.EV_NO_VENT: return Loc.t("A pounding headache")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("Headache: the vent is blocked")
@@ -23,11 +24,22 @@ static func event_body(ev: String, warmth: float) -> String:
 		NightCurve.EV_COLD: return Loc.t("Body warmth %d. The cold woke you — do something, or try to sleep on.") % int(warmth)
 		NightCurve.EV_CRITICAL: return Loc.t("Body warmth %d. You will not survive the night lying still. Get up and move, now.") % int(warmth)
 		NightCurve.EV_FIRE_DYING: return Loc.t("Only embers left. Without more wood the cold comes back within the hour.")
+		NightCurve.EV_FIRE_OUT: return Loc.t("Body warmth %d. There is still wood in your pile — you can get it going again.") % int(warmth)
 		NightCurve.EV_WET_FEET: return Loc.t("You went to bed in wet socks. Wet layers hold almost no heat.")
 		NightCurve.EV_NO_VENT: return Loc.t("The air is stale — there is no vent. Make one, or don't wake up again.")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("New snow has buried the vent. The air is getting thick.")
 		NightCurve.EV_SNOW_LOAD: return Loc.t("Snow is piling on the boughs above you. If it caves in, the cold gets in.")
 	return ""
+
+## 为什么现在没法添柴（Hard ≠ Obscure：选项不能无声地消失）。能添柴时为空。
+static func fire_note(n: NightCurve) -> String:
+	if n.has_fire_place and n.stock_logs > 0:
+		return ""
+	if n.has_fire_place:
+		return Loc.t("No fire to tend: you have no logs left.") if n.fire_minutes <= 0.0 else Loc.t("No spare logs for the fire.")
+	if n.fire_blocked == "wind":
+		return Loc.t("No fire to tend: the wind here is too strong to keep one going.")
+	return Loc.t("No fire to tend: you didn't build one near your bed.")
 
 static func action_label(a: String, n: NightCurve, t: Tuning) -> String:
 	match a:
@@ -53,6 +65,7 @@ static func event_short(ev: String) -> String:
 		NightCurve.EV_COLD: return Loc.t("woke cold")
 		NightCurve.EV_CRITICAL: return Loc.t("woke shivering")
 		NightCurve.EV_FIRE_DYING: return Loc.t("fire burning down")
+		NightCurve.EV_FIRE_OUT: return Loc.t("fire out, getting cold")
 		NightCurve.EV_WET_FEET: return Loc.t("cold wet feet")
 		NightCurve.EV_NO_VENT: return Loc.t("stale air, no vent")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("vent blocked")

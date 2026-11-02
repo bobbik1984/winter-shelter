@@ -9,6 +9,8 @@ extends Resource
 
 @export var preset_id: String = "RaisedCave"
 @export var display_name: String = "Raised Snow Cave"
+## 每阶材料（索引 0..4）[GAME] / [TUNE]。背包上限见 Tuning.max_wood / max_bedding（D16 §12.5）。
+@export var stage_costs: Array = [{}, {}, {}, {}, {}]
 @export var min_snow_depth: float = 2.0       ## [REAL]->[TUNE] 最低雪深门槛 (m)
 @export var max_snow_depth: float = 10.0      ## 适用雪深上限 (m)
 @export var requires_natural_windbreak: bool = false ## 是否可吸附于倒木树根 (Rootball) 旁
@@ -41,6 +43,7 @@ static func create_all_presets() -> Dictionary:
 	raised.build_minutes_total = 135.0
 	raised.wood_cost = 1
 	raised.bedding_cost = 2
+	raised.stage_costs = [{}, {}, {"bedding": 3, "wood": 2}, {"wood": 1}, {"bedding": 1}]
 	raised.stage_titles = PackedStringArray([
 		"Stage 1: Entrance tunnel (Slopes slightly down)",
 		"Stage 2: Cold-air pit (Traps cold air lower)",
@@ -57,6 +60,7 @@ static func create_all_presets() -> Dictionary:
 	basic.build_minutes_total = 95.0
 	basic.wood_cost = 0
 	basic.bedding_cost = 2
+	basic.stage_costs = [{}, {}, {"bedding": 3}, {"wood": 1}, {"bedding": 1}]
 	basic.stage_titles = PackedStringArray([
 		"Stage 1: Dig horizontal entrance",
 		"Stage 2: Hollow main sleeping chamber",
@@ -73,6 +77,7 @@ static func create_all_presets() -> Dictionary:
 	trench.build_minutes_total = 55.0
 	trench.wood_cost = 2
 	trench.bedding_cost = 1
+	trench.stage_costs = [{}, {}, {"bedding": 2}, {"wood": 3}, {"bedding": 1}]
 	trench.stage_titles = PackedStringArray([
 		"Stage 1: Cut narrow body-length trench",
 		"Stage 2: Stack snow-block side walls",
@@ -90,6 +95,7 @@ static func create_all_presets() -> Dictionary:
 	leanto.build_minutes_total = 50.0
 	leanto.wood_cost = 4
 	leanto.bedding_cost = 2
+	leanto.stage_costs = [{"wood": 2}, {"bedding": 2}, {"bedding": 2}, {"wood": 3}, {"wood": 2, "bark": 1}]
 	leanto.stage_titles = PackedStringArray([
 		"Stage 1: Anchor ridgepole against fallen rootball",
 		"Stage 2: Thatch windward roof with spruce boughs",
@@ -107,6 +113,7 @@ static func create_all_presets() -> Dictionary:
 	treewell.build_minutes_total = 40.0   ## [TUNE] 坑大多是现成的：掏出浮雪、修枝、铺枝、补顶
 	treewell.wood_cost = 0
 	treewell.bedding_cost = 4
+	treewell.stage_costs = [{}, {}, {"bedding": 3}, {"bedding": 2}, {"bedding": 1}]
 	treewell.stage_titles = PackedStringArray([
 		"1. Scoop out the well around the trunk",
 		"2. Trim low inner branches (headroom)",

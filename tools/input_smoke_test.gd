@@ -259,11 +259,12 @@ func _build_focus_part(m, d, p) -> void:
 	d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
 	check(d.site.stage() == 2, "stage 2 done, the next stage needs bedding")
 	d.inventory.bedding = 0
-	var wood0: int = d.inventory.wood
+	d.site.pile.stock["bedding"] = 0
+	var wood0: int = d.site.pile.total("wood", d.inventory)
 	await process_frame
 	await process_frame
 	await hold("interact", d.tuning.stage_hold_seconds + 0.4)
-	check(d.site.stage() == 2 and d.inventory.wood == wood0, "short of materials: no progress and nothing spent")
+	check(d.site.stage() == 2 and d.site.pile.total("wood", d.inventory) == wood0, "short of materials: no progress and nothing spent")
 	var keys: Label = m.find_child("BuildFocusKeys", true, false)
 	var needs: Label = m.find_child("BuildFocusNeeds", true, false)
 	check(keys.text.contains("Step back") and needs.text.contains("bedding"), "the panel says what is missing and how to step back")
@@ -284,7 +285,9 @@ func _build_focus_part(m, d, p) -> void:
 	await key(KEY_B)
 	check(not d.build.active and d.site == site_ref and not d.session.focused(), "far from the site, B does not start a second site")
 	# 回来按 E 继续：先有材料，再按住施工
-	d.inventory.add("bedding", 4)
+	# 背包有上限（B4）：多的装不下，只能跑趟
+	d.inventory.bedding = 0
+	check(d.inventory.add("bedding", 99) == d.inventory.max_bedding, "the pack only holds so much bedding")
 	var back: Vector3 = d.site.interactable.global_position + Vector3(0.3, 0.5, 0.3)
 	p.global_position = back
 	for i in 5: await physics_frame
@@ -292,6 +295,7 @@ func _build_focus_part(m, d, p) -> void:
 	await hold("interact", d.tuning.stage_hold_seconds + 0.6)
 	check(d.session.focused(), "E at the site re-enters the close-up")
 	check(d.site.stage() == 3, "and building continues with the gathered materials (%d)" % d.site.stage())
+	check(d.inventory.bedding == 0 and d.site.pile.amount("bedding") == d.inventory.max_bedding - d.site.builder.active_preset().stage_costs[2]["bedding"], "what you carried went onto the pile, and the stage used it")
 	# Esc 在特写里是退回，不是暂停
 	await key(KEY_ESCAPE)
 	check(not d.session.focused() and d.state == d.State.PLAYING, "Esc steps back instead of pausing")

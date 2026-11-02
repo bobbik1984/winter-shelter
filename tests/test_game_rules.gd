@@ -96,6 +96,24 @@ func run() -> Dictionary:
 	_check(inv.spend({"wood": 2, "bark": 1}) == false and inv.wood == 3, "材料不足时 spend 不扣任何东西")
 	inv.add("bark", 1)
 	_check(inv.spend({"wood": 2, "bark": 1}) and inv.wood == 1 and inv.bark == 0, "材料足够时扣除")
+	# D16 / B4：背包上限 + 工地材料堆
+	inv.wood = 0
+	inv.max_wood = 4
+	inv.max_bedding = 4
+	inv.add("bedding", 9)
+	_check(inv.bedding == 4, "垫层也受背包上限约束")
+	inv.add("wood", 3)
+	var pile := SitePile.new()
+	var moved := pile.deposit(inv)
+	_check(moved["wood"] == 3 and moved["bedding"] == 4 and inv.wood == 0 and inv.bedding == 0, "放下背包里的柴和枝条")
+	inv.add("wood", 4)
+	_check(pile.total("wood", inv) == 7, "堆 + 背包一共 7 根：可以超过背包上限，这就是跑几趟的意义")
+	_check(not pile.spend({"wood": 8}, inv) and pile.amount("wood") == 3 and inv.wood == 4, "不够时什么都不扣")
+	_check(pile.spend({"wood": 5}, inv) and pile.amount("wood") == 0 and inv.wood == 2, "先用堆里的，再用背包的")
+	_check(pile.missing_text({"bedding": 6}, inv).begins_with("2"), "缺口按堆 + 背包算")
+	inv.bark = 1
+	pile.deposit(inv)
+	_check(inv.bark == 1, "桦皮一直随身")
 	inv.free()
 	return {"passed": _passed, "failures": _failures}
 

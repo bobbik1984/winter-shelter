@@ -6,17 +6,11 @@ extends Node3D
 
 const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
 
-## 每个预设各阶段的材料消耗（索引 = 阶段 1..5 → 0..4）。[GAME]
-const STAGE_COSTS := {
-	"RaisedCave": [{}, {}, {"bedding": 2, "wood": 1}, {}, {}],
-	"BasicCave": [{}, {}, {"bedding": 2}, {}, {}],
-	"SnowTrench": [{}, {}, {"bedding": 1}, {"wood": 2}, {}],
-	"LeanTo": [{"wood": 2}, {}, {"bedding": 2}, {"wood": 2}, {"wood": 2, "bark": 1}],
-	# S5 树井：不花木头；云杉枝当地板、补顶、封门
-	"TreeWell": [{}, {}, {"bedding": 2}, {"bedding": 1}, {"bedding": 1}],
-}
 
 var builder: ShelterBuilder
+## D16 / B4：工地旁的材料堆。
+var pile := SitePile.new()
+var _pile_root: Node3D
 var preset_id: String = "RaisedCave"
 var entrance_dir: Vector3 = Vector3.RIGHT
 var snow_depth: float = 0.0
@@ -91,12 +85,12 @@ func next_stage_cost() -> Dictionary:
 	var s := builder.current_stage
 	if s >= ShelterBuilder.STAGES_MAX:
 		return {}
-	return STAGE_COSTS.get(preset_id, [{}, {}, {}, {}, {}])[s]
+	return builder.active_preset().stage_costs[s]
 
 ## 从下一阶到完工还需要的全部材料（第二次评审：倒棚最后一阶要桦皮，玩家到第 4 阶才发现）。
 func remaining_cost() -> Dictionary:
 	var out := {}
-	var costs: Array = STAGE_COSTS.get(preset_id, [{}, {}, {}, {}, {}])
+	var costs: Array = builder.active_preset().stage_costs
 	for i in range(builder.current_stage, costs.size()):
 		for k in costs[i]:
 			out[k] = int(out.get(k, 0)) + int(costs[i][k])
@@ -166,6 +160,53 @@ func _sphere(pos: Vector3, r: float, scale_v: Vector3, mat: Material) -> MeshIns
 	mi.scale = scale_v
 	_visual.add_child(mi)
 	return mi
+
+## 把材料堆画出来：看得见还有多少柴和枝条（入口旁边，不挡入口）。
+func refresh_pile() -> void:
+	if _pile_root == null:
+		_pile_root = Node3D.new()
+		_pile_root.name = "Pile"
+		add_child(_pile_root)
+	for c in _pile_root.get_children():
+		_pile_root.remove_child(c)
+		c.queue_free()
+	# 放在工地屏幕上的一侧（离入口远的那边），略靠后：材料堆也不能挡住工地和入口（§12.2）
+	var side := entrance_dir.cross(Vector3.UP).normalized()
+	var away := Vector3.FORWARD
+	var camera := get_viewport().get_camera_3d()
+	if camera:
+		side = camera.global_transform.basis.x
+		away = -camera.global_transform.basis.z
+		away.y = 0.0
+		away = away.normalized()
+	if side.dot(entrance_dir) > 0.0:
+		side = -side
+	var at := global_position + side * 3.2 + away * 0.8
+	_pile_root.global_position = Vector3(at.x, SnowField.height_at(at.x, at.z) + 0.06, at.z)
+	_pile_root.global_rotation = Vector3(0.0, atan2(away.x, away.z), 0.0)
+	var wood := mini(pile.amount("wood"), 15)
+	for i in wood:
+		var row := int(i / 4)
+		var col := i % 4
+		var m := MeshInstance3D.new()
+		var c := CylinderMesh.new()
+		c.top_radius = 0.06
+		c.bottom_radius = 0.07
+		c.height = 0.9
+		m.mesh = c
+		m.material_override = _wood
+		m.rotation.x = PI * 0.5
+		m.position = Vector3((float(col) - 1.5) * 0.15, 0.07 + float(row) * 0.13, 0.0)
+		_pile_root.add_child(m)
+	for i in mini(pile.amount("bedding"), 6):
+		var b := MeshInstance3D.new()
+		var bx := BoxMesh.new()
+		bx.size = Vector3(0.5, 0.05, 0.75)
+		b.mesh = bx
+		b.material_override = _bough
+		b.position = Vector3(0.65, 0.03 + float(i) * 0.05, 0.0)
+		b.rotation.y = float(i) * 0.5
+		_pile_root.add_child(b)
 
 func _box(pos: Vector3, size: Vector3, mat: Material, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()

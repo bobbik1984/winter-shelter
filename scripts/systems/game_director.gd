@@ -104,6 +104,7 @@ func _ready() -> void:
 
 	inventory = Inventory.new()
 	inventory.max_wood = tuning.max_wood
+	inventory.max_bedding = tuning.max_bedding
 	gear = LevelState.gear()
 	inventory.has_extra_clothing = bool(gear["layer"])
 	inventory.wood = int(gear["wood"])
@@ -333,7 +334,11 @@ func _show_night_event(ev: String) -> void:
 	var labels: Array = []
 	for a in night.available_actions():
 		labels.append(NightText.action_label(a, night, tuning))
-	ui.show_night_event(Loc.t("%s — %s") % [weather.clock_string(), NightText.event_title(ev)], NightText.event_body(ev, night.warmth), labels)
+	var body := NightText.event_body(ev, night.warmth)
+	var note := NightText.fire_note(night)
+	if note != "" and ev != NightCurve.EV_FIRE_DYING and ev != NightCurve.EV_FIRE_OUT:
+		body += "\n" + note
+	ui.show_night_event(Loc.t("%s — %s") % [weather.clock_string(), NightText.event_title(ev)], body, labels)
 	audio.play_sfx("probe")
 
 func _night_act(a: String) -> void:
@@ -887,7 +892,7 @@ func _objective_ctx() -> Dictionary:
 		ctx["complete"] = site.is_complete()
 		ctx["preset"] = site.preset_id
 		ctx["next_stage"] = site.next_stage_title()
-		ctx["missing"] = inventory.missing_text(site.next_stage_cost())
+		ctx["missing"] = site.pile.missing_text(site.next_stage_cost(), inventory)
 		ctx["needs_vent_stick"] = _needs_vent_stick()
 	ctx["clothes_wet"] = GameRules.clothing_state(dampness, tuning) == "wet"
 	return ctx
@@ -1063,16 +1068,18 @@ func _on_harvest(it: Interactable) -> Dictionary:
 		"deadwood":
 			var got := inventory.add("wood", tuning.wood_per_harvest)
 			if got <= 0:
-				return {"ok": false, "msg": Loc.t("Your pack can't carry more wood.")}
+				return {"ok": false, "msg": Loc.t("Your pack can't carry more wood. Stack it at your site.")}
 			return {"ok": true, "minutes": tuning.gather_minutes, "msg": Loc.t("+%d dry wood — standing dead trees burn well.") % got}
 		"birch":
 			inventory.add("bark", tuning.bark_per_harvest)
 			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d birch bark — the best tinder there is.") % tuning.bark_per_harvest}
 		"grass":
-			inventory.add("bedding", tuning.bedding_per_harvest)
+			if inventory.add("bedding", tuning.bedding_per_harvest) <= 0:
+				return {"ok": false, "msg": Loc.t("Your pack can't carry more bedding. Stack it at your site.")}
 			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d bedding (dry grass).") % tuning.bedding_per_harvest}
 		"bough":
-			inventory.add("bedding", tuning.bedding_per_harvest)
+			if inventory.add("bedding", tuning.bedding_per_harvest) <= 0:
+				return {"ok": false, "msg": Loc.t("Your pack can't carry more bedding. Stack it at your site.")}
 			return {"ok": true, "minutes": tuning.gather_minutes * 0.5, "msg": Loc.t("+%d bedding (spruce boughs).") % tuning.bedding_per_harvest}
 		"wet_log":
 			return {"ok": true, "minutes": tuning.gather_minutes * 0.5,
@@ -1097,11 +1104,11 @@ func _on_interaction_completed(target: Interactable, result: Dictionary) -> void
 
 func _on_inventory_changed() -> void:
 	if ui:
-		ui.set_inventory(inventory.wood, inventory.bark, inventory.bedding)
+		ui.set_inventory(inventory.wood, inventory.bark, inventory.bedding, inventory.max_wood, inventory.max_bedding)
 	if player and player.visual_node is HikerVisual:
 		(player.visual_node as HikerVisual).set_load(inventory.wood, inventory.bedding)
 	if prints:
-		prints.heavy = inventory.wood >= 6
+		prints.heavy = inventory.wood >= inventory.max_wood
 
 # ------------------------------------------------------------------ 建造（T2.4–T2.6）
 
@@ -1165,6 +1172,7 @@ func _enter_focus() -> void:
 	player.controls_enabled = false
 	interaction.enabled = true
 	interaction.forced = site.interactable
+	_unload_to_site()
 	# 只转角色外观面向工地，不动位置
 	var to := site.global_position - player.global_position
 	if player.visual_node:
@@ -1287,6 +1295,36 @@ func _tick_focus(delta: float) -> void:
 		_hiker_ghost = move_toward(_hiker_ghost, want, delta / maxf(tuning.build_focus_ghost_seconds, 0.01))
 		(player.visual_node as HikerVisual).set_ghost(_hiker_ghost)
 
+## 把背包里的柴和枝条放到工地的材料堆（B4）。
+func _unload_to_site() -> bool:
+	var moved := site.pile.deposit(inventory)
+	if moved.is_empty():
+		return false
+	site.refresh_pile()
+	var names := _material_names()
+	var parts: Array[String] = []
+	for k in moved:
+		parts.append("%d %s" % [int(moved[k]), names.get(k, k)])
+	ui.toast(Loc.t("Stacked at your site: %s") % ", ".join(parts), 3.0)
+	return true
+
+## 生火 / 添柴能用的柴：背包里的，加上就在工地旁边时堆里的。
+func _fire_wood() -> int:
+	var n := inventory.wood
+	if site != null and _site_distance() <= tuning.night_fire_reach_m:
+		n += site.pile.amount("wood")
+	return n
+
+func _spend_fire_wood(n: int) -> bool:
+	if n > _fire_wood():
+		return false
+	var from_pack := mini(n, inventory.wood)
+	inventory.spend({"wood": from_pack})
+	if n > from_pack:
+		site.pile.spend({"wood": n - from_pack}, inventory)
+		site.refresh_pile()
+	return true
+
 func _material_names() -> Dictionary:
 	return {"wood": Loc.t("dry wood"), "bark": Loc.t("birch bark"), "bedding": Loc.t("bedding")}
 
@@ -1296,14 +1334,14 @@ func _update_focus_panel() -> void:
 		ui.show_build_focus("%s  ·  %d/%d  ✓" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX], Loc.t("Shelter complete."), "", "", false, 1.0)
 		return
 	var cost := site.next_stage_cost()
-	var short := not inventory.has_all(cost)
+	var short := not site.pile.has_all(cost, inventory)
 	interaction.enabled = not short
 	if short and Input.is_action_just_pressed("interact"):
-		ui.toast(Loc.t("Not enough materials — still need %s.") % inventory.missing_text(cost), 3.0)
+		ui.toast(Loc.t("Not enough materials — still need %s.") % site.pile.missing_text(cost, inventory), 3.0)
 	var names := _material_names()
 	var parts: Array[String] = []
 	for k in cost:
-		parts.append(Loc.t("%d %s (you have %d)") % [int(cost[k]), names.get(k, k), int(inventory.get(k))])
+		parts.append(Loc.t("%d %s (you have %d)") % [int(cost[k]), names.get(k, k), site.pile.total(k, inventory)])
 	var needs := Loc.t("Needs: %s") % ", ".join(parts) if not parts.is_empty() else Loc.t("No materials needed for this stage.")
 	var left := weather.minutes_to_sunset()
 	var light := Loc.t("after sunset") if left <= 0.0 else Loc.t("%d min of daylight left") % int(left)
@@ -1321,6 +1359,8 @@ func _needs_vent_stick() -> bool:
 func _site_prompt() -> String:
 	if _needs_vent_stick():
 		return Loc.t("Push a stick through the vent (1 wood) — keeps it clear in falling snow")
+	if site != null and site.is_complete() and (inventory.wood > 0 or inventory.bedding > 0):
+		return Loc.t("Stack what you're carrying here (fire logs, extra bedding)")
 	if site == null or site.is_complete():
 		return ""
 	var cost := site.next_stage_cost()
@@ -1334,7 +1374,7 @@ func _site_prompt() -> String:
 	var rest := site.remaining_cost()
 	var short: Array[String] = []
 	for k in rest:
-		var have := int(inventory.get(k)) if k in ["wood", "bark", "bedding"] else 0
+		var have := site.pile.total(k, inventory)
 		if have < int(rest[k]):
 			short.append("%d %s" % [int(rest[k]) - have, k])
 	if not short.is_empty():
@@ -1351,14 +1391,19 @@ func _efficiency() -> float:
 
 func _on_build_stage() -> Dictionary:
 	if _needs_vent_stick():
-		if not inventory.spend({"wood": 1}):
+		if not site.pile.spend({"wood": 1}, inventory):
 			return {"ok": false, "msg": Loc.t("You need 1 dry wood for a vent stick.")}
+		site.refresh_pile()
 		site.vent_stick = true
 		return {"ok": true, "minutes": 3.0, "msg": Loc.t("Stick in the vent: you can poke it clear during the night.")}
+	if site.is_complete():
+		_unload_to_site()
+		return {"ok": true, "minutes": 1.0, "msg": ""}
 	var cost := site.next_stage_cost()
-	if not inventory.has_all(cost):
-		return {"ok": false, "msg": Loc.t("Not enough materials — still need %s.") % inventory.missing_text(cost)}
-	inventory.spend(cost)
+	if not site.pile.has_all(cost, inventory):
+		return {"ok": false, "msg": Loc.t("Not enough materials — still need %s.") % site.pile.missing_text(cost, inventory)}
+	site.pile.spend(cost, inventory)
+	site.refresh_pile()
 	var minutes := _stage_minutes() / _efficiency()
 	# 在雪下挖掘时人已在风外：按庇护等级 1 结算体温（倒棚施工仍暴露）
 	_skip(minutes, 1 if site.is_snow_shelter() else 0)
@@ -1453,15 +1498,14 @@ func fire_check_at(p: Vector3) -> Dictionary:
 	var wb := ResourceSpawner.windbreak_shelter(get_tree(), p, wind.get_blow_direction_3d())
 	var exposure := GameRules.fire_exposure(lee, wb, _tree_cover(p))
 	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
-	return GameRules.fire_check(inventory.wood, inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
+	return GameRules.fire_check(_fire_wood(), inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
 
 func _try_fire() -> void:
 	var near := _nearest_fire(2.6)
 	if near:
-		if inventory.wood <= 0:
+		if not _spend_fire_wood(1):
 			ui.toast(Loc.t("No dry wood left to add."))
 			return
-		inventory.spend({"wood": 1})
 		near.add_fuel(tuning.campfire_minutes_per_wood)
 		ui.toast(Loc.t("Added a log (+%d min of fire).") % int(tuning.campfire_minutes_per_wood))
 		_skip(2.0)
@@ -1477,7 +1521,8 @@ func _try_fire() -> void:
 		SessionLog.log_event("fire_fail", weather.clock_string(), {"reason": reason})
 		ui.toast(reason, 5.0)
 		return
-	inventory.spend({"wood": tuning.fire_wood_cost, "bark": tuning.fire_tinder_cost})
+	_spend_fire_wood(tuning.fire_wood_cost)
+	inventory.spend({"bark": tuning.fire_tinder_cost})
 	var fire := Campfire.new()
 	fire.name = "Campfire"
 	fire.position = p
@@ -1572,7 +1617,7 @@ func _shelter_card_text() -> Array:
 		var names := _material_names()
 		var miss: Array[String] = []
 		for k in rest:
-			var have := int(inventory.get(k)) if k in ["wood", "bark", "bedding"] else 0
+			var have := site.pile.total(k, inventory)
 			if have < int(rest[k]):
 				miss.append("%d %s" % [int(rest[k]) - have, names.get(k, k)])
 		if not miss.is_empty():
@@ -1581,6 +1626,8 @@ func _shelter_card_text() -> Array:
 			parts.append(Loc.t("Return to site [E]"))
 	if d > 8.0 and not _inside_site():
 		parts.append(Loc.t("%d m away") % int(round(d)))
+	if not site.pile.is_empty():
+		parts.append(Loc.t("pile: %d wood, %d bedding") % [site.pile.amount("wood"), site.pile.amount("bedding")])
 	return [title, "  ·  ".join(parts)]
 
 ## 水平方向向量 → "north" / "south-east" 等（世界约定：-Z = 北，+X = 东）。
@@ -1601,6 +1648,30 @@ func _hud_rects() -> Array[Rect2]:
 	return out
 
 # ------------------------------------------------------------------ 入夜结算输入
+
+## 火（用户定调：所有庇护所同一条规则）：睡的地方附近有火堆，它就留到夜里，烧的是你的柴堆。
+## 完工倒棚的反射火已经在 input 里；这里处理其它情况。雪洞里仍不能生火（D3），火在外面。
+func _add_campfire_to_night(input: Dictionary) -> void:
+	if bool(input.get("fire_lit", false)):
+		for f in get_tree().get_nodes_in_group("campfires"):
+			if site != null and f == site.fire and (f as Campfire).lit:
+				input["fire_minutes_left"] = (f as Campfire).fuel_minutes
+		return
+	var bed := site.global_position if site != null and site.stage() > 0 else player.global_position
+	var best: Campfire = null
+	var best_d := tuning.night_fire_reach_m
+	for f in get_tree().get_nodes_in_group("campfires"):
+		var d := Vector2((f as Node3D).global_position.x - bed.x, (f as Node3D).global_position.z - bed.z).length()
+		if d <= best_d and ((f as Campfire).lit or inventory.wood > 0 or (site != null and site.pile.amount("wood") > 0)):
+			best_d = d
+			best = f as Campfire
+	if best == null:
+		return
+	var p := best.global_position
+	input["campfire_near"] = true
+	input["firewood_logs"] = float(inventory.wood + (site.pile.amount("wood") if site != null else 0))
+	input["fire_minutes_left"] = best.fuel_minutes if best.lit else 0.0
+	input["fire_exposure"] = GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z), ResourceSpawner.windbreak_shelter(get_tree(), p, wind.get_blow_direction_3d()), _tree_cover(p))
 
 func night_input() -> Dictionary:
 	var input: Dictionary
@@ -1628,18 +1699,21 @@ func night_input() -> Dictionary:
 				and weather.atmosphere.snowfall >= tuning.vent_clog_snowfall
 		if site.preset_id == "LeanTo":
 			# 倒棚反射火在入夜时用备柴重新点燃：只要火塘完工且有干柴即可（白天火是否还在烧不影响夜里）
-			var lit := site.is_complete() and inventory.wood > 0
+			var logs := site.pile.total("wood", inventory)
+			var lit := site.is_complete() and logs > 0
 			input["fire_lit"] = lit
 			input["fire_held"] = lit
-			input["firewood_logs"] = float(inventory.wood)
-			input["fuel_hours"] = float(inventory.wood) * tuning.fire_fuel_hours_per_log
+			input["firewood_logs"] = float(logs)
+			input["fuel_hours"] = float(logs) * tuning.fire_fuel_hours_per_log
 			input["fire_exposure"] = GameRules.fire_exposure(lee, 1.0 if site.near_windbreak else 0.0, _tree_cover(sp))
+	_add_campfire_to_night(input)
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
 	input["dampness"] = dampness   # R1：入睡时受潮进入过夜结算
 	# 装备（S6）：防潮垫加到地面隔热
 	# 地面隔热：枝条地板底子 + 睡前多铺的枝条捆（背包里剩下的垫层）+ 防潮垫 + 兽皮
-	input["bedding_quality"] = GameRules.ground_insulation(float(input.get("bedding_quality", 0.0)) > 0.5, inventory.bedding,
+	var spare_bedding := inventory.bedding + (site.pile.amount("bedding") if site != null else 0)
+	input["bedding_quality"] = GameRules.ground_insulation(float(input.get("bedding_quality", 0.0)) > 0.5, spare_bedding,
 		bool(gear["pad"]), bool(gear.get("hides", false)), tuning)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()

@@ -145,9 +145,10 @@ func run() -> Dictionary:
 	var ss := ShelterSite.new()
 	ss.builder = ShelterBuilder.new()
 	ss.preset_id = "LeanTo"
+	ss.builder.active_preset_id = "LeanTo"
 	ss.builder.current_stage = 3
 	var rc := ss.remaining_cost()
-	_check(int(rc.get("bark", 0)) == 1 and int(rc.get("wood", 0)) == 4, "倒棚第 3 阶后：完工还要 4 木 + 1 桦皮（%s）" % str(rc))
+	_check(int(rc.get("bark", 0)) == 1 and int(rc.get("wood", 0)) == 5, "倒棚第 3 阶后：完工还要 5 木 + 1 桦皮（%s）" % str(rc))
 	ss.builder.current_stage = 5
 	_check(ss.remaining_cost().is_empty(), "完工后不再缺材料")
 	ss.builder.free()
@@ -161,11 +162,12 @@ func run() -> Dictionary:
 	_check(a.day < 0.01 and is_equal_approx(a.snowfall, 0.9), "入夜 day ≈ 0 且降雪写入")
 
 	# ShelterSite 阶段材料表：每个预设 5 阶；高床第 3 阶需要垫层与木材；倒棚需要备柴
-	for preset in ShelterSite.STAGE_COSTS:
-		_check(ShelterSite.STAGE_COSTS[preset].size() == 5, "%s 应有 5 阶材料" % preset)
-	_check(ShelterSite.STAGE_COSTS["RaisedCave"][2].has("bedding"), "高床第 3 阶需要垫层")
+	var _presets := ShelterPreset.create_all_presets()
+	for preset in _presets:
+		_check(_presets[preset].stage_costs.size() == 5, "%s 应有 5 阶材料" % preset)
+	_check(_presets["RaisedCave"].stage_costs[2].has("bedding"), "高床第 3 阶需要垫层")
 	var lean_wood := 0
-	for c in ShelterSite.STAGE_COSTS["LeanTo"]:
+	for c in _presets["LeanTo"].stage_costs:
 		lean_wood += int(c.get("wood", 0))
 	_check(lean_wood >= 6, "倒棚施工合计木材 >= 6（实际 %d）" % lean_wood)
 

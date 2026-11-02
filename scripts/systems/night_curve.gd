@@ -8,7 +8,8 @@ extends RefCounted
 ##
 ## 关键规则：
 ##   失温 / 小时 = 基础 × 温度系数 × (1 − 保护度)^γ + 湿衣额外失温；保护度 = 原 6 维（不含空气）的加权平均。
-##   火在燃烧期间让失温 × (1 − 火的作用)；入睡时只架了 night_fire_initial_hours 的柴，其余备柴要醒来添。
+##   火在燃烧期间让失温 × (1 − 火的作用)并回一点体温；入睡时只架了 night_fire_initial_hours 的柴，其余备柴要醒来添。
+##   火灭不会自动叫醒人：只有已经冷了或者没火时掉得很快才醒（暖和就接着睡，用户定调 2026-11-02）。
 ##   A2 红线：W ≤ 极危阈值时一定醒；所以 W 归零之前玩家至少醒过一次、有机会行动。
 ##   N5：活动回温同一次醒来递减、整夜越累越少（不能靠连按代替庇护所）；行动耗时照算失温与烧火；冻醒不受次数上限限制。
 
@@ -22,6 +23,7 @@ const ACT_SLEEP := "sleep"
 const EV_COLD := "cold"
 const EV_CRITICAL := "critical"
 const EV_FIRE_DYING := "fire_dying"
+const EV_FIRE_OUT := "fire_out"
 const EV_WET_FEET := "wet_feet"
 const EV_NO_VENT := "no_vent"
 const EV_VENT_CLOGGED := "vent_clogged"
@@ -60,6 +62,11 @@ var clog_unresolved := false
 
 ## 火最后一次熄灭的时刻（入睡后分钟；-1 = 一直烧到天亮）。
 var fire_out_at := -1.0
+## 一根柴能烧多少分钟（风、雪越大越短）。
+var log_minutes := 120.0
+## 没有火可添时的原因（给玩家看）："" / "no_fire" / "no_logs" / "wind"。
+var fire_blocked := "no_fire"
+var _fire_out_reported := false
 var _last_wake := -INF
 ## N5：活动不是无限的热源——同一次醒来连续活动效果递减（_ex_this_wake），整夜活动越多越累（_ex_total）。
 var _ex_this_wake := 0
@@ -82,16 +89,22 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 	var night_temp := float(input.get("night_temp_c", t.temp_at_night_c))
 	var temp_k := maxf(0.2, 1.0 + (t.night_temp_ref_c - night_temp) * t.night_temp_sensitivity)
 	base_loss = t.night_base_loss_per_h * temp_k * pow(1.0 - protection, t.night_protection_gamma)
-	# 火：雪庇护所里不能生火（D3）；其余情况要真的点着、不被吹灭
-	var fire_ok := bool(input.get("fire_lit", false)) and not _is_snow \
-		and float(input.get("fire_exposure", 1.0)) <= t.fire_blowout_dot
-	if fire_ok:
-		has_fire_place = true
-		var logs := int(round(float(input.get("firewood_logs", 0.0))))
-		var initial_logs := maxi(1, int(round(t.night_fire_initial_hours / maxf(t.fire_fuel_hours_per_log, 0.1))))
-		var burn_now := mini(logs, initial_logs)
-		fire_minutes = float(burn_now) * t.fire_fuel_hours_per_log * 60.0
-		stock_logs = logs - burn_now
+	# 火（所有庇护所同一条规则）：有火堆就留到夜里，柴烧完会灭，有柴就能再点；风和雪决定烧多快、留不留得住。
+	# 雪洞内仍不能生火（D3）——火在外面，睡着时对洞里没有作用（_fire_factor = 0）。
+	var wind_ratio := float(input.get("wind_speed_kmh", t.night_fire_wind_ref_kmh)) / maxf(t.night_fire_wind_ref_kmh, 0.1)
+	var snow_now := clampf(float(input.get("night_snowfall", 0.0)), 0.0, 1.0)
+	log_minutes = t.fire_fuel_hours_per_log * 60.0 / (1.0 + t.night_fire_wind_burn * maxf(wind_ratio - 1.0, 0.0) + t.night_fire_snow_burn * snow_now)
+	if bool(input.get("fire_lit", false)) or bool(input.get("campfire_near", false)):
+		if float(input.get("fire_exposure", 1.0)) * maxf(wind_ratio, 1.0) > t.fire_blowout_dot:
+			fire_blocked = "wind"
+		else:
+			has_fire_place = true
+			var logs := int(round(float(input.get("firewood_logs", 0.0))))
+			var initial_logs := maxi(1, int(round(t.night_fire_initial_hours / maxf(t.fire_fuel_hours_per_log, 0.1))))
+			var burn_now := mini(logs, initial_logs)
+			fire_minutes = float(burn_now) * log_minutes + maxf(float(input.get("fire_minutes_left", 0.0)), 0.0)
+			stock_logs = logs - burn_now
+			fire_blocked = ""
 	# 夜间隐患
 	var vents := int(input.get("vent_count", 1 if bool(input.get("has_vent", false)) else 0))
 	if _is_snow and _shelter != "TreeWell":
@@ -138,10 +151,34 @@ func loss_per_hour() -> float:
 	if minute < t.night_prewarm_hours * 60.0 and bool(input.get("prewarmed", false)):
 		loss *= t.night_prewarm_factor
 	if fire_minutes > 0.0:
-		var ff := t.night_fire_factor_reflector if bool(input.get("has_reflector_wall", false)) else t.night_fire_factor_open
-		loss *= 1.0 - ff
+		var ff := _fire_factor()
+		loss = loss * (1.0 - ff) - ff * t.night_fire_heat_per_h
 	loss += NightSimulator.wet_fraction(dampness, t) * t.night_wet_loss_per_h
 	return loss
+
+## 火对这个庇护所起多大作用 0..1。
+func _fire_factor() -> float:
+	match _shelter:
+		"RaisedCave", "BasicCave": return 0.0
+		"SnowTrench", "TreeWell": return t.night_fire_factor_snow_open
+	return t.night_fire_factor_reflector if bool(input.get("has_reflector_wall", false)) else t.night_fire_factor_open
+
+## 没有火时每小时掉多少。
+func _fireless_loss() -> float:
+	return base_loss + NightSimulator.wet_fraction(dampness, t) * t.night_wet_loss_per_h
+
+## 火灭会不会把人弄醒：已经冷了，或者没火时掉得很快。暖和的时候火灭了也接着睡。
+func _fire_bites() -> bool:
+	return _fire_factor() > 0.0 and (warmth <= t.night_fire_wake_w or _fireless_loss() >= t.night_fire_wake_loss_per_h)
+
+## 体温变化（火能回温，但不会超过上限）。
+func _apply_loss(dt: float) -> void:
+	var loss := loss_per_hour()
+	var next := warmth - loss * dt / 60.0
+	if loss < 0.0:
+		next = minf(next, maxf(warmth, t.night_fire_warm_cap))
+	warmth = clampf(next, 0.0, t.warmth_max)
+	min_warmth = minf(min_warmth, warmth)
 
 ## 推进到下一个事件或天亮。返回事件 id（"" = 天亮 / 结束）。
 func step() -> String:
@@ -166,13 +203,12 @@ func waiting() -> bool:
 
 func _advance_one() -> String:
 	var dt := t.night_step_min
-	warmth = clampf(warmth - loss_per_hour() * dt / 60.0, 0.0, t.warmth_max)
+	_apply_loss(dt)
 	minute += dt
 	if fire_minutes > 0.0:
 		fire_minutes = maxf(0.0, fire_minutes - dt)
 		if fire_minutes <= 0.0:
 			fire_out_at = minute
-	min_warmth = minf(min_warmth, warmth)
 	if int(minute) % 30 == 0:
 		curve.append(Vector2(minute, warmth))
 	# 没通风管：到时没处理 → 窒息（之前一定已经闷醒过一次）
@@ -202,9 +238,12 @@ func _advance_one() -> String:
 		ev = EV_VENT_CLOGGED
 	elif snow_load_due <= minute and not _woke_for(EV_SNOW_LOAD):
 		ev = EV_SNOW_LOAD
-	elif has_fire_place and fire_minutes > 0.0 and fire_minutes <= 30.0 and stock_logs > 0 and not _fire_dying_reported:
+	elif has_fire_place and fire_minutes > 0.0 and fire_minutes <= 30.0 and stock_logs > 0 and not _fire_dying_reported and _fire_bites():
 		_fire_dying_reported = true
 		ev = EV_FIRE_DYING
+	elif has_fire_place and fire_minutes <= 0.0 and stock_logs > 0 and not _fire_out_reported and _fire_bites():
+		_fire_out_reported = true
+		ev = EV_FIRE_OUT
 	elif wet_feet_due <= minute and not _woke_for(EV_WET_FEET):
 		ev = EV_WET_FEET
 	if ev == "" and warmth <= t.night_wake_cold_w:
@@ -243,8 +282,7 @@ func exercise_gain() -> float:
 
 ## 醒着做事也要花时间：照样在失温，火照样在烧。
 func _spend(dt: float) -> void:
-	warmth = clampf(warmth - loss_per_hour() * dt / 60.0, 0.0, t.warmth_max)
-	min_warmth = minf(min_warmth, warmth)
+	_apply_loss(dt)
 	if fire_minutes > 0.0:
 		fire_minutes = maxf(0.0, fire_minutes - dt)
 		if fire_minutes <= 0.0:
@@ -260,8 +298,9 @@ func act(a: String) -> bool:
 		ACT_ADD_WOOD:
 			var n := mini(stock_logs, t.night_add_wood_logs)
 			stock_logs -= n
-			fire_minutes += float(n) * t.fire_fuel_hours_per_log * 60.0
+			fire_minutes += float(n) * log_minutes
 			_fire_dying_reported = false
+			_fire_out_reported = false
 			fire_out_at = -1.0
 			_spend(5.0)
 		ACT_EXERCISE:

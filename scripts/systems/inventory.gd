@@ -7,6 +7,7 @@ extends Node
 signal changed()
 
 @export var max_wood: int = 12
+@export var max_bedding: int = 12
 var wood: int = 0
 var bark: int = 0
 var bedding: int = 0
@@ -24,7 +25,7 @@ func add(item: String, amount: int) -> int:
 	match item:
 		"wood": wood = clampi(wood + amount, 0, max_wood)
 		"bark": bark = maxi(bark + amount, 0)
-		"bedding": bedding = maxi(bedding + amount, 0)
+		"bedding": bedding = clampi(bedding + amount, 0, max_bedding)
 	changed.emit()
 	return count(item) - before
 

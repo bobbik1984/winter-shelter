@@ -33,16 +33,16 @@ func _run() -> void:
 	d._skip(3.0)   # 走路 + 探测
 	p._finish_probe()
 	var preset := "RaisedCave"
-	var wood_need := 1
-	var bedding_need := 2
+	var wood_need := 3
+	var bedding_need := 4
 	match strat:
-		"late": d._skip(120.0); preset = "BasicCave"
-		"leanto_short": preset = "LeanTo"; wood_need = 8; spot = Vector3(-1.2, 0, 10.5)
-		"leanto_full": preset = "LeanTo"; wood_need = 12; spot = Vector3(-1.2, 0, 10.5)
-		"trench": preset = "SnowTrench"; wood_need = 5; bedding_need = 1   # 2 根雪沟 + 3 根睡前烤干衣服（R1）
+		"late": d._skip(120.0); preset = "BasicCave"; wood_need = 1; bedding_need = 4
+		"leanto_short": preset = "LeanTo"; wood_need = 9; bedding_need = 4; spot = Vector3(-1.2, 0, 10.5)   # 7 根施工 + 2 根过夜
+		"leanto_full": preset = "LeanTo"; wood_need = 15; bedding_need = 4; spot = Vector3(-1.2, 0, 10.5)   # 7 根施工 + 8 根过夜
+		"trench": preset = "SnowTrench"; wood_need = 3; bedding_need = 3
 		"treewell":
 			# S5：离出生点最近、周围积雪够厚的老云杉；树井不花木头，3 根留着睡前烤干
-			preset = "TreeWell"; wood_need = 3; bedding_need = 4
+			preset = "TreeWell"; wood_need = 0; bedding_need = 6
 			var best := INF
 			for q in OldSpruces.points:
 				var dq: float = q.distance_to(MapLayout.spawn())
@@ -54,11 +54,10 @@ func _run() -> void:
 	if not strat in ["none", "late", "wind", "leanto_short"]:
 		bedding_need += 3
 	# 采集（每次 6 分钟 / 3 分钟，与真实交互一致）
-	while d.inventory.bedding < bedding_need:
-		d._on_interaction_completed(_fake("grass"), d._on_harvest(_fake("grass")))
-	while d.inventory.wood < wood_need + (3 if strat in ["good", "deep", "wind", "late", "quick", "twovent", "deep_stick"] else 0):
-		var r = d._on_harvest(_fake("deadwood"))
-		d._on_interaction_completed(_fake("deadwood"), r)
+	# D16 / B4：背包有上限。放样前先装满一包，放样后来回跑，堆到工地（每趟走路 2 分钟）
+	var total_wood := wood_need + (1 if strat == "deep_stick" else 0)
+	_haul(d, "grass", "bedding", bedding_need)
+	_haul(d, "deadwood", "wood", total_wood)
 	d.inventory.add("bark", 2)
 	d._skip(2.0 * 12.0 / 12.0)
 	if strat == "none":
@@ -80,12 +79,18 @@ func _run() -> void:
 		d._place_site()
 		if d.site == null:
 			printerr("PLACE FAILED ", d.build.reason); quit(1); return
+		_haul(d, "grass", "bedding", bedding_need)
+		_haul(d, "deadwood", "wood", total_wood)
+		d._unload_to_site()
 		var stages := 5
 		for s in stages:
 			if strat == "late" and d.weather.current_time_minutes > 1060.0:
 				break
 			d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
 		if strat in ["good", "deep", "leanto_full", "quick", "twovent", "deep_stick", "trench", "treewell"]:
+			# 去生火要带上柴（放在工地的柴离得远就用不上）
+			while d.inventory.wood < 3 and strat != "leanto_full":
+				d._on_interaction_completed(_fake("deadwood"), d._on_harvest(_fake("deadwood")))
 			# 篝火 + 热饮：像玩家一样找最近的树根盘，站到它的背风侧生火（原先站的开阔处风太大，火一直点不着）
 			var best_r := Vector2.ZERO
 			var best_d := INF
@@ -140,6 +145,22 @@ func _run() -> void:
 	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s  night: low=%d wakes=%d  smart=%s/%d/%d sleep=%s/%d tol=%s" % [strat, nightres["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"], int(nightres["min_warmth"]), int(nightres["wakes"]), smart["outcome"], int(smart["min_warmth"]), int(smart["wakes"]), lazy["outcome"], int(lazy["min_warmth"]), tol])
 	printerr("  fire_lit=", inp.get("fire_lit"), " exposure=", inp.get("fire_exposure"), " fuel_h=", inp.get("fuel_hours"), " held=", rep["details"]["fire_reaches_dawn"], " prewarmed=", inp.get("prewarmed"), " clogged=", inp.get("vent_snow_clogged"), " site_fire=", d.site.fire.lit if d.site and d.site.fire else null)
 	quit(0)
+## 采到"堆 + 背包"够 total；背包满了就走回工地放下（没有工地时就停在满包）。
+func _haul(d, kind: String, item: String, total: int) -> void:
+	var guard := 0
+	while guard < 60:
+		guard += 1
+		var have: int = d.inventory.count(item) + (d.site.pile.amount(item) if d.site != null else 0)
+		if have >= total:
+			return
+		if d.inventory.count(item) >= (d.inventory.max_wood if item == "wood" else d.inventory.max_bedding):
+			if d.site == null:
+				return
+			d._skip(2.0)
+			d._unload_to_site()
+			d._skip(2.0)
+		d._on_interaction_completed(_fake(kind), d._on_harvest(_fake(kind)))
+
 func _fake(kind: String) -> Interactable:
 	var it := Interactable.new()
 	it.kind = kind

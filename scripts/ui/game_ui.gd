@@ -170,8 +170,8 @@ func set_prompt(text: String, progress: float) -> void:
 	_progress.value = progress
 	_progress.visible = progress > 0.0
 
-func set_inventory(wood: int, bark: int, bedding: int) -> void:
-	_tray.text = Loc.t("Dry wood  %d     Birch bark  %d     Bedding  %d") % [wood, bark, bedding]
+func set_inventory(wood: int, bark: int, bedding: int, max_wood: int = 4, max_bedding: int = 4) -> void:
+	_tray.text = Loc.t("Dry wood  %d/%d     Birch bark  %d     Bedding  %d/%d") % [wood, max_wood, bark, bedding, max_bedding]
 
 func set_objective(text: String) -> void:
 	_objective.text = "▸ " + text
