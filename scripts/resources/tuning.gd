@@ -98,6 +98,11 @@ extends Resource
 @export var night_max_wakes: int = 5
 ## 起来活动：体温 +W，出汗受潮 +，睡眠质量 −1。
 @export var night_exercise_warmth: float = 10.0
+## N5：同一次醒来再活动，每次效果 × 这个系数 [GAME]（不能靠连按活动代替庇护所）。
+@export var night_exercise_repeat_factor: float = 0.5
+## N5：整夜每活动一次，之后的效果 −这个比例，直到下限 [TUNE]（人会累、能量有限）。
+@export var night_exercise_fatigue: float = 0.08
+@export var night_exercise_fatigue_floor: float = 0.4
 @export var night_exercise_damp: float = 0.05
 ## 事件时刻（入睡后多少游戏分钟）：脚冷（湿袜子）、没通风管闷醒、通风管被堵头痛、积雪压顶。
 @export var night_wet_feet_wake_min: float = 150.0

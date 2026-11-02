@@ -158,4 +158,72 @@ func run() -> Dictionary:
 	var r1 := NightCurve.run(c["trench"], t, "smart")
 	var r2 := NightCurve.run(c["trench"], t, "smart")
 	_check(r1["min_warmth"] == r2["min_warmth"] and r1["timeline"].size() == r2["timeline"].size(), "同一输入结果可复现")
+	_n5(c, t)
 	return {"passed": _passed, "failures": _failures}
+
+## N5：活动不能代替庇护所；冻醒不受上限限制；醒着做事也花时间；每章目标路线在第 1 / 5 / 10 阶都活得下来。
+func _n5(c: Dictionary, t: Tuning) -> void:
+	# 连按活动：露天怎么按都熬不过去（修复前按 8 次 = COLD，最低 39）
+	for presses in [1, 3, 8, 20]:
+		var n := NightCurve.new(c["none"], t)
+		var guard := 0
+		while not n.is_over() and guard < 300:
+			guard += 1
+			if n.step() == "":
+				break
+			for i in presses:
+				n.act(NightCurve.ACT_EXERCISE)
+			n.act(NightCurve.ACT_SLEEP)
+		_check(String(n.result()["outcome"]) == "DANGEROUS", "露天每次醒来连按活动 %d 次也是 DANGEROUS（%s，最低 %d）" % [presses, n.result()["outcome"], int(n.result()["min_warmth"])])
+	var ex := NightCurve.new(c["trench"], t)
+	var g0 := ex.exercise_gain()
+	ex.act(NightCurve.ACT_EXERCISE)
+	var g1 := ex.exercise_gain()
+	_check(is_equal_approx(g0, t.night_exercise_warmth) and g1 < g0 * 0.6, "同一次醒来再活动，效果明显递减（%.1f → %.1f）" % [g0, g1])
+	ex.act(NightCurve.ACT_SLEEP)
+	var g2 := ex.exercise_gain()
+	_check(g2 > g1 and g2 < g0, "下一次醒来恢复，但人已经累了（%.1f，第一次 %.1f）" % [g2, g0])
+	# 醒着做事也花时间：火在烧、人在冷
+	var lean := NightCurve.new(c["leanto_fire"], t)
+	var fm := lean.fire_minutes
+	lean.dampness = 1.0
+	lean.act(NightCurve.ACT_DRY_SOCKS)
+	_check(is_equal_approx(lean.fire_minutes, fm - 15.0), "烘袜子 15 分钟，火也烧了 15 分钟")
+	var w0 := lean.warmth
+	lean.act(NightCurve.ACT_DRY_SOCKS)
+	_check(lean.warmth < w0, "醒着做事时体温照样在掉")
+	# 冻醒不受上限限制：醒的次数用完后，也不会一路睡到极危才醒
+	var wet: Dictionary = (c["trench"] as Dictionary).duplicate()
+	wet["dampness"] = 1.0
+	var capped := t.duplicate() as Tuning
+	capped.night_max_wakes = 0
+	var cn := NightCurve.new(wet, capped)
+	var first := cn.step()
+	_check(first == NightCurve.EV_COLD, "上限用完后仍然先冻醒，而不是直接极危（%s）" % first)
+	# 每章目标路线（合成输入：中等背风、完工；真实地图上的路线是 S7）
+	var routes := {1: ["RaisedCave", "BasicCave"], 2: ["TreeWell"], 3: ["LeanTo"], 4: ["SnowTrench"], 5: ["RaisedCave", "SnowTrench", "LeanTo"]}
+	var keys := {"RaisedCave": "raised_dry", "BasicCave": "cave_vented", "TreeWell": "treewell", "LeanTo": "leanto_fire", "SnowTrench": "trench"}
+	var cases: Dictionary = c.duplicate()
+	cases["cave_vented"] = _case({"shelter_type": "BasicCave", "snow_depth_meters": 1.8, "bedding_quality": 0.95, "vent_count": 1, "has_vent": true, "roof_thickness_meters": 0.4})
+	for ch in routes:
+		var def: LevelDef = LevelState.load_level(ch)
+		var prev := {}
+		for st in [1, 5, 10]:
+			var roll: Dictionary = LevelState.roll_for(def, 1, LevelState.difficulty_of(st))
+			var storm: bool = ch == 5
+			var temp: float = t.temp_at_night_c + float(roll["night_temp_offset_c"]) - (t.storm_extra_cold_c if storm else 0.0)
+			var wind: float = maxf(t.wind_speed_kmh + float(roll["wind_speed_offset_kmh"]) + (t.storm_extra_wind_kmh if storm else 0.0), 0.0)
+			for sh in routes[ch]:
+				var inp: Dictionary = (cases[keys[sh]] as Dictionary).duplicate()
+				inp.merge({"starting_warmth": 100.0, "prewarmed": true, "dampness": 0.0, "night_temp_c": temp, "wind_speed_kmh": wind}, true)
+				var r := NightCurve.run(inp, t, "smart")
+				var tag := "第 %d 章第 %d 阶 %s" % [ch, st, sh]
+				_check(String(r["outcome"]) != "DANGEROUS", "%s：准备充分 + 夜里处理 ≥ COLD（%s，最低 %d）" % [tag, r["outcome"], int(r["min_warmth"])])
+				_check(float(r["min_warmth"]) >= float(NightCurve.run(inp, t, "sleep")["min_warmth"]), "%s：夜里处理不比一直睡差" % tag)
+				for f in [0.9, 1.1]:
+					var t2 := t.duplicate() as Tuning
+					t2.night_base_loss_per_h = t.night_base_loss_per_h * f
+					_check(String(NightCurve.run(inp, t2, "smart")["outcome"]) != "DANGEROUS", "%s：基础失温 ×%.1f 仍 ≥ COLD" % [tag, f])
+				if prev.has(sh):
+					_check(float(r["base_loss"]) >= float(prev[sh]), "%s：阶越高失温不会变慢（%.1f ≥ %.1f）" % [tag, r["base_loss"], prev[sh]])
+				prev[sh] = float(r["base_loss"])

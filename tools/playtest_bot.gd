@@ -127,7 +127,17 @@ func _run() -> void:
 	var sc = rep["scores"]
 	# D14：结局 = 可玩夜晚的整夜体温曲线（机器人夜里按 "smart" 处理：添柴 / 清通风口 / 顶雪 / 烘袜子 / 冷了就活动）
 	var nightres := NightCurve.run(inp, d.tuning, "sleep" if strat in ["none", "late", "wind"] else "smart")
-	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s  night: low=%d wakes=%d" % [strat, nightres["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"], int(nightres["min_warmth"]), int(nightres["wakes"])])
+	# N5：同一份准备，两种夜里的玩家各走一遍；再看基础失温 ±10% 会不会翻转结局（离分界线 6 分内的不算，见 §10.5）
+	var smart := NightCurve.run(inp, d.tuning, "smart")
+	var lazy := NightCurve.run(inp, d.tuning, "sleep")
+	var tol := "ok"
+	var near_edge: bool = absf(float(smart["min_warmth"]) - d.tuning.night_safe_min_w) <= 6.0 or absf(float(smart["min_warmth"]) - d.tuning.night_wake_critical_w) <= 6.0
+	for f in [0.9, 1.1]:
+		var t2: Tuning = d.tuning.duplicate()
+		t2.night_base_loss_per_h = d.tuning.night_base_loss_per_h * f
+		if String(NightCurve.run(inp, t2, "smart")["outcome"]) != String(smart["outcome"]) and not near_edge:
+			tol = "FLIP"
+	printerr("depth %.2f " % inp.get("snow_depth_meters", 0.0), "BOT %-12s %-9s t=%s warmth=%d  site=%d struct=%d ins=%d iso=%d air=%d heat=%d  min=%s  night: low=%d wakes=%d  smart=%s/%d/%d sleep=%s/%d tol=%s" % [strat, nightres["outcome"], d.weather.clock_string(), int(inp["starting_warmth"]), sc["site"], sc["structure"], sc["insulation"], sc["isolation"], sc["air"], sc["heat"], rep["details"]["min_axis"], int(nightres["min_warmth"]), int(nightres["wakes"]), smart["outcome"], int(smart["min_warmth"]), int(smart["wakes"]), lazy["outcome"], int(lazy["min_warmth"]), tol])
 	printerr("  fire_lit=", inp.get("fire_lit"), " exposure=", inp.get("fire_exposure"), " fuel_h=", inp.get("fuel_hours"), " held=", rep["details"]["fire_reaches_dawn"], " prewarmed=", inp.get("prewarmed"), " clogged=", inp.get("vent_snow_clogged"), " site_fire=", d.site.fire.lit if d.site and d.site.fire else null)
 	quit(0)
 func _fake(kind: String) -> Interactable:

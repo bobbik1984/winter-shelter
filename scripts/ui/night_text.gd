@@ -32,7 +32,7 @@ static func event_body(ev: String, warmth: float) -> String:
 static func action_label(a: String, n: NightCurve, t: Tuning) -> String:
 	match a:
 		NightCurve.ACT_ADD_WOOD: return Loc.t("Add wood to the fire (%d logs left)") % n.stock_logs
-		NightCurve.ACT_EXERCISE: return Loc.t("Get up and move (+%d warmth, costs sleep)") % int(t.night_exercise_warmth)
+		NightCurve.ACT_EXERCISE: return Loc.t("Get up and move (+%d warmth, costs sleep)") % int(round(n.exercise_gain()))
 		NightCurve.ACT_CLEAR_VENT: return Loc.t("Poke the vent clear")
 		NightCurve.ACT_KNOCK_SNOW: return Loc.t("Knock the snow off the roof")
 		NightCurve.ACT_DRY_SOCKS: return Loc.t("Dry your socks and boots by the fire")

@@ -10,6 +10,7 @@ extends RefCounted
 ##   失温 / 小时 = 基础 × 温度系数 × (1 − 保护度)^γ + 湿衣额外失温；保护度 = 原 6 维（不含空气）的加权平均。
 ##   火在燃烧期间让失温 × (1 − 火的作用)；入睡时只架了 night_fire_initial_hours 的柴，其余备柴要醒来添。
 ##   A2 红线：W ≤ 极危阈值时一定醒；所以 W 归零之前玩家至少醒过一次、有机会行动。
+##   N5：活动回温同一次醒来递减、整夜越累越少（不能靠连按代替庇护所）；行动耗时照算失温与烧火；冻醒不受次数上限限制。
 
 const ACT_ADD_WOOD := "add_wood"
 const ACT_EXERCISE := "exercise"
@@ -60,6 +61,9 @@ var clog_unresolved := false
 ## 火最后一次熄灭的时刻（入睡后分钟；-1 = 一直烧到天亮）。
 var fire_out_at := -1.0
 var _last_wake := -INF
+## N5：活动不是无限的热源——同一次醒来连续活动效果递减（_ex_this_wake），整夜活动越多越累（_ex_total）。
+var _ex_this_wake := 0
+var _ex_total := 0
 var _pending_event := ""
 var _fire_dying_reported := false
 var _is_snow := false
@@ -186,10 +190,13 @@ func _advance_one() -> String:
 			_last_wake = minute
 			return EV_CRITICAL
 		return ""
-	if minute - _last_wake < t.night_wake_spacing_min or wakes >= t.night_max_wakes:
+	if minute - _last_wake < t.night_wake_spacing_min:
 		return ""
+	# N5：上限只管次要事件；冻醒不受上限限制——否则第 6 次起玩家要一路睡到极危，结局不是他选的
 	var ev := ""
-	if vent_none and minute >= vent_none_due and not _woke_for(EV_NO_VENT):
+	if wakes >= t.night_max_wakes:
+		pass
+	elif vent_none and minute >= vent_none_due and not _woke_for(EV_NO_VENT):
 		ev = EV_NO_VENT
 	elif vent_clogged_pending and minute >= vent_clog_due and not _woke_for(EV_VENT_CLOGGED):
 		ev = EV_VENT_CLOGGED
@@ -200,7 +207,7 @@ func _advance_one() -> String:
 		ev = EV_FIRE_DYING
 	elif wet_feet_due <= minute and not _woke_for(EV_WET_FEET):
 		ev = EV_WET_FEET
-	elif warmth <= t.night_wake_cold_w:
+	if ev == "" and warmth <= t.night_wake_cold_w:
 		ev = EV_COLD
 	if ev != "":
 		wakes += 1
@@ -229,6 +236,21 @@ func available_actions() -> PackedStringArray:
 	out.append(ACT_SLEEP)
 	return out
 
+## 现在起来活动一次能回多少体温（界面显示的就是这个数）。
+func exercise_gain() -> float:
+	var fatigue := maxf(t.night_exercise_fatigue_floor, 1.0 - t.night_exercise_fatigue * float(_ex_total))
+	return t.night_exercise_warmth * pow(t.night_exercise_repeat_factor, float(_ex_this_wake)) * fatigue
+
+## 醒着做事也要花时间：照样在失温，火照样在烧。
+func _spend(dt: float) -> void:
+	warmth = clampf(warmth - loss_per_hour() * dt / 60.0, 0.0, t.warmth_max)
+	min_warmth = minf(min_warmth, warmth)
+	if fire_minutes > 0.0:
+		fire_minutes = maxf(0.0, fire_minutes - dt)
+		if fire_minutes <= 0.0:
+			fire_out_at = minute + dt
+	minute += dt
+
 ## 执行一个行动（每次事件可做多个，最后 ACT_SLEEP 继续）。返回是否生效。
 func act(a: String) -> bool:
 	if not (a in available_actions()):
@@ -241,28 +263,32 @@ func act(a: String) -> bool:
 			fire_minutes += float(n) * t.fire_fuel_hours_per_log * 60.0
 			_fire_dying_reported = false
 			fire_out_at = -1.0
-			minute += 5.0
+			_spend(5.0)
 		ACT_EXERCISE:
-			warmth = minf(t.warmth_max, warmth + t.night_exercise_warmth)
+			var gain := exercise_gain()
+			_spend(10.0)
+			warmth = minf(t.warmth_max, warmth + gain)
 			dampness = minf(1.0, dampness + t.night_exercise_damp)
 			sleep_quality -= 1
-			minute += 10.0
+			_ex_this_wake += 1
+			_ex_total += 1
 		ACT_CLEAR_VENT:
 			vent_none = false
 			vent_clogged_pending = false
-			minute += 5.0
+			_spend(5.0)
 		ACT_KNOCK_SNOW:
 			snow_load_due = INF
-			minute += 5.0
+			_spend(5.0)
 		ACT_DRY_SOCKS:
 			dampness = maxf(0.0, dampness - 0.3)
 			wet_feet_due = INF
-			minute += 15.0
+			_spend(15.0)
 		ACT_SLEEP:
 			if _pending_event == EV_SNOW_LOAD and snow_load_due <= minute:
 				snow_load_active = true   # 没顶落就继续睡 → 结构受损
 			if _pending_event == EV_VENT_CLOGGED and vent_clogged_pending:
 				clog_unresolved = true
+			_ex_this_wake = 0
 			_pending_event = ""
 	return true
 
@@ -296,7 +322,8 @@ static func run(p_input: Dictionary, p_t: Tuning, policy: String = "smart") -> D
 			for a in [ACT_CLEAR_VENT, ACT_KNOCK_SNOW, ACT_ADD_WOOD, ACT_DRY_SOCKS]:
 				if a in n.available_actions():
 					n.act(a)
-			if n.warmth <= p_t.night_wake_cold_w:
+			# 冷了就动；越冷动得越久（效果递减，不值得之后就回去睡）
+			while n.warmth <= p_t.night_wake_cold_w and n.exercise_gain() >= 3.0:
 				n.act(ACT_EXERCISE)
 		n.act(ACT_SLEEP)
 	return n.result()
