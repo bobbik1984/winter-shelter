@@ -1555,6 +1555,9 @@ func _windbreak_at(p: Vector3) -> float:
 	wb = maxf(wb, GameRules.windbreak_shelter(Array(LandFeatures.rocks), Vector2(p.x, p.z), Vector2(blow.x, blow.z), tuning.rock_max_dist_m))
 	if LandFeatures.cliff_upwind(p.x, p.z, wind.get_wind_direction_3d(), tuning.rock_cliff_run_m, tuning.rock_cliff_rise_m):
 		wb = 1.0
+	# S7：你自己堆起来的雪丘 / 雪墙 / 棚子也挡风（开阔平地上否则哪里都点不着火，挖雪湿透了就没法烘干）
+	if site != null and site.stage() >= 2:
+		wb = maxf(wb, GameRules.own_shelter_lee(Vector2(site.global_position.x, site.global_position.z), Vector2(p.x, p.z), Vector2(blow.x, blow.z), site.footprint_radius() + tuning.shelter_fire_lee_m))
 	return wb
 
 ## 在 p 点生火能否成功（与 _try_fire 同一套规则：背风 / 树根挡风 / 林木、树冠落雪、雪庇护所内禁火、材料）。
@@ -1562,7 +1565,9 @@ func fire_check_at(p: Vector3) -> Dictionary:
 	var lee := SnowField.lee_factor_at(p.x, p.z)
 	var wb := _windbreak_at(p)
 	var exposure := GameRules.fire_exposure(lee, wb, _tree_cover(p))
-	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 and _inside_site()
+	# 判定的是火的位置，不是人站在哪（站在雪沟旁边往外生火是可以的）
+	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 \
+		and Vector2(p.x - site.global_position.x, p.z - site.global_position.z).length() < tuning.shelter_inside_radius_m
 	return GameRules.fire_check(_fire_wood(), inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
 
 func _try_fire() -> void:

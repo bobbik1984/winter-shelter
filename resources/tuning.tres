@@ -215,6 +215,7 @@ build_focus_side_m = 1.0
 build_focus_complete_seconds = 1.6
 build_focus_ghost_seconds = 0.3
 build_focus_figure_gap_m = 1.0
+shelter_fire_lee_m = 2.5
 build_focus_ghost_amount = 0.65
 night_fire_wind_ref_kmh = 32.0
 night_fire_wind_burn = 0.5

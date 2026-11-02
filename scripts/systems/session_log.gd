@@ -8,7 +8,12 @@ extends RefCounted
 static var _file: FileAccess
 static var _t0 := 0
 
+## 测试工具关掉：不往玩家的试玩记录里写。
+static var disabled := false
+
 static func start(meta: Dictionary) -> void:
+	if disabled:
+		return
 	DirAccess.make_dir_recursive_absolute("user://sessions")
 	var stamp := Time.get_datetime_string_from_system().replace(":", "-")
 	_file = FileAccess.open("user://sessions/%s.jsonl" % stamp, FileAccess.WRITE)

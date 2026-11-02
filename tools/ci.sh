@@ -44,6 +44,14 @@ if [ "${1:-}" != "--quick" ]; then
     # N5：目标路线的结局不因基础失温 ±10% 翻转
     echo "$line" | grep -q "tol=FLIP" && { echo "  outcome flips at +/-10%"; fail=1; }
   done
+  step "chapter routes (S7): stage 5 of every chapter on real maps"
+  for ch in 1 2 3 4 5; do
+    line=$("$GODOT" --headless --path . -s res://tools/chapter_bot.gd -- --ch=$ch --st=5 --map=0 --route=target --care=full 2>&1 | grep -E "^S7 ")
+    echo "$line" | grep -oE "ch=[0-9]+ st=[0-9]+|route=[A-Za-z]+|smart=[A-Z]+/[0-9]+/[0-9]+" | tr '\n' ' '; echo
+    echo "$line" | grep -qE "smart=(COLD|SAFE)/" || { echo "  intended route must reach COLD or better"; fail=1; }
+    line=$("$GODOT" --headless --path . -s res://tools/chapter_bot.gd -- --ch=$ch --st=5 --map=0 --route=none --care=basic 2>&1 | grep -E "^S7 ")
+    echo "$line" | grep -q "smart=DANGEROUS/" || { echo "  no shelter must be DANGEROUS"; fail=1; }
+  done
   step "fuzz (3 x 30 s)"
   for sd in 1 3 5; do
     out=$(win --path . -s res://tools/fuzz_test.gd -- --seconds=30 --seed=$sd 2>&1)

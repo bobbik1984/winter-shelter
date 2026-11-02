@@ -96,6 +96,13 @@ func run() -> Dictionary:
 	_check(inv.spend({"wood": 2, "bark": 1}) == false and inv.wood == 3, "材料不足时 spend 不扣任何东西")
 	inv.add("bark", 1)
 	_check(inv.spend({"wood": 2, "bark": 1}) and inv.wood == 1 and inv.bark == 0, "材料足够时扣除")
+	# S7：自己的庇护所下风侧挡风
+	var os := Vector2.ZERO
+	var ob := Vector2(1, 0)
+	_check(GameRules.own_shelter_lee(os, Vector2(3, 0), ob, 4.5) == 1.0, "正下风侧：挡风")
+	_check(GameRules.own_shelter_lee(os, Vector2(-3, 0), ob, 4.5) == 0.0, "迎风侧：不挡")
+	_check(GameRules.own_shelter_lee(os, Vector2(0, 3), ob, 4.5) == 0.0, "正侧面：不挡")
+	_check(GameRules.own_shelter_lee(os, Vector2(6, 0), ob, 4.5) == 0.0, "太远：不挡")
 	# D16 / B4：背包上限 + 工地材料堆
 	inv.wood = 0
 	inv.max_wood = 4

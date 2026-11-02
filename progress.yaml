@@ -135,7 +135,7 @@ phases:
       - {id: S4, text: "庇护所学习（熬过一夜即学会）", status: done, evidence: "test_loop_systems 学习规则 + 可用集合 + Tab 循环；smoke test：简报列出已会 / 本关新增，第 2 关 Tab 只出现雪沟 + 高床雪洞；run_all 988；ci.sh 全量 PASS", note: "引入表暂按现有 5 关，S3 换章节"}
       - {id: S5, text: "新庇护所：树井 → 雪堆屋 → 岩檐 → 倒木斜棚", status: written-unverified, depends: [S2, S4], evidence: "每种有机器人路线 ≥ COLD（ci.sh：quinzhee SAFE、rock SAFE、fallen COLD）；test_night_curve、test_loop_systems；snapshots/s5_done_*.png、s5_quinzhee_setting.png", note: "岩檐、倒木斜棚画面可读性差（逆光下是暗块、周围常有树），要改；悬崖脚没在真实悬崖图上实测；回暖坍塌、落石未做；没有真人试玩"}
       - {id: S6, text: "按章装备配置（挖雪工具 雪铲/锅/徒手、保暖层、防潮垫、兽皮、起始材料；地面隔热叠加）", status: done, evidence: "test_levels 装备断言（默认 / 第 1 关全套 / 第 5 关无保暖层 / 无雪铲工时 ×3 / 防潮垫提高隔热分）；smoke：第 1 关开局 2 份桦皮 + 防潮垫；run_all 1005；ci.sh 全量 PASS", note: "第 2 关无雪铲待 S5 树井"}
-      - {id: S7, text: "平衡：机器人读地物位置，每章 1/5/10 阶", status: todo, depends: [S3, S5, S6, N5], note: "D14 后再做：旧的一次性结算会被替换"}
+      - {id: S7, text: "平衡：机器人读地物位置，每章 1/5/10 阶", status: done, depends: [S3, S5, S6, N5], evidence: "tools/chapter_bot.gd、tools/s7_matrix.sh；playtests/S7_20261103.txt：108 局，5 章 × 第 1/5/10 阶 × 2 张图，真实走路、背包上限、强制入睡。准备充分走目标路线 36/36 ≥ COLD（SAFE 13、COLD 23）；不建庇护所 15/15 DANGEROUS；入口迎风 6 DANGEROUS、6 COLD，12 局报告都能解释（10 局最弱项 = 选址）；ci.sh 加入第 5 阶回归", note: "机器人走直线、不会犹豫，真人会更慢；真人试玩（S8）未做"}
       - {id: S8, text: "试玩（人工）", status: todo, depends: [S7]}
 
 polish:

@@ -258,9 +258,20 @@ func _build_focus_part(m, d, p) -> void:
 	check(Vector2(p.global_position.x - held.x, p.global_position.z - held.z).length() < 0.05 and not p.get_node("CollisionShape3D").disabled, "this changes looks only: real position and collision stay")
 	var ep: Vector3 = d.site.entrance_point()
 	check(d.callouts.has_callout("my_shelter") and is_equal_approx(d.callouts._entries["my_shelter"]["world"].y, ep.y), "the ring sits at the real opening, on the ground")
+	# S7：自己的庇护所下风侧也挡风（开阔地上要能点火烘干）；迎风侧不算
+	var bl: Vector3 = d.wind.get_blow_direction_3d()
+	var lee_w: float = d._windbreak_at(d.site.global_position + bl * 2.6)
 	# 材料不足：不扣料、不推进、面板写明
 	d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
 	check(d.site.stage() == 2, "stage 2 done, the next stage needs bedding")
+	var near_fire: Vector3 = d.site.global_position + bl * (d.tuning.shelter_inside_radius_m + 0.5)
+	var saved_pos: Vector3 = p.global_position
+	p.global_position = d.site.global_position
+	var inside_msg := String(d.fire_check_at(near_fire)["reason"])
+	var in_msg := String(d.fire_check_at(d.site.global_position)["reason"])
+	p.global_position = saved_pos
+	check(not inside_msg.contains("inside a snow shelter") and in_msg.contains("inside a snow shelter"), "the no-fire rule checks where the fire goes, not where you stand")
+	check(d._windbreak_at(d.site.global_position + bl * 2.6) > lee_w and d._windbreak_at(d.site.global_position + bl * 2.6) > d._windbreak_at(d.site.global_position - bl * 2.6), "your own walls shelter a fire on the downwind side, not the upwind side")
 	d.inventory.bedding = 0
 	d.site.pile.stock["bedding"] = 0
 	var wood0: int = d.site.pile.total("wood", d.inventory)

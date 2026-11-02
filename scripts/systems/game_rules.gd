@@ -64,6 +64,14 @@ static func windbreak_shelter(windbreak_points: Array, p: Vector2, blow: Vector2
 	return clampf(best, 0.0, 1.0)
 
 
+## 自己的庇护所对 p 点的挡风度：紧贴下风侧（±60°、outer 米内）= 1，其它地方 = 0。
+## 雪墙 / 雪丘 / 棚子是一整面墙，比一个树根盘挡得住；在开阔平地上这是唯一能点火烘干的地方（S7）。
+static func own_shelter_lee(site: Vector2, p: Vector2, blow: Vector2, outer: float) -> float:
+	var off := p - site
+	if off.length() > outer or off.length() < 0.01:
+		return 0.0
+	return 1.0 if off.normalized().dot(blow.normalized()) >= 0.5 else 0.0
+
 ## 林木挡风度：半径 r 内的树数量折算 0..1（每棵约 0.15，封顶 1）。
 static func tree_cover(points: PackedVector2Array, p: Vector2, r: float) -> float:
 	var n := 0
@@ -86,7 +94,7 @@ static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool
 		return {"ok": false, "reason": Loc.t("Fire put out by snow falling from the branches above. Move out from under the tree.")}
 	# 与 NightSimulator 同一条规则：暴露度超过 fire_blowout_dot 火就会被吹灭（白天 / 夜里一致）
 	if exposure > t.fire_blowout_dot:
-		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Go right behind a root plate on its downwind side, or into a leeward hollow.")}
+		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Go right behind a root plate on its downwind side, or into a leeward hollow. Your finished walls shelter the downwind side too.")}
 	return {"ok": true, "reason": Loc.t("Fire lit.")}
 
 

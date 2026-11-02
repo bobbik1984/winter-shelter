@@ -679,6 +679,8 @@ extends Resource
 @export var build_focus_complete_seconds: float = 1.6
 ## 角色淡出 / 恢复时长（秒）[GAME]。
 @export var build_focus_ghost_seconds: float = 0.3
+## 自己的庇护所下风侧多远内算挡风（从工地边缘算，米）[TUNE]。
+@export var shelter_fire_lee_m: float = 2.5
 ## 特写时把角色画在工地旁边（只改外观）：离工地边缘多远（米）[TUNE]。
 @export var build_focus_figure_gap_m: float = 1.0
 ## 万一画在旁边还是挡住工地（比如地形特殊）：半透明程度，不再完全消失 [TUNE]。
