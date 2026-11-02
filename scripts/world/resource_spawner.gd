@@ -38,7 +38,18 @@ func _ready() -> void:
 	k = _scatter(3, 6.0, 30.0, 53, _spawn_wet_log)
 	_attach_existing_snags.call_deferred()
 
+## "occlusion_fade" 组回调：立枯木挡住玩家 / 工地时镂空。（立枯木材质早就开了镂空，但一直没收到焦点，所以从未生效。）
+func set_focus(pos: Vector3) -> void:
+	if _mat_snag:
+		_mat_snag.set_shader_parameter("focus_pos", pos)
+
+func set_focus_fade(radius: float, strength: float) -> void:
+	if _mat_snag:
+		_mat_snag.set_shader_parameter("occlusion_radius", radius)
+		_mat_snag.set_shader_parameter("occlusion_strength", strength)
+
 func _make_materials() -> void:
+	add_to_group("occlusion_fade")
 	_mat_snag = _snow_mat(Color(0.32, 0.30, 0.28), 0.25)
 	_mat_snag.set_shader_parameter("occlusion_fade", true)
 	_mat_snag.set_shader_parameter("rim_amount", 0.45)

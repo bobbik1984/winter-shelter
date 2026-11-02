@@ -25,6 +25,8 @@ var _entries: Dictionary = {}   # id -> {world, title, sub, accent, offset, prio
 var rect_provider: Callable
 ## 玩家位置（世界坐标），用于保护区；由 GameDirector 每帧更新。
 var player_world := Vector3.INF
+## D16：建造特写时隐藏所有探索级文字卡和小点，只留工地的环与箭头。
+var cards_hidden := false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -116,6 +118,8 @@ func _process(_delta: float) -> void:
 			(e["card"] as PanelContainer).visible = false
 		if not e["active"]:
 			continue
+		if cards_hidden and not e["marker"]:
+			continue
 		if e["marker"]:
 			var s: Vector2 = e["screen"]
 			blocked.append(Rect2(s - Vector2(MARKER_GUARD.x * 0.5, MARKER_GUARD.y * 0.7), MARKER_GUARD))
@@ -166,7 +170,7 @@ func _draw() -> void:
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.004)
 	for id in _entries:
 		var e: Dictionary = _entries[id]
-		if not e["active"]:
+		if not e["active"] or (cards_hidden and not e["marker"]):
 			continue
 		var screen: Vector2 = e["screen"]
 		var color: Color = e["accent"]

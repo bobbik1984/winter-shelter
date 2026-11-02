@@ -37,6 +37,8 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 		move_and_slide()
+		if working and visual_node and visual_node.has_method("set_motion"):
+			visual_node.set_motion(0.0, false, true, work_anim)
 		return
 
 	# 探针：按住推进；松开取消

@@ -28,6 +28,7 @@ const SUITES := [
 	{"name": "terrain_recipe", "path": "res://tests/test_terrain_recipe.gd", "required": true},
 	{"name": "map_layout", "path": "res://tests/test_map_layout.gd", "required": true},
 	{"name": "night_curve", "path": "res://tests/test_night_curve.gd", "required": true},
+	{"name": "build_session", "path": "res://tests/test_build_session.gd", "required": true},
 ]
 
 

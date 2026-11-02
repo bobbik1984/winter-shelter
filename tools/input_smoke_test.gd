@@ -107,9 +107,10 @@ func _run() -> void:
 		for i in 3: await process_frame
 		var card: Control = m.find_child("ShelterCard", true, false)
 		var card_title: Label = m.find_child("ShelterTitle", true, false)
-		check(card != null and card.visible and card_title.text.contains("/5"), "shelter status sits in a fixed HUD card (%s)" % (card_title.text if card_title else "none"))
+		check(card != null and card_title.text.contains("/5"), "shelter status is ready for the fixed HUD card (%s)" % (card_title.text if card_title else "none"))
 		check(d.callouts.has_callout("my_shelter") and not ("my_shelter" in d.callouts.shown_ids()), "in the world the shelter is only a ring at the entrance, no text card")
 		check(d.callouts.shown_ids().size() <= d.callouts.max_cards(), "no more world label cards than the screen allows (%d)" % d.callouts.shown_ids().size())
+		await _build_focus_part(m, d, p)
 	# 生火：轻点 F 不生火；按住 F 才尝试（成功或因风 / 树冠消耗桦树皮）
 	p.global_position = Vector3(10.0, TerrainHeight.height_at(10, 2) + 0.5, 2.0)
 	for i in 5: await physics_frame
@@ -224,6 +225,77 @@ func _scene_after_reload(prev_id: int) -> Node:
 			break
 	for i in 20: await process_frame
 	return current_scene
+
+## D16 / B1–B3：建造特写、角色不遮工地、材料不足暂停、回来继续（真实按键）。进来时雪沟已完成 1 阶。
+func _build_focus_part(m, d, p) -> void:
+	check(d.session.focused() and d.rig.is_focusing(), "placing a site enters the build close-up")
+	check(not p.controls_enabled, "the close-up locks movement")
+	check(d.callouts.cards_hidden, "the close-up hides world labels")
+	var panel: Control = m.find_child("BuildFocusPanel", true, false)
+	check(panel != null and panel.visible, "the close-up shows the build panel")
+	var card: Control = m.find_child("ShelterCard", true, false)
+	check(card != null and not card.visible, "the close-up hides the far-view shelter card")
+	var dist0: float = d.rig.camera_3d.position.length()
+	for i in 90: await process_frame
+	check(d.rig.camera_3d.position.length() < dist0 or d.rig._focus_blend >= 1.0, "the camera has pulled in")
+	check(is_equal_approx(d.rig.camera_yaw_degrees, d.tuning.tilt_yaw_deg), "the close-up keeps the D8 yaw")
+	var zoom0: float = d.rig._zoom
+	await key(KEY_V)
+	check(d.rig.camera_3d.size < d.rig.camera_size * 0.8, "the close-up also works in the orthographic view (%.1f)" % d.rig.camera_3d.size)
+	await key(KEY_V)
+	check(is_equal_approx(d.rig._zoom, zoom0), "the player's own zoom setting is left alone")
+	# B2：角色站到工地和镜头之间 → 模型淡出，位置与碰撞不变
+	var cam_dir: Vector3 = (d.rig.camera_3d.global_position - d.site.global_position)
+	cam_dir.y = 0.0
+	var stand: Vector3 = d.site.global_position + cam_dir.normalized() * 2.2
+	p.global_position = Vector3(stand.x, TerrainHeight.height_at(stand.x, stand.z) + 0.5, stand.z)
+	for i in 5: await physics_frame
+	var held: Vector3 = p.global_position
+	check(d.character_blocks_site(), "standing between camera and site counts as blocking it")
+	for i in 60: await process_frame
+	check(not p.visual_node.visible, "a blocking character is hidden in the close-up")
+	check(Vector2(p.global_position.x - held.x, p.global_position.z - held.z).length() < 0.05 and not p.get_node("CollisionShape3D").disabled, "hiding changes looks only: position and collision stay")
+	# 材料不足：不扣料、不推进、面板写明
+	d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
+	check(d.site.stage() == 2, "stage 2 done, the next stage needs bedding")
+	d.inventory.bedding = 0
+	var wood0: int = d.inventory.wood
+	await process_frame
+	await process_frame
+	await hold("interact", d.tuning.stage_hold_seconds + 0.4)
+	check(d.site.stage() == 2 and d.inventory.wood == wood0, "short of materials: no progress and nothing spent")
+	var keys: Label = m.find_child("BuildFocusKeys", true, false)
+	var needs: Label = m.find_child("BuildFocusNeeds", true, false)
+	check(keys.text.contains("Step back") and needs.text.contains("bedding"), "the panel says what is missing and how to step back")
+	# 退回远景：工地保留、角色恢复、能走
+	var site_ref = d.site
+	await key(KEY_B)
+	for i in 5: await process_frame
+	check(not d.session.focused() and d.session.state == BuildSession.State.PAUSED, "B steps back to the far view")
+	check(p.controls_enabled and not d.rig.is_focusing(), "stepping back restores movement and the camera")
+	check(d.site == site_ref and d.site.stage() == 2, "the site and its progress stay")
+	for i in 40: await process_frame
+	check(p.visual_node.visible, "the character is visible again")
+	check(card.visible and m.find_child("ShelterLine", true, false).text.contains("gather"), "the far-view card shows what is still needed")
+	# 同一时间一个工地：走远了按 B 不会新建
+	p.global_position = Vector3(stand.x + 15.0, TerrainHeight.height_at(stand.x + 15.0, stand.z) + 0.5, stand.z)
+	for i in 5: await physics_frame
+	for i in 3: await process_frame
+	await key(KEY_B)
+	check(not d.build.active and d.site == site_ref and not d.session.focused(), "far from the site, B does not start a second site")
+	# 回来按 E 继续：先有材料，再按住施工
+	d.inventory.add("bedding", 4)
+	var back: Vector3 = d.site.interactable.global_position + Vector3(0.3, 0.5, 0.3)
+	p.global_position = back
+	for i in 5: await physics_frame
+	for i in 3: await process_frame
+	await hold("interact", d.tuning.stage_hold_seconds + 0.6)
+	check(d.session.focused(), "E at the site re-enters the close-up")
+	check(d.site.stage() == 3, "and building continues with the gathered materials (%d)" % d.site.stage())
+	# Esc 在特写里是退回，不是暂停
+	await key(KEY_ESCAPE)
+	check(not d.session.focused() and d.state == d.State.PLAYING, "Esc steps back instead of pausing")
+	for i in 3: await process_frame
 
 ## D12 / D13：章节 × 阶选择、解锁、换图、重玩（真实按键）。存档是测试文件，开始时只有第 1 章第 1 阶。
 func _levels_part() -> void:

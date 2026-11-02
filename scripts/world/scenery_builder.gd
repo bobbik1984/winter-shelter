@@ -91,6 +91,13 @@ func set_focus(pos: Vector3) -> void:
 		if m is ShaderMaterial:
 			(m as ShaderMaterial).set_shader_parameter("focus_pos", pos)
 
+## D16：建造特写时放大镂空范围（"occlusion_fade" 组回调）。
+func set_focus_fade(radius: float, strength: float) -> void:
+	for m in [_mat_spruce, _mat_deadwood, _mat_rock, _mat_rock_snow]:
+		if m is ShaderMaterial:
+			(m as ShaderMaterial).set_shader_parameter("occlusion_radius", radius)
+			(m as ShaderMaterial).set_shader_parameter("occlusion_strength", strength)
+
 ## snow_cover 材质 + 遮挡镂空（岩石 / 雪枕在透视模式下也不能挡住玩家）。
 func _fade_material(base: Color, snow_amount: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()

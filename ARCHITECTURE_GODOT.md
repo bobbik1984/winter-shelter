@@ -188,6 +188,20 @@ static func evaluate_shelter(
 - **风向旋转**：`WindData` 的来向 = 基础来向 + 旋转角；所有用 `get_blow_direction_3d()` 的地方自动跟随。太阳（`SunModel`）不旋转。
 - **测试**：`tests/test_levels.gd`（种子可复现、抽取在范围内、解锁规则）；`tools/playtest_bot.gd -- --level=N --seed=S`。
 
+
+### 3.10 建造特写与工地会话（D16，B1–B3 已实现，B4 未做）
+
+> 与下文的差异：不躲树——`view_clear` 只查地形，镜头与工地之间的树由 `set_focus_fade`（放大 `occlusion_radius`、`occlusion_strength` → 1）完全镂空；`ResourceSpawner` 的立枯木以前没收到焦点，现在加入 `occlusion_fade` 组。阶段成本还在 `ShelterSite.STAGE_COSTS`，迁移属于 B4。
+
+- **BuildSession 状态**：`PLACING → FOCUSED ⇄ PAUSED → COMPLETE`。`PLACING` 由现有 `BuildMode` 负责；工地创建后进入 `FOCUSED`；`PAUSED` 只表示“退回远景、工地保留”，不是取消；`COMPLETE` 后短暂停留并回到玩家跟随。同一时间只允许一个未完成 `ShelterSite`。
+- **相机**：`IsometricCameraRig` 增加 `focus_target`、`focus_offset`、`focus_zoom`、`focus_blend` 与 `set_focus()/clear_focus()`。特写只覆盖 target 与距离，保留 D8 的 yaw / pitch / 移轴参数与 `_zoom`；退出后恢复玩家 target 与用户缩放。正交模式用 `camera_size × focus_zoom`，移轴模式用 `tilt_shift_distance × focus_zoom`。
+- **角色遮挡（硬规则）**：特写时计算工地 / 入口的屏幕包围盒；若 `HikerVisual`（含背包）与它相交，优先用镜头侧向偏移把角色移到画面边缘；仍相交时对角色模型做淡出 / 抖动 / 暂时隐藏。**只改外观，不改碰撞、玩家位置、输入或 `PlayerController` 状态**；退出特写、材料暂停、完成时恢复。`occlusion_fade` 的 focus 在特写时设为工地。
+- **相机避让**：树井 / 密林 / 雪沟需要相机与树冠、树干、地形的最小距离或推近避让；不能用穿过树冠的机位。
+- **材料暂停**：在 `_on_build_stage()` 的阶段边界检查 `inventory.has_all(cost)`；不足时不扣料、不推进、显示缺口与 `Step back & gather`，由玩家按 `B` / `Esc` 退出特写。工地进度与 `ShelterSite` 实例保留；回来后按 `E` 继续。不做半阶段材料进度。
+- **UI**：`GameUI` 增加 Build Focus 面板与未完工 Site Card；`WorldCallouts` 只保留工地环 / 箭头标记，特写时隐藏探索标签。已完工继续用现有 `set_shelter_card`。
+- **数据**：阶段材料从 `ShelterSite.STAGE_COSTS` 迁到 `ShelterPreset` / `Tuning` 的 `[GAME]/[TUNE]` 字段；目标是一次携带只够 2–3 个阶段，完整庇护所约 2–3 趟，具体值由平衡测试定。
+- **测试**：headless 覆盖阶段成本、材料不足不扣料、暂停 / 恢复、第二工地禁止、完成；1280×720 特写截图覆盖四类庇护所，并断言角色 / 背包不与工地屏幕包围盒相交。
+
 ## 4. 全量开发资源清单 (Complete Asset & Resource Manifest)
 
 > 本清单直接对齐参考图 *North Star v0.1* 的全部视觉、听觉与程序要素，作为建模、美术、Shader、音效与代码的真实生产指导单。

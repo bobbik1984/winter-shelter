@@ -21,6 +21,11 @@ var build: BuildMode
 var spawner: ResourceSpawner
 var ui: GameUI
 var callouts: WorldCallouts
+## D16 建造特写（CORE_GAMEPLAY §12）。
+var session := BuildSession.new()
+var rig: IsometricCameraRig
+var _hiker_ghost := 0.0
+var _focus_complete_ms := 0
 var site: ShelterSite
 var graphics: GraphicsSettings
 var audio: AmbientAudio
@@ -173,6 +178,7 @@ func _ready() -> void:
 	callouts = get_tree().get_first_node_in_group("world_callouts") as WorldCallouts
 	if callouts:
 		callouts.rect_provider = _hud_rects
+	rig = get_tree().get_first_node_in_group("camera_rig") as IsometricCameraRig
 	_cutaway_panel = hud.get_parent().get_node_or_null("ShelterCutawayPanel") as Control
 	_compass = hud.get_node_or_null("Compass") as Control
 	if _cutaway_panel:
@@ -233,6 +239,8 @@ func _sleep(forced: bool) -> void:
 	_forced = forced
 	if build.active:
 		build.exit()
+	_release_focus()
+	session.reset()
 	_mark("sleep")
 	state = State.NIGHT_FADE
 	_fade_t = 0.0
@@ -396,7 +404,7 @@ func _show_report(night_res: Dictionary = {}) -> void:
 # ------------------------------------------------------------------ 输入
 
 func _joy_to_key(btn: JoyButton) -> Key:
-	return GameInput.joy_to_key(btn, state, build.active)
+	return GameInput.joy_to_key(btn, state, build.active or session.focused())
 
 func _unhandled_input(event: InputEvent) -> void:
 	# 按住辅助：轻点探针 / 交互即锁存（建造模式里 E 是放置，不锁存）
@@ -487,6 +495,14 @@ func _unhandled_input(event: InputEvent) -> void:
 					ui.toggle_intel()
 				else:
 					ui.intel_step(-1 if Input.is_key_pressed(KEY_SHIFT) else 1)
+				return
+			if session.focused():
+				match k:
+					KEY_B, KEY_ESCAPE: _step_back()
+					KEY_R: _replace_site()
+					KEY_H: ui.toggle_intel("guide")
+					KEY_I: ui.toggle_intel("brief")
+					KEY_L: _toggle_lang()
 				return
 			if k == KEY_ESCAPE and not build.active:
 				_set_paused(true)
@@ -718,7 +734,7 @@ func valley_name() -> String:
 
 func _set_paused(on: bool) -> void:
 	state = State.PAUSED if on else State.PLAYING
-	player.controls_enabled = not on
+	player.controls_enabled = not on and not session.focused()
 	interaction.enabled = not on
 	weather.time_scale = 0.0 if on else _saved_time_scale
 	ui.show_pause(on)
@@ -796,6 +812,11 @@ func _tick_playing(delta: float) -> void:
 			(f as Campfire).burn(dm)
 
 	_update_warmth(delta, 1.0)
+	_tick_focus(delta)
+	# 未完工工地旁按 [E]：回到特写（按住的进度接着算）
+	if not session.focused() and site != null and not site.is_complete() and not build.active \
+			and interaction.current == site.interactable and Input.is_action_just_pressed("interact"):
+		_enter_focus()
 	player.working = interaction.progress > 0.0
 	player.work_anim = "Chop" if interaction.current and interaction.current.kind in ["deadwood", "wet_log"] else "Dig"
 	_tick_fire_hold(delta)
@@ -810,7 +831,7 @@ func _tick_playing(delta: float) -> void:
 		ui.show_build(true, Loc.t("BUILD — ") + build.display_name(), build.reason, build.valid, info)
 		if Input.is_action_just_pressed("interact"):
 			_place_site()
-	else:
+	elif not session.focused():
 		var p := interaction.prompt_text()
 		if player.is_probing:
 			ui.set_prompt(Loc.t("Probing snow depth…"), player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
@@ -829,6 +850,7 @@ func _tick_playing(delta: float) -> void:
 	if _cutaway_panel:
 		var show := build.active and build.preset_id in ["RaisedCave", "BasicCave"]
 		show = show or (site != null and site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
+		show = show and not session.focused()
 		_cutaway_panel.visible = show
 		if show and _cutaway_panel.has_method("set_progress"):
 			_cutaway_panel.set_progress(site.stage() if site != null and not build.active else -1)
@@ -1084,9 +1106,18 @@ func _on_inventory_changed() -> void:
 # ------------------------------------------------------------------ 建造（T2.4–T2.6）
 
 func _enter_build() -> void:
-	if site != null and site.stage() > 0:
-		ui.toast(Loc.t("You're already building a %s. Hold [E] at the site to continue.") % Loc.t(site.builder.active_preset().display_name))
-		return
+	# §12.3：同一时间只有一个未完工工地；再按 B 是"返回 / 继续"，不是新建
+	var near := site != null and interaction.current == site.interactable
+	match BuildSession.b_key_action(site != null, site != null and site.is_complete(), near):
+		"resume":
+			_enter_focus()
+			return
+		"far":
+			ui.toast(Loc.t("You're already building a %s, %d m away. Walk back and press [E] to continue.") % [Loc.t(site.builder.active_preset().display_name), int(round(_site_distance()))])
+			return
+		"done":
+			ui.toast(Loc.t("Your %s is finished. One shelter is all you get to build tonight.") % Loc.t(site.builder.active_preset().display_name))
+			return
 	interaction.enabled = false
 	build.available = LevelState.available_presets(Records.learned_shelters())
 	build.enter()
@@ -1119,7 +1150,169 @@ func _place_site() -> void:
 	_mark("site")
 	SessionLog.log_event("site", weather.clock_string(), {"preset": site.preset_id, "depth": snappedf(site.snow_depth, 0.01), "wind_angle": int(GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d()))})
 	_exit_build()
-	ui.toast(Loc.t("Site marked. Hold [E] at the site to work: %s") % site.next_stage_title(), 6.0)
+	_enter_focus()
+
+# ------------------------------------------------------------------ D16 建造特写
+
+func _site_distance() -> float:
+	if site == null:
+		return 0.0
+	return Vector2(player.global_position.x - site.global_position.x, player.global_position.z - site.global_position.z).length()
+
+func _enter_focus() -> void:
+	if site == null or not session.begin(site.is_complete()):
+		return
+	player.controls_enabled = false
+	interaction.enabled = true
+	interaction.forced = site.interactable
+	# 只转角色外观面向工地，不动位置
+	var to := site.global_position - player.global_position
+	if player.visual_node:
+		player.visual_node.rotation.y = atan2(to.x, to.z)
+	if rig:
+		var aim := _focus_aim()
+		rig.set_focus(aim, _focus_zoom_for(aim))
+	_set_focus_hud(true)
+
+## 退回远景（B / Esc）：工地和进度都保留。
+func _step_back() -> void:
+	if session.state == BuildSession.State.COMPLETE:
+		session.reset()
+	else:
+		session.step_back()
+	_release_focus()
+
+## 只有还没动工（0 阶）的工地可以换个地方：这不算第二个工地。
+func _replace_site() -> void:
+	if site == null or site.stage() > 0:
+		return
+	session.reset()
+	_release_focus()
+	site.queue_free()
+	site = null
+	callouts.remove_callout("my_shelter")
+	ui.set_shelter_card("", "", false)
+	_enter_build()
+
+func _release_focus() -> void:
+	player.controls_enabled = state == State.PLAYING
+	interaction.forced = null
+	interaction.enabled = state == State.PLAYING
+	if rig:
+		rig.clear_focus()
+	ui.show_build_focus("", "", "", "", false, 0.0)
+	_set_focus_hud(false)
+
+func _set_focus_hud(on: bool) -> void:
+	if callouts:
+		callouts.cards_hidden = on
+	if _compass:
+		_compass.visible = not on
+	var instr := hud.get_node_or_null("Instructions") as Control
+	if instr:
+		instr.visible = not on
+	ui.set_day_hud(not on)
+
+## 取景点：工地和入口之间；向角色一侧略偏，让两者都在画面里。
+func _focus_aim() -> Vector3:
+	var p := site.global_position + site.entrance_dir * 0.6
+	p.y = SnowField.height_at(p.x, p.z) + 0.4
+	if rig:
+		var right := rig.global_transform.basis.x
+		var side := signf((player.global_position - p).dot(right))
+		p += right * side * tuning.build_focus_side_m
+	return p
+
+## 按庇护所体量取特写距离（§12.2）。
+func _focus_zoom_for(aim: Vector3) -> float:
+	var want := tuning.build_focus_zoom_cave
+	match site.preset_id:
+		"SnowTrench": want = tuning.build_focus_zoom_trench
+		"TreeWell": want = tuning.build_focus_zoom_treewell
+		"LeanTo": want = tuning.build_focus_zoom_leanto
+	# 视线不穿地形：先试理想距离，再拉远 / 推近（偏航不能动，只能改距离）
+	var height := func(x: float, z: float) -> float: return SnowField.height_at(x, z)
+	for z in BuildSession.zoom_candidates(want, tuning.build_focus_min_ratio, tuning.build_focus_max_ratio):
+		if BuildSession.view_clear(aim + rig.camera_offset(z), aim, height):
+			return z
+	return want
+
+## 工地（含入口）的屏幕包围盒。
+func site_screen_rect(camera: Camera3D) -> Rect2:
+	var c := site.global_position
+	var y := SnowField.height_at(c.x, c.z)
+	var r := Rect2(camera.unproject_position(Vector3(c.x, y, c.z)), Vector2.ZERO)
+	var e := site.entrance_dir * 1.8
+	for q in [Vector3(1.5, 0, 0), Vector3(-1.5, 0, 0), Vector3(0, 0, 1.5), Vector3(0, 0, -1.5), Vector3(0, 1.2, 0), e, e + Vector3(0, 1.0, 0)]:
+		r = r.expand(camera.unproject_position(Vector3(c.x, y, c.z) + q))
+	return r
+
+## 角色（含背包）的屏幕包围盒。
+func character_screen_rect(camera: Camera3D) -> Rect2:
+	var p := player.global_position
+	var r := Rect2(camera.unproject_position(p), Vector2.ZERO)
+	for q in [Vector3(0, 1.9, 0), Vector3(0.55, 1.0, 0), Vector3(-0.55, 1.0, 0), Vector3(0, 1.0, 0.55), Vector3(0, 1.0, -0.55)]:
+		r = r.expand(camera.unproject_position(p + q))
+	return r
+
+## B2 硬规则：角色挡住工地就淡出；只改外观。
+func character_blocks_site() -> bool:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or site == null:
+		return false
+	var cam := camera.global_position
+	return BuildSession.blocks_site(character_screen_rect(camera), site_screen_rect(camera), cam.distance_to(player.global_position), cam.distance_to(site.global_position))
+
+func _tick_focus(delta: float) -> void:
+	var hide := false
+	if session.focused():
+		if site == null:
+			session.reset()
+			_release_focus()
+		else:
+			hide = character_blocks_site()
+			if site.is_complete() and session.state == BuildSession.State.FOCUSED:
+				session.complete()
+				_focus_complete_ms = Time.get_ticks_msec()
+				interaction.forced = null
+				interaction.enabled = false
+			if session.state == BuildSession.State.COMPLETE and Time.get_ticks_msec() - _focus_complete_ms >= int(tuning.build_focus_complete_seconds * 1000.0):
+				session.reset()
+				_release_focus()
+				hide = false
+			else:
+				_update_focus_panel()
+	var want := 1.0 if hide else 0.0
+	if _hiker_ghost != want and player.visual_node is HikerVisual:
+		_hiker_ghost = move_toward(_hiker_ghost, want, delta / maxf(tuning.build_focus_ghost_seconds, 0.01))
+		(player.visual_node as HikerVisual).set_ghost(_hiker_ghost)
+
+func _material_names() -> Dictionary:
+	return {"wood": Loc.t("dry wood"), "bark": Loc.t("birch bark"), "bedding": Loc.t("bedding")}
+
+func _update_focus_panel() -> void:
+	var p := site.builder.active_preset()
+	if session.state == BuildSession.State.COMPLETE:
+		ui.show_build_focus("%s  ·  %d/%d  ✓" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX], Loc.t("Shelter complete."), "", "", false, 1.0)
+		return
+	var cost := site.next_stage_cost()
+	var short := not inventory.has_all(cost)
+	interaction.enabled = not short
+	if short and Input.is_action_just_pressed("interact"):
+		ui.toast(Loc.t("Not enough materials — still need %s.") % inventory.missing_text(cost), 3.0)
+	var names := _material_names()
+	var parts: Array[String] = []
+	for k in cost:
+		parts.append(Loc.t("%d %s (you have %d)") % [int(cost[k]), names.get(k, k), int(inventory.get(k))])
+	var needs := Loc.t("Needs: %s") % ", ".join(parts) if not parts.is_empty() else Loc.t("No materials needed for this stage.")
+	var left := weather.minutes_to_sunset()
+	var light := Loc.t("after sunset") if left <= 0.0 else Loc.t("%d min of daylight left") % int(left)
+	var time_line := Loc.t("~%d min of work  ·  %s") % [int(_stage_minutes() / _efficiency()), light]
+	var keys := Loc.t("[B] Step back & gather — your site stays here") if short else Loc.t("Hold [E] to build   ·   [B] Step back")
+	if site.stage() == 0:
+		keys += "   ·   " + Loc.t("[R] Pick another spot")
+	ui.show_build_focus("%s  ·  %d/%d  ·  %s" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX, site.next_stage_title()],
+		needs, time_line, keys, short, interaction.progress)
 
 func _needs_vent_stick() -> bool:
 	return site != null and site.is_complete() and site.is_snow_shelter() and site.vent_count == 1 \
@@ -1352,7 +1545,7 @@ func _update_world_callouts() -> void:
 		callouts.remove_callout("probe")
 	callouts.player_world = player.global_position + Vector3(0, 0.9, 0)
 	# R3 + 第三次评审：庇护所 = 固定 HUD 卡片（名字 · 阶段 · 入口朝向 · 下一步）；世界里只在入口画环和箭头
-	if site != null and site.stage() > 0:
+	if site != null:
 		var entrance := site.global_position + site.entrance_dir * 1.8 + Vector3(0, 0.8, 0)
 		callouts.set_marker("my_shelter", entrance, Color(1.0, 0.7, 0.35))
 		var t := _shelter_card_text()
@@ -1376,7 +1569,7 @@ func _shelter_card_text() -> Array:
 	else:
 		parts.append(Loc.t("Next: %s") % site.next_stage_title())
 		var rest := site.remaining_cost()
-		var names := {"wood": Loc.t("dry wood"), "bark": Loc.t("birch bark"), "bedding": Loc.t("bedding")}
+		var names := _material_names()
 		var miss: Array[String] = []
 		for k in rest:
 			var have := int(inventory.get(k)) if k in ["wood", "bark", "bedding"] else 0
@@ -1384,6 +1577,8 @@ func _shelter_card_text() -> Array:
 				miss.append("%d %s" % [int(rest[k]) - have, names.get(k, k)])
 		if not miss.is_empty():
 			parts.append(Loc.t("still to gather: %s") % ", ".join(miss))
+		if interaction.current != site.interactable:
+			parts.append(Loc.t("Return to site [E]"))
 	if d > 8.0 and not _inside_site():
 		parts.append(Loc.t("%d m away") % int(round(d)))
 	return [title, "  ·  ".join(parts)]

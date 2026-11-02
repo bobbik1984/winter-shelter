@@ -611,6 +611,26 @@ extends Resource
 ## [GAME] 全天模式的开局时刻（10:00）：影子先变短、正午最短、再变长；时间更宽裕。
 @export var full_day_start_minutes: int = 600
 
+@export_group("Build Focus")
+## D16：特写距离 = 默认机位距离 × 这个比例，按庇护所体量分别设 [TUNE]。
+@export var build_focus_zoom_cave: float = 0.46
+@export var build_focus_zoom_trench: float = 0.34
+@export var build_focus_zoom_treewell: float = 0.36
+@export var build_focus_zoom_leanto: float = 0.42
+## 视线穿地形时，最多推近 / 拉远到理想距离的这个比例 [TUNE]。
+@export var build_focus_min_ratio: float = 0.6
+@export var build_focus_max_ratio: float = 2.0
+## 特写时镜头与工地之间的树镂空范围（屏幕空间，tan 单位；1.3 ≈ 盖满 16:9 画面）[GAME]。
+@export var build_focus_fade_radius: float = 1.3
+## 推拉过渡时长（秒）[GAME]。
+@export var build_focus_blend_seconds: float = 0.6
+## 取景向角色一侧偏移（米），让工地和角色都在画面里 [TUNE]。
+@export var build_focus_side_m: float = 1.0
+## 完工后在特写里停留多久再回到玩家（秒）[GAME]。
+@export var build_focus_complete_seconds: float = 1.6
+## 角色淡出 / 恢复时长（秒）[GAME]。
+@export var build_focus_ghost_seconds: float = 0.3
+
 @export_group("Clothing Dampness")
 ## [GAME] 挖一个雪庇护所阶段，保暖层受潮 +0.22（趴在雪里干活）。
 @export var damp_per_dig_stage: float = 0.22

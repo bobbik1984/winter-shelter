@@ -39,6 +39,12 @@ func set_focus(pos: Vector3) -> void:
 	for m in _fade_materials:
 		m.set_shader_parameter("focus_pos", pos)
 
+## D16：建造特写时放大镂空范围（"occlusion_fade" 组回调）。
+func set_focus_fade(radius: float, strength: float) -> void:
+	for m in _fade_materials:
+		m.set_shader_parameter("occlusion_radius", radius)
+		m.set_shader_parameter("occlusion_strength", strength)
+
 func _ready() -> void:
 	add_to_group("occlusion_fade")
 	add_to_group("forest")

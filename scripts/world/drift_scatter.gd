@@ -17,6 +17,12 @@ func set_focus(pos: Vector3) -> void:
 	if _mat:
 		_mat.set_shader_parameter("focus_pos", pos)
 
+## D16：建造特写时放大镂空范围。
+func set_focus_fade(radius: float, strength: float) -> void:
+	if _mat:
+		_mat.set_shader_parameter("occlusion_radius", radius)
+		_mat.set_shader_parameter("occlusion_strength", strength)
+
 func _ready() -> void:
 	add_to_group("occlusion_fade")
 	var wind := load("res://resources/default_wind.tres") as WindData

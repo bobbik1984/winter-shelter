@@ -10,6 +10,8 @@ var player: Node3D
 var tuning: Tuning
 var enabled: bool = true
 var current: Interactable
+## D16：建造特写时锁定工地，不靠距离（移动已锁定，不能要求玩家正好站在圈里）。
+var forced: Interactable
 var progress: float = 0.0   # 0..1
 
 var _ring: MeshInstance3D
@@ -37,7 +39,7 @@ func _process(delta: float) -> void:
 	if player == null or not enabled:
 		_set_current(null)
 		return
-	_set_current(_find_nearest())
+	_set_current(forced if is_instance_valid(forced) and forced.current_prompt() != "" else _find_nearest())
 	if current and HoldAssist.held("interact"):
 		progress += delta / maxf(current.hold_seconds, 0.05)
 		if progress >= 1.0:

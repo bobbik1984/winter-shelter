@@ -112,6 +112,17 @@ func _build_breath() -> void:
 	add_child(_breath)
 
 ## 体温 0..100 → 呼吸间隔（冷 = 急促）与寒颤幅度（< 35 明显发抖）。
+## D16 / B2：只改外观的淡出（0 = 完全可见，1 = 隐藏）。不碰碰撞、位置和控制。
+func set_ghost(amount: float) -> void:
+	visible = amount < 0.99
+	_apply_ghost(self, clampf(amount, 0.0, 1.0))
+
+func _apply_ghost(n: Node, amount: float) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).transparency = amount
+	for c in n.get_children():
+		_apply_ghost(c, amount)
+
 func set_body_state(warmth: float, exerting: bool) -> void:
 	if _breath:
 		var cold := clampf(1.0 - warmth / 100.0, 0.0, 1.0)

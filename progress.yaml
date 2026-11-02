@@ -112,6 +112,13 @@ phases:
       - {id: L5, text: "课题文案（简报一句 + 报告本关要点，EN/ZH）+ 如实表现", status: done, depends: [L4], evidence: "test_levels 175（课题中文、第 5 关目标随雪深、目标行 D5 分档且不写死方位、倒棚教训视本图雪深、本关要点引用实测值）；run_all 677；ci.sh 全量 PASS（机器人结果不变）；snapshots/l5_report_level_takeaway.png（中英）、snapshots/l5_thin_snow_representation.png", note: "用户定调：机制与正确表现优先。修复：目标行写死\"山脊东侧\"、开局 toast / 简报正文预设挖雪洞、湿衣提示未本地化、风蚀雪纹写死西风；新增薄雪露地"}
       - {id: L6, text: "关卡平衡：playtest_bot --level，4 山谷 × 3 种子；CI 回归", status: superseded, depends: [L2, L3, L4], note: "并入 S7（D13）"}
       - {id: L7, text: "关卡版试玩（并入 PT01/PT02）", status: superseded, depends: [L6], note: "并入 S8（D13）"}
+  - id: B
+    name: "建造体验轨道（D16，PRODUCTION_PLAN §4.B）"
+    tasks:
+      - {id: B1, text: "Build Focus 相机：放样后拉近、B / Esc 退回、移轴 + 正交、按庇护所设距离、不穿树 / 地形", status: written-unverified, depends: [], evidence: "snapshots/b1_focus_{BasicCave,SnowTrench,TreeWell,LeanTo}.png（1280×720）；smoke：拉近、偏航不变、正交可用、用户缩放不变", note: "截图是软件渲染；真实显卡 FPS 与过渡观感未验。树井自己的低枝仍挡住部分内部"}
+      - {id: B2, text: "角色不遮工地：屏幕包围盒判定 + 淡出，只改外观", status: written-unverified, depends: [B1], evidence: "test_build_session；smoke：站到镜头与工地之间 → 隐藏、位置与碰撞不变、退回后恢复", note: "偏航固定，侧移拉不开距离，实际靠淡出；淡出观感未在真实显卡上看"}
+      - {id: B3, text: "暂停 / 恢复 / 工地卡：不足不扣料、Step back & gather、未完工 HUD 卡 + 环 / 箭头、禁止第二工地", status: done, depends: [B1], evidence: "smoke（真实按键）：不足不推进不扣料、面板写明缺口、B 退回工地保留、远处按 B 不新建、回来按 E 继续、Esc 不暂停；snapshots/b3_far_site_card.png"}
+      - {id: B4, text: "材料经济：成本迁入预设 / Tuning，一次携带 2–3 阶", status: blocked, depends: [B3], note: "等用户决定携带上限与柴堆（CURRENT_STAGE §0⁶）"}
   - id: N
     name: "可玩的夜晚轨道（D14，PRODUCTION_PLAN §4.N）"
     tasks:

@@ -20,6 +20,8 @@ uniform float base_roughness : hint_range(0.0, 1.0) = 0.92;
 uniform bool occlusion_fade = false;
 uniform vec3 focus_pos = vec3(0.0);
 uniform float occlusion_radius = 0.26;
+// D16 建造特写：半径放大到盖满画面、强度到 1 = 镜头与工地之间的树完全消失（影子不受影响）。
+uniform float occlusion_strength = 0.85;
 // 风摆（T3.1）：树冠随高度二次方偏向下风，阵风调制；静态截图里也能读出风向。
 uniform float sway_amount = 0.0;
 uniform vec2 wind_dir = vec2(1.0, 0.0);
@@ -73,7 +75,7 @@ void fragment() {
 			ivec2 c = ivec2(FRAGCOORD.xy) % 4;
 			int idx = c.x + c.y * 4;
 			float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-			if (k * 0.85 > (bayer[idx] + 0.5) / 16.0) discard;
+			if (k * occlusion_strength > (bayer[idx] + 0.5) / 16.0) discard;
 		}
 	}
 	float up = normalize(w_normal).y;

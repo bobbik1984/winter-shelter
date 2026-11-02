@@ -40,6 +40,13 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 @export var dof_amount: float = 0.08
 
 var _zoom: float = -1.0
+## D16 建造特写：只覆盖跟随目标与距离；偏航、移轴、太阳都不变，用户的 _zoom 退出后原样恢复。
+var _focus_on := false
+var _focus_point := Vector3.ZERO
+var _focus_zoom := 1.0
+var _focus_blend := 0.0
+var focus_blend_seconds := 0.6
+var focus_fade_radius := 1.3
 ## 画质档位可关闭景深（GraphicsSettings）。
 var dof_enabled: bool = true
 var _attrs: CameraAttributesPractical
@@ -70,12 +77,14 @@ func _load_tuning() -> void:
 	tilt_shift_distance = t.tilt_distance_m
 	zoom_min = t.tilt_zoom_min
 	zoom_max = t.tilt_zoom_max
+	focus_blend_seconds = t.build_focus_blend_seconds
+	focus_fade_radius = t.build_focus_fade_radius
 
 func _apply_view_mode() -> void:
 	rotation_degrees.x = camera_pitch_degrees if view_mode == ViewMode.ORTHO else tilt_shift_pitch_degrees
 	if view_mode == ViewMode.ORTHO:
 		camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
-		camera_3d.size = camera_size
+		camera_3d.size = camera_size * lerpf(1.0, _focus_zoom, _smooth_blend())
 		camera_3d.frustum_offset = Vector2.ZERO
 		# 沿 rig 本地 +Z 后移，让 rig 原点（target 跟随点）落在正交画面中心
 		camera_3d.position = Vector3(0.0, 0.0, camera_distance)
@@ -88,7 +97,8 @@ func _apply_view_mode() -> void:
 		var top_t := (1.0 + lens_shift) * half_t
 		var player_t := top_t - 2.0 * half_t * player_screen_y
 		var dep := -atan(player_t)               # 玩家相对光轴的俯角
-		var dist := tilt_shift_distance * _zoom
+		var eff := lerpf(_zoom, _focus_zoom, _smooth_blend())
+		var dist := tilt_shift_distance * eff
 		camera_3d.position = Vector3(0.0, dist * sin(dep), dist * cos(dep))
 		camera_3d.projection = Camera3D.PROJECTION_FRUSTUM
 		camera_3d.keep_aspect = Camera3D.KEEP_HEIGHT
@@ -100,12 +110,41 @@ func _apply_view_mode() -> void:
 			_attrs = CameraAttributesPractical.new()
 		_attrs.dof_blur_far_enabled = dof_enabled
 		_attrs.dof_blur_near_enabled = dof_enabled
-		_attrs.dof_blur_far_distance = dist + dof_transition_m * _zoom * 2.0
-		_attrs.dof_blur_far_transition = dof_transition_m * _zoom * 6.0
-		_attrs.dof_blur_near_distance = maxf(0.5, dist - dof_transition_m * _zoom)
-		_attrs.dof_blur_near_transition = dof_transition_m * _zoom
+		_attrs.dof_blur_far_distance = dist + dof_transition_m * eff * 2.0
+		_attrs.dof_blur_far_transition = dof_transition_m * eff * 6.0
+		_attrs.dof_blur_near_distance = maxf(0.5, dist - dof_transition_m * eff)
+		_attrs.dof_blur_near_transition = dof_transition_m * eff
 		_attrs.dof_blur_amount = dof_amount
 		camera_3d.attributes = _attrs
+
+func _smooth_blend() -> float:
+	return smoothstep(0.0, 1.0, _focus_blend)
+
+## D16：以 world 为目标拉近；zoom = 特写距离 / 默认距离。
+func set_focus(world: Vector3, zoom: float) -> void:
+	_focus_on = true
+	_focus_point = world
+	_focus_zoom = zoom
+
+func clear_focus() -> void:
+	_focus_on = false
+
+func is_focusing() -> bool:
+	return _focus_on
+
+## 当前特写的取景点与距离比例（测试 / 截图检查用）。
+func focus_zoom() -> float:
+	return _focus_zoom
+
+## 按这个距离比例，相机相对取景点的世界坐标偏移（移轴模式）。正交相机在远处、不会撞树，返回零向量。
+func camera_offset(zoom: float) -> Vector3:
+	if view_mode == ViewMode.ORTHO:
+		return Vector3.ZERO
+	var half_t := tan(deg_to_rad(tilt_shift_fov_deg) * 0.5)
+	var top_t := (1.0 + lens_shift) * half_t
+	var dep := -atan(top_t - 2.0 * half_t * player_screen_y)
+	var dist := tilt_shift_distance * zoom
+	return Basis(Vector3.UP, deg_to_rad(camera_yaw_degrees)) * Vector3(0.0, dist * sin(dep), dist * cos(dep))
 
 ## 把真实镜头参数推给天空 shader（Godot 天空背景不认 frustum_offset）。
 func _push_lens() -> void:
@@ -129,7 +168,7 @@ func set_view_mode(mode: ViewMode) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_V:
 		set_view_mode(ViewMode.TILT_SHIFT if view_mode == ViewMode.ORTHO else ViewMode.ORTHO)
-	elif event is InputEventMouseButton and event.pressed and view_mode == ViewMode.TILT_SHIFT:
+	elif event is InputEventMouseButton and event.pressed and view_mode == ViewMode.TILT_SHIFT and not _focus_on:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom = clampf(_zoom / zoom_step, zoom_min, zoom_max)
 			_apply_view_mode()
@@ -138,9 +177,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_apply_view_mode()
 
 func _process(delta: float) -> void:
-	if is_instance_valid(target):
-		global_position = global_position.lerp(target.global_position, follow_speed * delta)
+	var want_blend := 1.0 if _focus_on else 0.0
+	if _focus_blend != want_blend:
+		_focus_blend = move_toward(_focus_blend, want_blend, delta / maxf(focus_blend_seconds, 0.01))
+		_apply_view_mode()
+		# 只在过渡时推送：0.26 / 0.85 是 snow_cover 的默认镂空（平时只挡玩家身边）
+		var k := _smooth_blend()
+		get_tree().call_group("occlusion_fade", "set_focus_fade", lerpf(0.26, focus_fade_radius, k), lerpf(0.85, 1.0, k))
+	var goal: Vector3 = _focus_point if _focus_on else (target.global_position if is_instance_valid(target) else global_position)
+	global_position = global_position.lerp(goal, minf(follow_speed * delta, 1.0))
 	# 基向量只随模式变；每帧推送开销很小，也顺带处理窗口缩放后的宽高比
 	_push_lens()
-	if is_instance_valid(target):
-		get_tree().call_group("occlusion_fade", "set_focus", target.global_position)
+	# 挡住"主体"的树镂空：平时主体是玩家，特写时是工地
+	get_tree().call_group("occlusion_fade", "set_focus", goal)

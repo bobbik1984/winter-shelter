@@ -35,6 +35,13 @@ var _shelter_card: PanelContainer
 var _shelter_title: Label
 var _shelter_line: Label
 var _day_hud_on := true
+## D16 建造特写面板。
+var _focus_panel: PanelContainer
+var _focus_title: Label
+var _focus_needs: Label
+var _focus_time: Label
+var _focus_keys: Label
+var _focus_progress: ProgressBar
 var _credits: Control
 var _build_keys: Label
 var _vignette: Control
@@ -398,6 +405,51 @@ func set_shelter_card(title: String, line: String, done: bool) -> void:
 	_shelter_title.text = title
 	_shelter_line.text = line
 	(_shelter_card.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(1.0, 0.7, 0.35) if done else Color(0.62, 0.78, 0.95)
+
+# ---------------------------------------------------------------- D16 建造特写面板
+
+## 特写时唯一的建造信息：阶段、材料（需要 / 已有）、工时、剩余天光、退出方式。title 为空 = 隐藏。
+func show_build_focus(title: String, needs: String, time_line: String, keys: String, short: bool, progress: float) -> void:
+	if _focus_panel == null:
+		if title == "":
+			return
+		_focus_panel = _card(AMBER)
+		_focus_panel.name = "BuildFocusPanel"
+		_focus_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		_focus_panel.position = Vector2(-330, -210)
+		_focus_panel.custom_minimum_size = Vector2(660, 0)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 4)
+		_focus_panel.add_child(v)
+		_focus_title = _label("", 17, CREAM)
+		_focus_needs = _label("", 15, CREAM)
+		_focus_needs.name = "BuildFocusNeeds"
+		_focus_needs.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_focus_time = _label("", 13, MUTED)
+		_focus_keys = _label("", 15, AMBER)
+		_focus_keys.name = "BuildFocusKeys"
+		_focus_progress = ProgressBar.new()
+		_focus_progress.custom_minimum_size = Vector2(0, 6)
+		_focus_progress.show_percentage = false
+		_focus_progress.max_value = 1.0
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = AMBER
+		_focus_progress.add_theme_stylebox_override("fill", fill)
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(1, 1, 1, 0.12)
+		_focus_progress.add_theme_stylebox_override("background", bg)
+		for c in [_focus_title, _focus_needs, _focus_time, _focus_progress, _focus_keys]:
+			v.add_child(c)
+		get_child(0).add_child(_focus_panel)
+	_focus_panel.visible = title != ""
+	if title == "":
+		return
+	_focus_title.text = title
+	_focus_needs.text = needs
+	_focus_needs.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45) if short else CREAM)
+	_focus_time.text = time_line
+	_focus_keys.text = keys
+	_focus_progress.value = progress
 
 ## 世界标签不能压住的屏幕区域（画布坐标）。
 func occupied_rects() -> Array[Rect2]:
