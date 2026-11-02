@@ -171,13 +171,15 @@ func _ready() -> void:
 	_on_inventory_changed()
 
 	callouts = get_tree().get_first_node_in_group("world_callouts") as WorldCallouts
+	if callouts:
+		callouts.rect_provider = _hud_rects
 	_cutaway_panel = hud.get_parent().get_node_or_null("ShelterCutawayPanel") as Control
 	_compass = hud.get_node_or_null("Compass") as Control
 	if _cutaway_panel:
 		_cutaway_panel.visible = false
 	var instr := hud.get_node_or_null("Instructions") as Label
 	if instr:
-		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
+		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [I] Intel   [H] Field guide")
 
 	_apply_static_labels()
 	GameInput.ensure_joypad()
@@ -196,8 +198,17 @@ func _enter_briefing() -> void:
 	interaction.enabled = false
 	_saved_time_scale = weather.time_scale
 	weather.time_scale = 0.0
-	ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
+	ui.show_briefing(true, weather.forecast_text(), _briefing_intro(), _level_info())
+	ui.set_intel(_intel_tabs())
+	_set_world_hud(false)
 	_update_hint()
+
+## 简报时只留一个视觉焦点：隐藏体温卡 / 环境卡 / 罗盘 / 世界标签 / 背包托盘（第三次评审 UI）。
+func _set_world_hud(on: bool) -> void:
+	var hud_layer := hud.get_parent()
+	if hud_layer:
+		hud_layer.set("visible", on)
+	ui.set_day_hud(on)
 
 func start_game() -> void:
 	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
@@ -205,6 +216,9 @@ func start_game() -> void:
 		"seed": LevelState.game_seed, "terrain": TerrainHeight.RECIPE.describe()})
 	state = State.PLAYING
 	ui.show_briefing(false)
+	if ui.intel_open():
+		ui.toggle_intel()
+	_set_world_hud(true)
 	player.controls_enabled = true
 	interaction.enabled = true
 	weather.time_scale = _saved_time_scale
@@ -425,7 +439,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	match state:
 		State.BRIEFING:
-			if k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_1:
+			if k == KEY_I or k == KEY_H:
+				ui.toggle_intel("brief" if k == KEY_I else "guide")
+			elif ui.intel_open() and k in [KEY_LEFT, KEY_RIGHT, KEY_TAB]:
+				ui.intel_step(-1 if k == KEY_LEFT or Input.is_key_pressed(KEY_SHIFT) else 1)
+			elif ui.intel_open() and k == KEY_ESCAPE:
+				ui.toggle_intel()
+			elif k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_1:
 				start_game()
 			elif k == KEY_2 and (not LevelState.active() or LevelState.level.is_free()):
 				full_day = true
@@ -442,7 +462,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_new_map()
 			elif k == KEY_L:
 				_toggle_lang()
-				ui.show_briefing(true, valley_name() + "  ·  " + weather.forecast_text(), _briefing_intro(), _level_info())
+				ui.show_briefing(true, weather.forecast_text(), _briefing_intro(), _level_info())
 		State.NIGHT:
 			if night != null and night.waiting():
 				var acts := night.available_actions()
@@ -462,6 +482,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_Q: get_tree().quit()
 				KEY_C: ui.toggle_credits()
 		State.PLAYING:
+			if ui.intel_open() and (k == KEY_ESCAPE or (k == KEY_TAB and not build.active)):
+				if k == KEY_ESCAPE:
+					ui.toggle_intel()
+				else:
+					ui.intel_step(-1 if Input.is_key_pressed(KEY_SHIFT) else 1)
+				return
 			if k == KEY_ESCAPE and not build.active:
 				_set_paused(true)
 				return
@@ -475,7 +501,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			match k:
 				KEY_L: _toggle_lang()
-				KEY_H: ui.toggle_guide()
+				KEY_H: ui.toggle_intel("guide")
+				KEY_I: ui.toggle_intel("brief")
 				KEY_B: _enter_build()
 				KEY_F: _begin_fire()
 				KEY_N: _request_sleep()
@@ -561,12 +588,12 @@ func _level_info() -> Dictionary:
 		else:
 			new_here.append(String(names.get(p, p)))
 	var shelters := Loc.t("Shelters you know: %s") % ", ".join(known)
-	shelters += "\n" + _gear_text()
 	if not new_here.is_empty():
-		shelters = shelters.replace("\n", "   ·   " + Loc.t("New here: %s") % ", ".join(new_here) + "\n")
+		shelters += "\n" + Loc.t("New here: %s") % ", ".join(new_here)
+	shelters += "\n\n" + Loc.t("Survive a night in a shelter and you've learned it — use it on any level after that.")
 	var title := Loc.t("Free play") if ch == 0 else Loc.t("Chapter %d · Stage %d  (%d of 50)") % [ch, LevelState.stage, LevelState.global_stage()]
-	return {"index": ch, "title": title, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed,
-		"map": LevelState.map_index + 1, "shelters": shelters, "chips": chips, "stage_chips": stage_chips,
+	return {"index": ch, "title": title, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed, "conditions": _conditions_line(),
+		"map": LevelState.map_index + 1, "shelters_only": shelters, "chips": chips, "stage_chips": stage_chips,
 		"best": Records.stage_best(ch, LevelState.stage) if ch >= 1 else Records.text(),
 		"locked_hint": locked_hint, "full_day_option": ch == 0}
 
@@ -643,6 +670,49 @@ func _briefing_intro() -> String:
 		+ (Loc.t("You have about an hour of light to read the land, gather what you need and build a shelter for the night.\n\n") if hours == 1
 			else Loc.t("You have about %d hours of light to read the land, gather what you need and build a shelter for the night.\n\n") % hours)
 
+## 首屏的一行条件："10:00 · −17 °C · 北风 20 km/h · 日落 16:18（约 6 小时天光）"。
+func _conditions_line() -> String:
+	var sm := int(weather.day_start_minutes)
+	var hours := maxi(int(round(weather.minutes_to_sunset() / 60.0)), 1)
+	return Loc.t("%s  ·  %d °C  ·  wind from the %s, %d km/h  ·  sunset %s, ~%d h of light") % [
+		"%02d:%02d" % [sm / 60, sm % 60], int(round(weather.current_temp_c())), GameRules.wind_word(wind.from_octant()),
+		int(round(weather.current_wind_kmh())), weather.sunset_clock(), hours]
+
+## [I] 情报面板各页（第三次评审 UI：首屏之外的全部细节都在这里）。
+func _intel_tabs() -> Array:
+	var info := _level_info()
+	var lesson := String(info.get("lesson", ""))
+	var brief := (lesson + "\n\n" if lesson != "" else "") + _briefing_intro() + \
+		Loc.t("Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ") + \
+		Loc.t("and the shadows tell you how much daylight is left.")
+	var conditions := valley_name() + "\n" + _conditions_line() + "\n\n" + weather.forecast_text()
+	var kit := _gear_text()
+	match GameRules.dig_tool(gear):
+		"shovel": kit += "\n\n" + Loc.t("A shovel digs at full speed. Digging still makes you sweat — dry off by a fire before bed.")
+		_: kit += "\n\n" + Loc.t("Without a shovel every snow shelter takes much longer — a trench or a tree well may be all the day allows.")
+	var shelters := String(info.get("shelters_only", Loc.t("All shelters are open in free play.")))
+	var map := Loc.t("Map %d  ·  Seed %d") % [int(info.get("map", 1)), int(info.get("seed", LevelState.game_seed))] + "\n" + \
+		Loc.t("Terrain: %s") % TerrainHeight.RECIPE.describe() + "\n\n" + Loc.t("[N] on this screen gives the same stage a new map.")
+	if String(info.get("locked_hint", "")) != "":
+		map += "\n" + String(info["locked_hint"])
+	var controls := Loc.t("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n") + \
+		Loc.t("[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom") + "\n" + \
+		Loc.t("[I] intel    [H] field guide    [L] language    [M] sound    [-] [=] UI size    [Esc] pause") + "\n\n" + \
+		Loc.t("Night: [Enter] sleep on    [1]–[5] act when you wake    hold [Space] to speed up")
+	var records := String(info.get("best", Records.text()))
+	if records == "":
+		records = Loc.t("No record on this stage yet.")
+	return [
+		{"key": "brief", "title": Loc.t("Brief"), "body": brief},
+		{"key": "conditions", "title": Loc.t("Conditions"), "body": conditions},
+		{"key": "kit", "title": Loc.t("Kit"), "body": kit},
+		{"key": "shelters", "title": Loc.t("Shelters"), "body": shelters},
+		{"key": "map", "title": Loc.t("Map"), "body": map},
+		{"key": "guide", "title": Loc.t("Field guide"), "body": GameUI.field_guide_text()},
+		{"key": "controls", "title": Loc.t("Controls"), "body": controls},
+		{"key": "records", "title": Loc.t("Records"), "body": records},
+	]
+
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]
 
@@ -657,6 +727,7 @@ func _set_paused(on: bool) -> void:
 func _toggle_lang() -> void:
 	Loc.set_lang("en" if Loc.is_zh() else "zh")
 	ui.relocalize()
+	ui.set_intel(_intel_tabs())
 	_apply_static_labels()
 	_on_inventory_changed()
 	ui.toast("中文" if Loc.is_zh() else "English", 1.5)
@@ -664,7 +735,7 @@ func _toggle_lang() -> void:
 func _apply_static_labels() -> void:
 	var instr := hud.get_node_or_null("Instructions") as Label
 	if instr:
-		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [H] Field guide")
+		instr.text = Loc.t("[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [I] Intel   [H] Field guide")
 	var warm := hud.get_parent().get_node_or_null("HUDWarmth")
 	if warm:
 		var title := warm.find_child("TitleLabel", true, false) as Label
@@ -907,7 +978,7 @@ func _on_probe(pos: Vector3, depth: float) -> void:
 	var cls := GameRules.classify_depth(depth, tuning)
 	_add_marker(pos, depth, cls["color"])
 	if callouts:
-		callouts.set_callout("probe", pos + Vector3(0, 0.6, 0), String(cls["title"]), String(cls["sub"]), cls["color"])
+		callouts.set_callout("probe", pos + Vector3(0, 0.6, 0), String(cls["title"]), String(cls["sub"]), cls["color"], Vector2(18.0, -58.0), 3)
 		# D4：Deeper snow 只在玩家探测过、且达到雪洞深度的位置出现
 		if depth >= tuning.snow_depth_cave_min_m and _deeper_count < MAX_DEEPER_LABELS:
 			var far_enough := true
@@ -917,7 +988,7 @@ func _on_probe(pos: Vector3, depth: float) -> void:
 			if far_enough:
 				_deeper_points.append(pos)
 				callouts.set_callout("deeper_%d" % _deeper_count, pos + Vector3(0, 0.4, 0), Loc.t("Deeper snow"),
-					Loc.t("Ideal for shelter"), Color(0.52, 0.72, 1.0), Vector2(-200.0, 20.0))
+					Loc.t("Ideal for shelter"), Color(0.52, 0.72, 1.0), Vector2(-200.0, 20.0), 2)
 				_deeper_count += 1
 	_skip(1.0)
 
@@ -1256,33 +1327,83 @@ func _update_world_callouts() -> void:
 		if d < best_d:
 			best_d = d
 			best = it
-	if best:
+	# 第三次评审（UI）：建造模式只留选址需要的标签（探针 / 深雪）；庇护所完工后"深雪"不再有用
+	var building := build.active
+	if best and not building:
 		callouts.set_callout("deadwood", best.global_position + Vector3(0, 1.0, 0), Loc.t("Deadwood"), Loc.t("Harvest for fuel"),
-			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0))
+			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0), 1)
 	elif callouts.has_callout("deadwood"):
 		callouts.remove_callout("deadwood")
 	# 第二次评审：第 1 章（教程）里衣服湿了又没有火 → 标出最近的、按同一套火规则真的点得着的地方，教会"烘干"这一步
 	var teach_fire := LevelState.active() and LevelState.level.index == 1 and GameRules.clothing_state(dampness, tuning) != "dry" \
-		and get_tree().get_nodes_in_group("campfires").is_empty()
+		and get_tree().get_nodes_in_group("campfires").is_empty() and not building
 	if teach_fire:
 		if Time.get_ticks_msec() - _fire_spot_ms > 2000:
 			_fire_spot = _sheltered_fire_spot(pos)
 			_fire_spot_ms = Time.get_ticks_msec()
 		if _fire_spot != Vector3.INF:
 			callouts.set_callout("fire_spot", _fire_spot + Vector3(0, 0.6, 0), Loc.t("Sheltered fire spot"),
-				Loc.t("Out of the wind, no branches above · [F] here"), Color(1.0, 0.5, 0.2), Vector2(24.0, -30.0))
+				Loc.t("Out of the wind · [F] here"), Color(1.0, 0.5, 0.2), Vector2(24.0, -30.0), 4)
 	if not teach_fire or _fire_spot == Vector3.INF:
 		if callouts.has_callout("fire_spot"):
 			callouts.remove_callout("fire_spot")
-	# R3：完工的庇护所一直有标签——玩家在任何机位都能认出"这是我的庇护所、入口在哪"
-	# 第二次评审：树井的"工地中心"是树干，站在树旁就算"在里面"，标签从来不出现——现在完工后一直显示，在里面时换一句
 	if site != null and site.is_complete():
+		callouts.remove_prefix("deeper_")
+		callouts.remove_callout("probe")
+	callouts.player_world = player.global_position + Vector3(0, 0.9, 0)
+	# R3 + 第三次评审：庇护所 = 固定 HUD 卡片（名字 · 阶段 · 入口朝向 · 下一步）；世界里只在入口画环和箭头
+	if site != null and site.stage() > 0:
 		var entrance := site.global_position + site.entrance_dir * 1.8 + Vector3(0, 0.8, 0)
-		var sub_text := Loc.t("You're in it · [N] rest when ready") if _inside_site() else Loc.t("Entrance here · [N] rest when ready")
-		callouts.set_callout("my_shelter", entrance, Loc.t("Your %s") % Loc.t(site.builder.active_preset().display_name),
-			sub_text, Color(1.0, 0.7, 0.35), Vector2(-150.0, -40.0))
-	elif callouts.has_callout("my_shelter"):
-		callouts.remove_callout("my_shelter")
+		callouts.set_marker("my_shelter", entrance, Color(1.0, 0.7, 0.35))
+		var t := _shelter_card_text()
+		ui.set_shelter_card(t[0], t[1], site.is_complete())
+	else:
+		if callouts.has_callout("my_shelter"):
+			callouts.remove_callout("my_shelter")
+		ui.set_shelter_card("", "", false)
+
+## 庇护所卡片的两行：["SNOW CAVE (RAISED PLATFORM) · 3/5", "Next: … · needs … · 12 m away"]。
+func _shelter_card_text() -> Array:
+	var p := site.builder.active_preset()
+	var title := "%s  ·  %d/%d" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX]
+	var parts: Array[String] = []
+	var d := Vector2(player.global_position.x - site.global_position.x, player.global_position.z - site.global_position.z).length()
+	if site.is_complete():
+		title += "  ✓"
+		var lee := GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d()) >= 90.0
+		parts.append((Loc.t("Entrance faces %s, out of the wind") if lee else Loc.t("Entrance faces %s, INTO the wind")) % _dir_word(site.entrance_dir))
+		parts.append(Loc.t("You're in it · [N] rest when ready") if _inside_site() else Loc.t("[N] rest when ready"))
+	else:
+		parts.append(Loc.t("Next: %s") % site.next_stage_title())
+		var rest := site.remaining_cost()
+		var names := {"wood": Loc.t("dry wood"), "bark": Loc.t("birch bark"), "bedding": Loc.t("bedding")}
+		var miss: Array[String] = []
+		for k in rest:
+			var have := int(inventory.get(k)) if k in ["wood", "bark", "bedding"] else 0
+			if have < int(rest[k]):
+				miss.append("%d %s" % [int(rest[k]) - have, names.get(k, k)])
+		if not miss.is_empty():
+			parts.append(Loc.t("still to gather: %s") % ", ".join(miss))
+	if d > 8.0 and not _inside_site():
+		parts.append(Loc.t("%d m away") % int(round(d)))
+	return [title, "  ·  ".join(parts)]
+
+## 水平方向向量 → "north" / "south-east" 等（世界约定：-Z = 北，+X = 东）。
+func _dir_word(v: Vector3) -> String:
+	var bearing := fposmod(rad_to_deg(atan2(v.x, -v.z)), 360.0)
+	return GameRules.wind_word(int(round(bearing / 45.0)) % 8)
+
+## 世界标签不能压住的 HUD 区域（画布坐标）。
+func _hud_rects() -> Array[Rect2]:
+	var out := ui.occupied_rects()
+	for path in ["TopRightCard", "Compass", "Instructions", "ProbePopup"]:
+		var c := hud.get_node_or_null(path) as Control
+		if c and c.is_visible_in_tree():
+			out.append(c.get_global_rect())
+	for n in [hud.get_parent().get_node_or_null("HUDWarmth"), _cutaway_panel]:
+		if n is Control and (n as Control).is_visible_in_tree():
+			out.append((n as Control).get_global_rect())
+	return out
 
 # ------------------------------------------------------------------ 入夜结算输入
 

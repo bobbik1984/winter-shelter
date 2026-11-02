@@ -32,6 +32,7 @@ const SUITES := [
 
 
 func _initialize() -> void:
+	Loc.lang = "en"   # 断言按英文写；只改内存，不改玩家保存的语言设置
 	var assertions_passed := 0
 	var suites_passed := 0
 	var suites_skipped := 0

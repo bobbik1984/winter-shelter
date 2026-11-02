@@ -70,7 +70,8 @@ func run() -> Dictionary:
 	_check(GameInput.joy_to_key(JOY_BUTTON_START, GameDirector.State.PLAYING, false) == KEY_ESCAPE, "Start 游戏中 = 暂停")
 	_check(GameInput.joy_to_key(JOY_BUTTON_B, GameDirector.State.PLAYING, true) == KEY_B, "建造中 B = 取消")
 	_check(GameInput.joy_to_key(JOY_BUTTON_B, GameDirector.State.PLAYING, false) == KEY_F, "平时 B = 生火")
-	_check(GameInput.joy_to_key(JOY_BUTTON_RIGHT_SHOULDER, GameDirector.State.PLAYING, false) == KEY_NONE, "非建造时 RB 无动作")
+	_check(GameInput.joy_to_key(JOY_BUTTON_RIGHT_SHOULDER, GameDirector.State.PLAYING, false) == KEY_TAB, "非建造时 RB = Tab（只在情报面板开着时翻页，否则无动作）")
+	_check(GameInput.joy_to_key(JOY_BUTTON_BACK, GameDirector.State.BRIEFING, false) == KEY_I and GameInput.joy_to_key(JOY_BUTTON_BACK, GameDirector.State.PLAYING, false) == KEY_H, "Back：简报页开情报，游戏中开野外手册")
 	if InputMap.has_action("interact"):
 		GameInput.ensure_joypad()
 		var n1 := InputMap.action_get_events("interact").size()

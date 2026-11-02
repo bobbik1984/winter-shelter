@@ -162,7 +162,7 @@ static func evaluate_shelter(
 - **规则**：`GameRules`（纯函数，`tests/test_game_rules.gd`）——移动阻尼、探针分类、入口风向夹角、暴露度（背风坡 + 树根 + 林木）、生火判定、提示文案、作业效率。
 - **交互**：`Interactable`（组 `interactables`，handler / prompt_fn）+ `InteractionController`（最近目标、按住进度、淡橙圈）。
 - **世界对象**：`ResourceSpawner`（资源与树根挡风物，并给森林 / 场景里全部立枯木挂采集点）、`ShelterSite`（持有 `ShelterBuilder`，5 阶外观 + 每阶材料）、`BuildMode`（预览与校验）、`Campfire`、`Footprints`、`Snowfall`、玩家头灯。
-- **UI**：`GameUI`（代码构建：提示、背包、消息、建造面板、简报、暂停、黑屏、报告）；`WorldCallouts` 动态引线标签 API。
+- **UI**：`GameUI`（代码构建：提示、背包、消息、建造面板、简报、暂停、黑屏、报告）；`WorldCallouts` 动态引线标签 API（优先级 + 屏幕空间避让 + 标记保护区；`set_marker` 只画环不放卡）；庇护所状态在 `GameUI.set_shelter_card`，简报之外的细节在 `[I]` 情报面板（`GameUI.set_intel`，含野外手册）。
 - **设置**：`GraphicsSettings`（F10，`user://settings.cfg`）。
 - **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。
 - **本地化**：`Loc`（`scripts/ui/loc.gd`）按英文源串查中文表；`Loc.t("…%d…") % n`；`[L]` 切换并存 `user://settings.cfg`。新增玩家可见文字必须包 `Loc.t()` 并补表；`const` 里的文字在显示处再包。

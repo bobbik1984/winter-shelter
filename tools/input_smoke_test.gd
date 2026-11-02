@@ -8,6 +8,7 @@ var fails: Array[String] = []
 func _initialize() -> void:
 	# 第一部分用旧基准（不进关卡模式）；第二部分单独测关卡选择与解锁。记录写到测试文件。
 	LevelState.auto_begin = false
+	Loc.lang = "en"   # 断言按英文写；只改内存，不改玩家保存的语言设置
 	Records.path = "user://test_records.cfg"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Records.path))
 	GameDirector.night_speed_scale = 20.0   # D14：夜晚 75 秒 → 约 4 秒
@@ -51,8 +52,10 @@ func _run() -> void:
 	var d = m.get_node("GameDirector")
 	var p = m.player
 	check(d.state == d.State.BRIEFING, "starts on briefing")
+	check(not d.hud.get_parent().visible, "briefing hides the world HUD (warmth / weather / compass / world labels)")
 	await key(KEY_ENTER)
 	check(d.state == d.State.PLAYING, "Enter starts the game")
+	check(d.hud.get_parent().visible, "the world HUD comes back when the game starts")
 	check(int(d.weather.current_time_minutes) == d.tuning.start_minutes, "standard mode starts at 14:20")
 	# 移动
 	var p0: Vector3 = p.global_position
@@ -101,6 +104,12 @@ func _run() -> void:
 		for i in 5: await physics_frame
 		await hold("interact", d.tuning.stage_hold_seconds + 0.6)
 		check(d.site.stage() >= 1, "holding E at the site advances a stage")
+		for i in 3: await process_frame
+		var card: Control = m.find_child("ShelterCard", true, false)
+		var card_title: Label = m.find_child("ShelterTitle", true, false)
+		check(card != null and card.visible and card_title.text.contains("/5"), "shelter status sits in a fixed HUD card (%s)" % (card_title.text if card_title else "none"))
+		check(d.callouts.has_callout("my_shelter") and not ("my_shelter" in d.callouts.shown_ids()), "in the world the shelter is only a ring at the entrance, no text card")
+		check(d.callouts.shown_ids().size() <= d.callouts.max_cards(), "no more world label cards than the screen allows (%d)" % d.callouts.shown_ids().size())
 	# 生火：轻点 F 不生火；按住 F 才尝试（成功或因风 / 树冠消耗桦树皮）
 	p.global_position = Vector3(10.0, TerrainHeight.height_at(10, 2) + 0.5, 2.0)
 	for i in 5: await physics_frame
@@ -143,8 +152,15 @@ func _run() -> void:
 	check(not HoldAssist.enabled, "F9 turns hold assist off")
 	# 手册 / 暂停
 	await key(KEY_H)
-	check(d.ui._guide != null and d.ui._guide.visible, "H opens the field guide")
-	await key(KEY_H)
+	check(d.ui.intel_open() and d.ui.intel_tab_key() == "guide", "H opens the field guide page of the intel panel")
+	await key(KEY_TAB)
+	check(d.ui.intel_tab_key() == "controls", "Tab turns the page")
+	await key(KEY_ESCAPE)
+	check(not d.ui.intel_open() and d.state == d.State.PLAYING, "Esc closes the intel panel without pausing")
+	await key(KEY_I)
+	check(d.ui.intel_open() and d.ui.intel_tab_key() == "brief", "I opens the intel panel on the brief")
+	await key(KEY_I)
+	check(not d.ui.intel_open(), "I closes it again")
 	var jb := InputEventJoypadButton.new()
 	jb.button_index = JOY_BUTTON_START
 	jb.pressed = true
@@ -220,8 +236,19 @@ func _levels_part() -> void:
 	var lesson: Label = m.find_child("LevelLesson", true, false)
 	check(lesson != null and lesson.text == LevelState.level.lesson, "briefing shows the chapter lesson")
 	check(m.find_child("LevelChip_1", true, false) != null and m.find_child("StageChip_10", true, false) != null, "briefing shows the chapter row and the stage row")
-	var sh_label: Label = m.find_child("LevelShelters", true, false)
-	check(sh_label != null and sh_label.text.contains("Trench") and sh_label.text.contains("New here"), "briefing lists known shelters and what is new here")
+	var cond: Label = m.find_child("LevelConditions", true, false)
+	check(cond != null and cond.text.contains("°C") and cond.text.contains("sunset"), "briefing first screen shows one line of conditions")
+	check(m.find_child("LevelShelters", true, false) == null, "gear / shelters are not on the first screen")
+	await key(KEY_I)
+	check(d.ui.intel_open() and d.ui.intel_tab_key() == "brief", "[I] on the briefing opens the intel panel")
+	for i in 3: await key(KEY_RIGHT)
+	var body: Label = m.find_child("IntelBody", true, false)
+	check(d.ui.intel_tab_key() == "shelters" and body.text.contains("Trench") and body.text.contains("New here"), "intel → Shelters lists known shelters and what is new here")
+	check(LevelState.level.index == 1, "→ turns intel pages instead of switching chapter while the panel is open")
+	await key(KEY_LEFT)
+	check(body.text.contains("snow shovel"), "intel → Kit lists the gear")
+	await key(KEY_ESCAPE)
+	check(not d.ui.intel_open() and d.state == d.State.BRIEFING, "Esc closes intel, still on the briefing")
 	check(int(d.weather.current_time_minutes) == 600, "chapter 1 stage 1 starts at 10:00")
 	check(d.inventory.bark == 2 and d.gear["pad"] == true, "chapter 1 starts with its gear: 2 birch bark and a sleeping pad")
 	await key(KEY_RIGHT)

@@ -25,7 +25,16 @@ var _fade: ColorRect
 var _report: Control
 var _report_box: VBoxContainer
 var _pause: Control
-var _guide: Control
+## [I] 情报面板（= [H] 野外手册）与庇护所 HUD 卡片（第三次评审）。
+var _intel: Control   # 全屏遮罩，内含情报卡片
+var _intel_tabs: Array = []
+var _intel_idx := 0
+var _intel_tabs_row: HBoxContainer
+var _intel_body: Label
+var _shelter_card: PanelContainer
+var _shelter_title: Label
+var _shelter_line: Label
+var _day_hud_on := true
 var _credits: Control
 var _build_keys: Label
 var _vignette: Control
@@ -186,62 +195,83 @@ func show_briefing(on: bool, forecast: String = "", intro: String = "", level: D
 	if _briefing:
 		_briefing.visible = on
 
+## 第三次评审（UI）：首屏只负责"选关和开始"——左栏选章 / 阶，右栏一句话目标 + 天气时间条件 + 唯一主行动。
+## 装备、庇护所、地图种子、完整课题、操作、记录都在 [I] 情报面板里（与 [H] 野外手册是同一个面板）。
 func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary = {}) -> Control:
 	var shade := ColorRect.new()
+	shade.name = "Briefing"
 	shade.color = Color(0.02, 0.035, 0.06, 0.82)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
-	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(760, 0)
-	v.add_theme_constant_override("separation", 10)
-	center.add_child(v)
-	var title := _label(Loc.t("SNOW SHELTER"), 64, CREAM)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(title)
-	var sub := _label(Loc.t("C H A L L E N G E"), 22, CREAM)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(sub)
-	var tag := _label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 15, AMBER)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(tag)
-	v.add_child(HSeparator.new())
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 26)
+	center.add_child(outer)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 56)
+	outer.add_child(cols)
+	# 左栏：标题 + 章 / 阶选择
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(520, 0)
+	left.add_theme_constant_override("separation", 12)
+	cols.add_child(left)
+	left.add_child(_label(Loc.t("SNOW SHELTER"), 52, CREAM))
+	left.add_child(_label(Loc.t("C H A L L E N G E"), 18, CREAM))
+	left.add_child(_label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 14, AMBER))
+	left.add_child(HSeparator.new())
 	if not level.is_empty():
-		_add_level_row(v, level)
-	var body := _label(intro +
-		Loc.t("Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ") +
-		Loc.t("and the shadows tell you how much daylight is left."), 15, MUTED)
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(body)
+		_chip_row(left, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")
+		if not (level.get("stage_chips", []) as Array).is_empty():
+			_chip_row(left, Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
+		var meta := Loc.t("Map %d  ·  [N] new map") % int(level.get("map", 1))
+		var ml := _label(meta, 13, MUTED)
+		ml.name = "LevelMeta"
+		left.add_child(ml)
+		if String(level.get("locked_hint", "")) != "":
+			var lh := _label(String(level["locked_hint"]), 13, Color(MUTED, 0.75))
+			lh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			left.add_child(lh)
+	# 右栏：这一阶是什么、条件、开始
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(660, 0)
+	right.add_theme_constant_override("separation", 14)
+	right.alignment = BoxContainer.ALIGNMENT_CENTER
+	cols.add_child(right)
+	var title := _label(String(level.get("title", Loc.t("Free play"))), 16, MUTED)
+	title.name = "LevelTitle"
+	right.add_child(title)
+	var lesson_text := String(level.get("lesson", "")) if not level.is_empty() else Loc.t("Read the land, find deep snow on the sheltered side, and build a shelter before dark.")
+	var lesson := _label(lesson_text, 24, CREAM)
+	lesson.name = "LevelLesson"
+	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(lesson)
+	var cond := _label(String(level.get("conditions", intro.split("\n")[0])), 16, AMBER)
+	cond.name = "LevelConditions"
+	cond.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(cond)
 	if forecast != "":
-		var fl := _label(forecast, 15, AMBER)
+		var fl := _label(forecast, 14, MUTED)
 		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(fl)
-	var keys := _label(Loc.t("[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics\n") +
-		Loc.t("[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom"), 13, CREAM)
-	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(keys)
-	var rec := Records.text() if level.is_empty() else String(level.get("best", ""))
-	if rec != "":
-		var rl := _label(rec, 13, MUTED)
-		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(rl)
-	var go := _label(Loc.t("Press  ENTER  to begin"), 18, AMBER)
+		right.add_child(fl)
+	# 唯一主行动
+	var go := _label(Loc.t("ENTER  Begin          [I]  Intel: gear, shelters, map, controls"), 20, AMBER)
+	go.name = "BriefingGo"
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(go)
+	outer.add_child(go)
 	if level.is_empty() or bool(level.get("full_day_option", false)):
 		var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
 		alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(alt)
+		outer.add_child(alt)
 	return shade
 
-## 章节行 + 阶行（D12 / D13）：1 2 3 4 5 Free（←/→）、阶 1–10（↑/↓），当前高亮、未开放变暗；下面是标题、课题、庇护所 / 装备、图号与种子。
+## 章节行 + 阶行（D12 / D13）：当前高亮、未开放变暗。
 func _chip_row(v: VBoxContainer, head_text: String, chips: Array, prefix: String, row_name: String) -> void:
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 12)
-	row.add_child(_label(head_text, 13, MUTED))
+	var head := _label(head_text, 13, MUTED)
+	head.custom_minimum_size = Vector2(150, 0)
+	row.add_child(head)
 	for chip in chips:
 		var cur := bool(chip["current"])
 		var open := bool(chip["unlocked"])
@@ -253,72 +283,139 @@ func _chip_row(v: VBoxContainer, head_text: String, chips: Array, prefix: String
 	row.name = row_name
 	v.add_child(row)
 
-func _add_level_row(v: VBoxContainer, level: Dictionary) -> void:
-	_chip_row(v, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")
-	if not (level.get("stage_chips", []) as Array).is_empty():
-		_chip_row(v, Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
-	var title := _label(String(level.get("title", "")), 15, CREAM)
-	title.name = "LevelTitle"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(title)
-	var lesson := _label(String(level.get("lesson", "")), 17, CREAM)
-	lesson.name = "LevelLesson"
-	lesson.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(lesson)
-	if String(level.get("shelters", "")) != "":
-		var sh := _label(String(level["shelters"]), 14, AMBER)
-		sh.name = "LevelShelters"
-		sh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(sh)
-	var meta := Loc.t("Map %d  [N] new map   ·   Seed %d") % [int(level.get("map", 1)), int(level.get("seed", 0))]
-	if String(level.get("locked_hint", "")) != "":
-		meta += "   ·   " + String(level["locked_hint"])
-	var ml := _label(meta, 12, MUTED)
-	ml.name = "LevelMeta"
-	ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(ml)
+# ---------------------------------------------------------------- [I] 情报面板（含 [H] 野外手册）
 
-## 野外手册（参考图右侧 KEY RESOURCES / READ THE LAND 两块）：[H] 开关。
-func toggle_guide() -> void:
-	if _guide == null:
+## tabs：[{key, title, body}]，由 GameDirector 生成；语言切换 / 换关时重新设置。
+func set_intel(tabs: Array) -> void:
+	_intel_tabs = tabs
+	if _intel and _intel.visible:
+		_render_intel()
+
+func intel_open() -> bool:
+	return _intel != null and _intel.visible
+
+func intel_tab_key() -> String:
+	return String(_intel_tabs[_intel_idx]["key"]) if _intel_idx < _intel_tabs.size() else ""
+
+## 打开到指定页；已经开着且就在这一页 → 关上。tab_key 为空 = 保持当前页。
+func toggle_intel(tab_key: String = "") -> void:
+	var idx := _intel_idx
+	for i in _intel_tabs.size():
+		if String(_intel_tabs[i]["key"]) == tab_key:
+			idx = i
+	if intel_open() and (tab_key == "" or idx == _intel_idx):
+		_intel.visible = false
+		return
+	_intel_idx = idx
+	if _intel == null:
+		var shade := ColorRect.new()
+		shade.name = "IntelPanel"
+		shade.color = Color(0.015, 0.025, 0.045, 0.9)
+		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var center := CenterContainer.new()
+		center.set_anchors_preset(Control.PRESET_FULL_RECT)
+		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shade.add_child(center)
 		var card := _card(Color(0.62, 0.78, 0.95))
-		card.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-		card.position = Vector2(-470, -230)
-		card.custom_minimum_size = Vector2(440, 0)
+		card.custom_minimum_size = Vector2(1000, 600)
+		center.add_child(card)
+		_intel = shade
 		var v := VBoxContainer.new()
-		v.add_theme_constant_override("separation", 6)
+		v.add_theme_constant_override("separation", 12)
 		card.add_child(v)
-		v.add_child(_label(Loc.t("READ THE LAND"), 16, CREAM))
-		for line in [
-				Loc.t("Trees show wind direction — branches are short on the windward side, crowns lean downwind."),
-				Loc.t("Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure."),
-				Loc.t("Standing dead trees mean fuel — fallen logs are wet and won't burn."),
-				Loc.t("Rootballs and thick forest break the wind — shelter there, and light fires there."),
-				Loc.t("Shadows tell time — the longer they get, the less daylight you have left."),
-			]:
-			var l := _label("•  " + line, 13, MUTED)
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			v.add_child(l)
+		_intel_tabs_row = HBoxContainer.new()
+		_intel_tabs_row.add_theme_constant_override("separation", 18)
+		v.add_child(_intel_tabs_row)
 		v.add_child(HSeparator.new())
-		v.add_child(_label(Loc.t("KEY RESOURCES"), 16, CREAM))
-		for line in [Loc.t("Birch bark — tinder (white trunk, black bands)"), Loc.t("Dry grass / spruce boughs — bedding"),
-				Loc.t("Dry wood — standing dead trees"), Loc.t("Snow — melt it over a fire for a hot drink")]:
-			v.add_child(_label("•  " + line, 13, MUTED))
-		v.add_child(_label(Loc.t("[H] close"), 12, AMBER))
-		_guide = card
-		get_child(0).add_child(card)
-	else:
-		_guide.visible = not _guide.visible
+		_intel_body = _label("", 16, CREAM)
+		_intel_body.name = "IntelBody"
+		_intel_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_intel_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		v.add_child(_intel_body)
+		v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close"), 13, AMBER))
+		get_child(0).add_child(_intel)
+	_intel.visible = true
+	_render_intel()
+
+func intel_step(dir: int) -> void:
+	if not intel_open() or _intel_tabs.is_empty():
+		return
+	_intel_idx = posmod(_intel_idx + dir, _intel_tabs.size())
+	_render_intel()
+
+func _render_intel() -> void:
+	for c in _intel_tabs_row.get_children():
+		_intel_tabs_row.remove_child(c)
+		c.queue_free()
+	for i in _intel_tabs.size():
+		var cur := i == _intel_idx
+		var t := String(_intel_tabs[i]["title"])
+		_intel_tabs_row.add_child(_label(("[ %s ]" % t) if cur else t, 17 if cur else 15, AMBER if cur else MUTED))
+	_intel_body.text = String(_intel_tabs[_intel_idx]["body"]) if _intel_idx < _intel_tabs.size() else ""
+
+## 野外手册内容（[H] 打开情报面板的这一页）。
+static func field_guide_text() -> String:
+	var lines: Array[String] = [Loc.t("READ THE LAND")]
+	for line in [
+			Loc.t("Trees show wind direction — branches are short on the windward side, crowns lean downwind."),
+			Loc.t("Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure."),
+			Loc.t("Standing dead trees mean fuel — fallen logs are wet and won't burn."),
+			Loc.t("Rootballs and thick forest break the wind — shelter there, and light fires there."),
+			Loc.t("Shadows tell time — the longer they get, the less daylight you have left."),
+		]:
+		lines.append("•  " + line)
+	lines.append("")
+	lines.append(Loc.t("KEY RESOURCES"))
+	for line in [Loc.t("Birch bark — tinder (white trunk, black bands)"), Loc.t("Dry grass / spruce boughs — bedding"),
+			Loc.t("Dry wood — standing dead trees"), Loc.t("Snow — melt it over a fire for a hot drink")]:
+		lines.append("•  " + line)
+	return "\n".join(lines)
+
+# ---------------------------------------------------------------- 庇护所 HUD 卡片
+
+## 第三次评审（UI）：庇护所的状态是最高优先级的信息，放在固定的 HUD 卡片里（体温卡下方），
+## 世界里只在入口画一个环和箭头。title 为空 = 隐藏。
+func set_shelter_card(title: String, line: String, done: bool) -> void:
+	if _shelter_card == null:
+		_shelter_card = _card(Color(1.0, 0.7, 0.35))
+		_shelter_card.name = "ShelterCard"
+		_shelter_card.position = Vector2(32, 178)
+		_shelter_card.custom_minimum_size = Vector2(398, 0)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 2)
+		_shelter_card.add_child(v)
+		_shelter_title = _label("", 16, CREAM)
+		_shelter_title.name = "ShelterTitle"
+		v.add_child(_shelter_title)
+		_shelter_line = _label("", 13, MUTED)
+		_shelter_line.name = "ShelterLine"
+		_shelter_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_shelter_line.custom_minimum_size = Vector2(370, 0)
+		v.add_child(_shelter_line)
+		get_child(0).add_child(_shelter_card)
+	_shelter_card.visible = title != "" and _day_hud_on
+	_shelter_title.text = title
+	_shelter_line.text = line
+	(_shelter_card.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(1.0, 0.7, 0.35) if done else Color(0.62, 0.78, 0.95)
+
+## 世界标签不能压住的屏幕区域（画布坐标）。
+func occupied_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for c in [_prompt_card, _build_card, _objective.get_parent().get_parent(), _shelter_card, _intel, _night_event]:
+		if c != null and (c as Control).is_visible_in_tree():
+			out.append((c as Control).get_global_rect())
+	if _toast.text != "" and _toast.modulate.a > 0.05:
+		out.append(_toast.get_global_rect())
+	return out
 
 ## 切换语言后重建缓存的面板（简报 / 手册 / 暂停 / 建造面板操作行）。
 func relocalize() -> void:
-	for n in [_briefing, _guide, _pause]:
+	for n in [_briefing, _intel, _pause]:
 		if n:
 			n.queue_free()
 	_briefing = null
-	_guide = null
+	_intel = null
 	_pause = null
 	if _build_keys:
 		_build_keys.text = Loc.t("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel")
@@ -507,7 +604,10 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 
 ## 夜里只留夜间面板：隐藏白天的目标行 / 背包托盘 / 交互提示。
 func set_day_hud(on: bool) -> void:
+	_day_hud_on = on
 	_prompt_card.visible = on and _prompt_card.visible
+	if _shelter_card:
+		_shelter_card.visible = on and _shelter_title.text != ""
 	var tray_card := _objective.get_parent().get_parent() as Control
 	if tray_card:
 		tray_card.visible = on
