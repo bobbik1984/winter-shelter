@@ -28,6 +28,7 @@ var _mound: MeshInstance3D
 ## 完工雪洞的洞口灯（R3：黄昏后调亮，让玩家远远看到"我的洞在这"）。
 var _entrance_light: OmniLight3D
 var _interior: Node3D
+var _interior_view: ShelterInterior
 var _mound_ghost: StandardMaterial3D
 var _inside := false
 
@@ -339,6 +340,25 @@ func _build_interior(s: int) -> void:
 		l.light_energy = 1.6
 		l.position = Vector3(-0.45, 0.6, -1.5)
 		_interior.add_child(l)
+
+## "进入庇护所"剖面：平常的外观藏起来，换成切开的那一半。返回剖面相机。
+func set_interior_view(on: bool) -> Camera3D:
+	if on and _interior_view == null:
+		_interior_view = ShelterInterior.new()
+		add_child(_interior_view)
+		_interior_view.build(preset_id, is_complete(), vent_count)
+	if _interior_view:
+		_interior_view.visible = on
+	if _visual:
+		_visual.visible = not on
+	return _interior_view.camera if on else null
+
+func interior_view() -> ShelterInterior:
+	return _interior_view
+
+func interior_daylight(k: float) -> void:
+	if _interior_view:
+		_interior_view.set_daylight(k)
 
 ## 进洞 / 出洞：雪丘变半透明并显示洞内。
 func set_inside(on: bool) -> void:

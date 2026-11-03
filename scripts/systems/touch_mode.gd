@@ -82,7 +82,12 @@ static func buttons_for(ctx: Dictionary) -> Array:
 				b.append(_key("full_day", Loc.t("Full day"), KEY_2, "bar"))
 			b.append(_key("begin", Loc.t("Begin"), KEY_ENTER, "bar", true))
 		"playing":
-			if bool(ctx.get("focused", false)):
+			if bool(ctx.get("inside", false)):
+				b.append({"id": "out", "label": Loc.t("Step outside"), "action": "interact", "slot": "big_r", "primary": true})
+				b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "arc"))
+				b.append(_key("menu", Loc.t("Menu"), KEY_ESCAPE, "top"))
+				b.append(_key("intel", Loc.t("Intel"), KEY_I, "top"))
+			elif bool(ctx.get("focused", false)):
 				b.append({"id": "work", "label": Loc.t("Build"), "action": "interact", "slot": "big_r", "primary": true})
 				b.append(_key("back", Loc.t("Step back"), KEY_B, "arc"))
 				b.append(_key("respot", Loc.t("Other spot"), KEY_R, "arc"))
@@ -128,7 +133,7 @@ static func _key(id: String, label: String, k: Key, slot: String, primary: bool 
 
 ## 摇杆是否可用（只有能走路的时候）。
 static func stick_on(ctx: Dictionary) -> bool:
-	return ctx.get("state") == "playing" and not bool(ctx.get("focused", false)) and not bool(ctx.get("intel", false))
+	return ctx.get("state") == "playing" and not bool(ctx.get("focused", false)) and not bool(ctx.get("intel", false)) and not bool(ctx.get("inside", false))
 
 ## 手指偏移 → 移动向量：死区内为 0，半径处为 1，方向不变。屏幕上方 = 前进（负 y）。
 static func stick_vector(offset: Vector2, radius: float, dead: float = 0.15) -> Vector2:

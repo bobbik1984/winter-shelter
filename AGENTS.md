@@ -47,7 +47,7 @@
 
 ## 4. 工程红线
 
-1. **相机**（2026-11-01 用户拍板修订：以 `snapshots/snapshot_00_visual_north_star.png` 的表现力为准）：默认 **移轴透视（TILT_SHIFT）**——光轴接近水平（竖线不汇聚）、镜头下移看地面、天际线与落日在画面上沿；偏航 **135°**（镜头朝西南 = 1 月午后太阳真实方位，越过迎风脊线看远景）。**太阳走真实日轨**（`SunModel` + Tuning `Sun` 组：纬度 / 赤纬 / 正午），影子长→短→长就是玩家的时钟，不得为构图把太阳挪到假方位。挡住玩家的树用 `snow_cover.gdshader` 的 `occlusion_fade` 镂空。正交等距保留为备用模式（**V** 键切换）。玩家输入与罗盘一律从相机朝向推导，**不得再写死偏航角**。不得裁切角色与雪坡。Godot 天空背景不认 `frustum_offset`，移轴参数需推给 `sky_backdrop.gdshader`（见 `IsometricCameraRig._push_lens`）。
+1. **相机**（2026-11-01 用户拍板修订：以 `snapshots/snapshot_00_visual_north_star.png` 的表现力为准）：默认 **移轴透视（TILT_SHIFT）**，机位相对玩家俯角 **35°**（2026-11-04 用户试玩后拍板"先试这个"：取代原来的"光轴接近水平、天际线在画面上沿"，原因是视线太低看不远、林子里一堵墙；代价是地平线与落日出画、竖线略有汇聚）；偏航 **135°**（镜头朝西南 = 1 月午后太阳真实方位，越过迎风脊线看远景）。**太阳走真实日轨**（`SunModel` + Tuning `Sun` 组：纬度 / 赤纬 / 正午），影子长→短→长就是玩家的时钟，不得为构图把太阳挪到假方位。挡住玩家的树用 `snow_cover.gdshader` 的 `occlusion_fade` 镂空。正交等距保留为备用模式（**V** 键切换）。玩家输入与罗盘一律从相机朝向推导，**不得再写死偏航角**。不得裁切角色与雪坡。Godot 天空背景不认 `frustum_offset`，移轴参数需推给 `sky_backdrop.gdshader`（见 `IsometricCameraRig._push_lens`）。
 2. **UTF-8**：所有 `.gd` / `.tscn` / `.tres` / `.md` / `.yaml` 用 UTF-8（无 BOM）。中文文件只用编辑工具或 Python/Node 修改，**禁止** PowerShell `Get-Content`/`Set-Content`/`-replace`。
 3. **场景文件串行**：同一时刻只有一个 Agent 写某个 `.tscn`；`scenes/main.tscn` 只由主控 Agent 合并。新增功能优先做成独立子场景，再由主控接入。
 4. **不手写 uid**：新建 `.tscn`/`.tres` 时 `ext_resource` 用 `path=` 引用，不编造 `uid://`；由 Godot 导入时生成。

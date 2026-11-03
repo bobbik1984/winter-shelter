@@ -24,9 +24,9 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 ## [TUNE] 垂直视场角（度）。
 @export var tilt_shift_fov_deg: float = 48.0
 ## [TUNE] 光轴俯仰（度）：接近 0 = 竖线不汇聚。
-@export var tilt_shift_pitch_degrees: float = 0.0
+@export var tilt_shift_pitch_degrees: float = -21.5
 ## [TUNE] 镜头下移量（占半高比例，负 = 向下看地面）。
-@export var lens_shift: float = -0.85
+@export var lens_shift: float = -0.38
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var player_screen_y: float = 0.58
 ## [TUNE] 默认相机到玩家的距离（m）；滚轮按比例推拉。
@@ -51,6 +51,10 @@ var focus_fade_radius := 1.3
 var dof_enabled: bool = true
 ## 地形挡视线时的抬升（度）。绕 rig 原点转，所以目标在屏幕上的位置不变（见 BuildSession.view_lift）。
 var _lift_deg := 0.0
+## 进到庇护所里时当前相机不是这台，天空镜头由 ShelterInterior 推送。
+var lens_suspended := false
+## 人在庇护所里时的镂空焦点（开口外几米）：挡在相机和它之间的树都淡掉，否则树井里相机就在树冠中。INF = 不用。
+var interior_focus := Vector3.INF
 var _lift_want := 0.0
 var _lift_check_t := 0.0
 var lift_max_deg := 30.0
@@ -158,7 +162,8 @@ func camera_offset(zoom: float) -> Vector3:
 		return Vector3.ZERO
 	var half_t := tan(deg_to_rad(tilt_shift_fov_deg) * 0.5)
 	var top_t := (1.0 + lens_shift) * half_t
-	var dep := -atan(top_t - 2.0 * half_t * player_screen_y)
+	# 机位相对玩家的总俯角 = 镜头下移的角度 + rig 俯仰
+	var dep := -atan(top_t - 2.0 * half_t * player_screen_y) - deg_to_rad(tilt_shift_pitch_degrees)
 	var dist := tilt_shift_distance * zoom
 	return Basis(Vector3.UP, deg_to_rad(camera_yaw_degrees)) * Vector3(0.0, dist * sin(dep), dist * cos(dep))
 
@@ -176,7 +181,7 @@ func _update_lift(goal: Vector3, delta: float) -> void:
 	if _lift_check_t <= 0.0:
 		_lift_check_t = 0.1   # 每秒查 10 次足够；视线没被挡时只采样十几个高度
 		var half_t := tan(deg_to_rad(tilt_shift_fov_deg) * 0.5)
-		var dep := -atan((1.0 + lens_shift) * half_t - 2.0 * half_t * player_screen_y)
+		var dep := -atan((1.0 + lens_shift) * half_t - 2.0 * half_t * player_screen_y) - deg_to_rad(tilt_shift_pitch_degrees)
 		var dist := tilt_shift_distance * lerpf(_zoom, _focus_zoom, _smooth_blend())
 		var ground := Vector3(goal.x, SnowField.height_at(goal.x, goal.z), goal.z)
 		_lift_want = BuildSession.view_lift(ground, dist, dep, Basis(Vector3.UP, deg_to_rad(camera_yaw_degrees)),
@@ -188,7 +193,7 @@ func _update_lift(goal: Vector3, delta: float) -> void:
 
 ## 把真实镜头参数推给天空 shader（Godot 天空背景不认 frustum_offset）。
 func _push_lens() -> void:
-	if camera_3d == null or not is_inside_tree():
+	if camera_3d == null or not is_inside_tree() or lens_suspended:
 		return
 	var vp_size := get_viewport().get_visible_rect().size
 	var aspect := vp_size.x / maxf(vp_size.y, 1.0)
@@ -230,4 +235,4 @@ func _process(delta: float) -> void:
 	# 基向量只随模式变；每帧推送开销很小，也顺带处理窗口缩放后的宽高比
 	_push_lens()
 	# 挡住"主体"的树镂空：平时主体是玩家，特写时是工地
-	get_tree().call_group("occlusion_fade", "set_focus", goal)
+	get_tree().call_group("occlusion_fade", "set_focus", interior_focus if interior_focus != Vector3.INF else goal)

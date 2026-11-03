@@ -27,6 +27,10 @@ var rect_provider: Callable
 var player_world := Vector3.INF
 ## D16：建造特写时隐藏所有探索级文字卡和小点，只留工地的环与箭头。
 var cards_hidden := false
+## 非空时只画这个前缀的标签（庇护所剖面用）。
+var only_prefix := ""
+## > 0 时覆盖同时显示的卡片数上限。
+var card_limit := 0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -90,6 +94,8 @@ func shown_ids() -> Array[String]:
 	return out
 
 func max_cards() -> int:
+	if card_limit > 0:
+		return card_limit
 	return 2 if get_window().size.y <= 800 else 3
 
 func _process(_delta: float) -> void:
@@ -116,6 +122,8 @@ func _process(_delta: float) -> void:
 			e["dist"] = dist
 		if e["card"] != null:
 			(e["card"] as PanelContainer).visible = false
+		if only_prefix != "" and not String(id).begins_with(only_prefix):
+			e["active"] = false
 		if not e["active"]:
 			continue
 		if cards_hidden and not e["marker"]:

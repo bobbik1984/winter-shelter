@@ -42,6 +42,8 @@ var prewarmed := false
 ## 全天模式（简报页按 2）：10:00 开局。记录与标准模式分开保存。
 var full_day := false
 ## 本局装备（S6，来自 LevelState.gear()）。
+var _in_shelter := false
+var _shelter_tween: Tween
 var gear: Dictionary = {"shovel": true, "pot": true, "layer": true, "pad": false, "hides": false, "wood": 0, "bark": 0, "bedding": 0}
 ## 一天的时间线（报告里回顾时间花在哪）：事件 -> 时刻字符串。
 var _timeline: Array = []
@@ -540,8 +542,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_L: _toggle_lang()
 				KEY_H: ui.toggle_intel("guide")
 				KEY_I: ui.toggle_intel("brief")
-				KEY_B: _enter_build()
-				KEY_F: _begin_fire()
+				KEY_B:
+					if _in_shelter:
+						_leave_shelter()
+					else:
+						_enter_build()
+				KEY_F:
+					if _in_shelter:
+						ui.toast(Loc.t("Step outside to light or feed a fire."))
+					else:
+						_begin_fire()
 				KEY_N: _request_sleep()
 
 ## 环境卡提示行（V3）。简报时也刷新一次，否则显示的是 hud.tscn 的空默认值。
@@ -867,6 +877,11 @@ func _tick_playing(delta: float) -> void:
 			ui.set_prompt("", 0.0)
 		_place_prompt()
 
+	if _in_shelter:
+		_tick_inside_shelter()
+		ui.set_prompt(Loc.t("You're inside  ·  [E] Step outside  ·  [N] Sleep"), 0.0)
+		ui.place_prompt(Vector2(get_viewport().get_visible_rect().size.x * 0.5, get_viewport().get_visible_rect().size.y - 40.0))
+
 	# 世界内洞内视图（T4.4）
 	if site:
 		site.set_inside(site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
@@ -875,7 +890,7 @@ func _tick_playing(delta: float) -> void:
 	if _cutaway_panel:
 		var show := build.active and build.preset_id in ["RaisedCave", "BasicCave"]
 		show = show or (site != null and site.preset_id in ["RaisedCave", "BasicCave"] and site.stage() >= 1 and _inside_site())
-		show = show and not session.focused()
+		show = show and not session.focused() and not _in_shelter
 		_cutaway_panel.visible = show
 		if show and _cutaway_panel.has_method("set_progress"):
 			_cutaway_panel.set_progress(site.stage() if site != null and not build.active else -1)
@@ -1501,6 +1516,96 @@ func _update_focus_panel() -> void:
 	ui.show_build_focus("%s  ·  %d/%d  ·  %s" % [Loc.t(p.display_name).to_upper(), site.stage(), ShelterBuilder.STAGES_MAX, site.next_stage_title()],
 		needs, time_line, keys, short, interaction.progress)
 
+# ------------------------------------------------------------------ 进入庇护所（2026-11-04）
+
+## 走进去：换成切开的剖面（对标 north star 的 SHELTER DESIGN），人躺在里面。规则不变，体温本来就按"人在不在里面"算；时间照走。
+func _enter_shelter() -> void:
+	if _in_shelter or site == null or not site.is_complete():
+		return
+	_in_shelter = true
+	_shelter_transition(func() -> void:
+		var cam := site.set_interior_view(true)
+		player.global_position = Vector3(site.global_position.x, player.global_position.y, site.global_position.z)
+		player.controls_enabled = false
+		interaction.enabled = false
+		var view := site.interior_view()
+		var fig: Node3D = player.visual_node
+		# 模型原点在脚底、身体绕中轴：躺平后要抬高半个身体厚度，不然半截埋进床里
+		fig.global_position = site.to_global(view.figure_spot + Vector3.UP * tuning.interior_figure_lift_m)
+		_set_figure_particles(false)   # 呼出的白气跟着站姿算位置，躺着时会飘在半空
+		# 躺着：模型的"上"指向 -Z（头朝里），脸朝上
+		fig.global_basis = site.global_basis * Basis(Vector3.RIGHT, -PI * 0.5)
+		if rig:
+			rig.lens_suspended = true
+			# shader 只淡掉比焦点近 1.2 m 以上的东西：把焦点往后推 1.2 m，切面前面的树（树井的那棵）才全部消失
+			rig.interior_focus = site.global_position - cam.global_transform.basis.z * 1.2
+			get_tree().call_group("occlusion_fade", "set_focus_fade", 6.0, 1.0)
+		cam.make_current()
+		callouts.only_prefix = "section_"
+		callouts.card_limit = 4
+		var i := 0
+		for l: Array in view.labels():
+			callouts.set_callout("section_%d" % i, site.to_global(l[0]), l[1], l[2], Color(0.72, 0.86, 1.0), Vector2(30.0, -50.0), 5)
+			i += 1
+		if _compass:
+			_compass.visible = false)
+
+func _set_figure_particles(on: bool) -> void:
+	for n in player.find_children("*", "GPUParticles3D", true, false):
+		(n as GPUParticles3D).visible = on
+
+func _leave_shelter() -> void:
+	if not _in_shelter:
+		return
+	_shelter_transition(func() -> void:
+		_in_shelter = false
+		if site != null:
+			site.set_interior_view(false)
+			# 一定要落在"算在里面"的半径之外，否则走出去了还在享受庇护所的体温（雪沟的入口离中心很近）
+			var out_d := maxf(site.entrance_point().distance_to(site.global_position) + 1.4, tuning.shelter_inside_radius_m + 0.5)
+			var out := site.global_position + site.entrance_dir * out_d
+			player.global_position = Vector3(out.x, TerrainHeight.height_at(out.x, out.z) + 0.2, out.z)
+			var to := site.entrance_dir
+			player.visual_node.position = _figure_home
+			player.visual_node.rotation = Vector3(0.0, atan2(to.x, to.z), 0.0)
+		_set_figure_particles(true)
+		player.controls_enabled = state == State.PLAYING
+		interaction.enabled = state == State.PLAYING
+		if rig:
+			rig.lens_suspended = false
+			rig.interior_focus = Vector3.INF
+			get_tree().call_group("occlusion_fade", "set_focus_fade", 0.26, 0.85)
+			rig.global_position = player.global_position
+			rig.camera_3d.make_current()
+		callouts.only_prefix = ""
+		callouts.card_limit = 0
+		callouts.remove_prefix("section_")
+		if _compass:
+			_compass.visible = true)
+
+## 短暂黑一下再换视角，像是弯腰钻进去。中途不接受第二次操作。
+func _shelter_transition(swap: Callable) -> void:
+	if _shelter_tween != null and _shelter_tween.is_valid():
+		_shelter_tween.kill()
+	_shelter_tween = create_tween()
+	_shelter_tween.tween_method(ui.set_fade, 0.0, 1.0, 0.18)
+	_shelter_tween.tween_callback(swap)
+	_shelter_tween.tween_method(ui.set_fade, 1.0, 0.0, 0.3)
+
+func _shelter_busy() -> bool:
+	return _shelter_tween != null and _shelter_tween.is_valid() and _shelter_tween.is_running()
+
+func _tick_inside_shelter() -> void:
+	if site == null:
+		_leave_shelter()
+		return
+	var elev: float = weather.sun_elevation_deg
+	site.interior_daylight((elev + 6.0) / 18.0)
+	if player.visual_node.has_method("set_motion"):
+		player.visual_node.set_motion(0.0, false, false, "")
+	if not _shelter_busy() and Input.is_action_just_pressed("interact"):
+		_leave_shelter()
+
 func _needs_vent_stick() -> bool:
 	return site != null and site.is_complete() and site.is_snow_shelter() and site.vent_count == 1 \
 		and not site.vent_stick and weather.atmosphere.snowfall > 0.05
@@ -1510,7 +1615,9 @@ func _site_prompt() -> String:
 		return Loc.t("Push a stick through the vent (1 wood) — keeps it clear in falling snow")
 	if site != null and site.is_complete() and (inventory.wood > 0 or inventory.bedding > 0):
 		return Loc.t("Stack what you're carrying here (fire logs, extra bedding)")
-	if site == null or site.is_complete():
+	if site != null and site.is_complete():
+		return Loc.t("Enter the shelter")
+	if site == null:
 		return ""
 	var cost := site.next_stage_cost()
 	var need := ""
@@ -1546,8 +1653,11 @@ func _on_build_stage() -> Dictionary:
 		site.vent_stick = true
 		return {"ok": true, "minutes": 3.0, "msg": Loc.t("Stick in the vent: you can poke it clear during the night.")}
 	if site.is_complete():
-		_unload_to_site()
-		return {"ok": true, "minutes": 1.0, "msg": ""}
+		if inventory.wood > 0 or inventory.bedding > 0:
+			_unload_to_site()
+			return {"ok": true, "minutes": 1.0, "msg": ""}
+		_enter_shelter()
+		return {"ok": true, "minutes": 0.0, "msg": ""}
 	# 雪堆屋：堆好的雪要凝结。可以去采集，也可以按住 [E] 干等
 	var wait_left := site.ready_at - weather.current_time_minutes
 	if wait_left > 0.0:

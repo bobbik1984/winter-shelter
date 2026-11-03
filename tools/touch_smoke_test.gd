@@ -230,7 +230,29 @@ func _run() -> void:
 	d.inventory.add("bedding", d._bedding_short())
 	await wait(0.2)
 	check(d._bedding_short() <= 0 and not d.callouts.has_callout("bedding"), "enough bedding: label goes away")
-	# 夜：菜单、睡觉、醒来、加速
+	# 进入庇护所：完工后走到门口，按住 Use 进去，里面只有走出去 / 睡觉，走出去一切恢复
+	var guard := 0
+	while not d.site.is_complete() and guard < 8:
+		d.site.advance()
+		guard += 1
+	d.inventory.wood = 0
+	d.inventory.bedding = 0
+	var door: Vector3 = d.site.entrance_point() + d.site.entrance_dir * 1.0
+	p.global_position = Vector3(door.x, TerrainHeight.height_at(door.x, door.z) + 0.3, door.z)
+	await wait(0.3)
+	check(d.interaction.prompt_text() == Loc.t("Enter the shelter"), "a finished shelter offers Enter the shelter (%s)" % d.interaction.prompt_text())
+	await hold("use", d.site.interactable.hold_seconds + 0.5)
+	await wait(0.7)
+	check(d._in_shelter and root.get_camera_3d() != d.rig.camera_3d, "holding Use goes inside, with the section camera (hold %.1f s)" % d.site.interactable.hold_seconds)
+	check(d._inside_site() and p.visual_node.visible and not p.controls_enabled, "the figure is in the shelter, visible in the section, and can't walk")
+	check(d.callouts.has_callout("section_0"), "the section has labels")
+	check(has_btn("out") and has_btn("sleep") and not has_btn("build") and not has_btn("fire"), "inside: Step outside and Sleep, no Build or Fire")
+	await shot("07b_inside")
+	await tap("out")
+	await wait(0.7)
+	check(not d._in_shelter and root.get_camera_3d() == d.rig.camera_3d, "Step outside returns to the normal camera")
+	check(p.controls_enabled and d.interaction.enabled and is_zero_approx(p.visual_node.rotation.x) and not d.callouts.has_callout("section_0"), "and the figure stands and walks again, labels gone")
+	check(not d._inside_site(), "standing outside the shelter again")
 	await tap("menu")
 	check(d.state == d.State.PAUSED, "Menu pauses")
 	await shot("08_pause")

@@ -12,7 +12,7 @@ const STICK_R := 86.0
 const FPS_CHECK_SECONDS := 6.0
 const FPS_DROP_BELOW := 22.0
 ## [TUNE] 手机上的默认镜头距离比例。
-const TOUCH_ZOOM := 0.72
+const TOUCH_ZOOM := 1.0
 
 var director: GameDirector
 var _canvas: Control
@@ -136,7 +136,7 @@ func _context() -> Dictionary:
 		GameDirector.State.PAUSED: st = "paused"
 		GameDirector.State.NIGHT: st = "night"
 		GameDirector.State.REPORT: st = "report"
-	return {"state": st, "near_fire": d._nearest_fire(d.tuning.fire_warm_radius_m) != null, "intel": d.ui.intel_open(), "building": d.build.active, "focused": d.session.focused(),
+	return {"state": st, "inside": d._in_shelter, "near_fire": d._nearest_fire(d.tuning.fire_warm_radius_m) != null, "intel": d.ui.intel_open(), "building": d.build.active, "focused": d.session.focused(),
 		"waiting": d.night != null and d.night.waiting(), "has_next": d.state == GameDirector.State.REPORT and d._next_stage().x >= 0,
 		"free_play": not LevelState.active() or LevelState.level.is_free(), "credits": d.ui.credits_open(), "web": OS.has_feature("web")}
 

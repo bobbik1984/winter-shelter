@@ -200,9 +200,9 @@ extends Resource
 ## [TUNE] 垂直视场角。
 @export var tilt_fov_deg: float = 48.0
 ## [TUNE] 光轴俯仰（0 = 竖线不汇聚）。
-@export var tilt_pitch_deg: float = 0.0
+@export var tilt_pitch_deg: float = -21.5
 ## [TUNE] 镜头下移量（占半高，负 = 看地面）。
-@export var tilt_lens_shift: float = -0.85
+@export var tilt_lens_shift: float = -0.38
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var tilt_player_screen_y: float = 0.58
 ## [TUNE] 默认相机距离 28 m；滚轮缩放范围 0.45–2.6。
@@ -628,6 +628,8 @@ extends Resource
 ## [TUNE] 走近多少米时显示可采集物的名字和采法；多少米内显示火的状态卡。
 @export var near_item_label_m: float = 9.0
 @export var fire_card_m: float = 14.0
+## [GAME] 庇护所剖面里，躺着的人比床面抬高多少（半个身体厚度），纯外观。
+@export var interior_figure_lift_m: float = 0.2
 ## [GAME] 采集一次的游戏分钟消耗 6。
 @export var gather_minutes: float = 6.0
 ## [GAME] 每次砍立枯木获得木材 2。
