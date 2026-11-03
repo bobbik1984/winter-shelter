@@ -159,6 +159,17 @@ func run() -> Dictionary:
 	var r2 := NightCurve.run(c["trench"], t, "smart")
 	_check(r1["min_warmth"] == r2["min_warmth"] and r1["timeline"].size() == r2["timeline"].size(), "同一输入结果可复现")
 	_n5(c, t)
+	# 2026-11-03 第四次评审后发现：夜晚长度不能取决于帧率（以前每帧至少走 5 分钟）
+	for fps in [15.0, 60.0, 144.0, 240.0]:
+		var pn := NightCurve.new(_fps_input(), t)
+		var rate := pn.duration / t.night_real_seconds
+		var secs := 0.0
+		while secs < 10.0:
+			pn.play(rate / fps)
+			if pn.waiting():
+				pn.act(NightCurve.ACT_SLEEP)
+			secs += 1.0 / fps
+		_check(absf(pn.minute - rate * 10.0) <= t.night_step_min + 1.0, "%d FPS：播放 10 秒走 %.0f 分钟（应约 %.0f）" % [int(fps), pn.minute, rate * 10.0])
 	return {"passed": _passed, "failures": _failures}
 
 ## N5：活动不能代替庇护所；冻醒不受上限限制；醒着做事也花时间；每章目标路线在第 1 / 5 / 10 阶都活得下来。
@@ -322,3 +333,7 @@ func _n5(c: Dictionary, t: Tuning) -> void:
 				if prev.has(sh):
 					_check(float(r["base_loss"]) >= float(prev[sh]), "%s：阶越高失温不会变慢（%.1f ≥ %.1f）" % [tag, r["base_loss"], prev[sh]])
 				prev[sh] = float(r["base_loss"])
+
+func _fps_input() -> Dictionary:
+	return {"shelter_type": "RaisedCave", "structure_quality": 1.0, "stage": 5, "snow_depth": 2.5, "wind_angle_diff": 180.0,
+		"bedding": 3, "vent_open": true, "dampness": 0.0, "body_warmth": 90.0, "night_hours": 14.0, "temp_c": -18.0}

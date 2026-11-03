@@ -70,12 +70,14 @@ void fragment() {
 		vec3 fv = (VIEW_MATRIX * vec4(focus_pos + vec3(0.0, 0.9, 0.0), 1.0)).xyz;
 		if (-VERTEX.z < -fv.z - 1.2) {
 			vec2 d = VERTEX.xy / -VERTEX.z - fv.xy / -fv.z;
-			float k = 1.0 - smoothstep(occlusion_radius * 0.55, occlusion_radius, length(d));
+			float k = (1.0 - smoothstep(occlusion_radius * 0.55, occlusion_radius, length(d))) * occlusion_strength;
+			// 贴着镜头的树：离主体距离的 20% 以内全透、45% 以外不变（比例是纯几何，推拉镜头时一起缩放）
+			k = max(k, 1.0 - smoothstep(-fv.z * 0.2, -fv.z * 0.45, -VERTEX.z));
 			// 4x4 Bayer 抖动
 			ivec2 c = ivec2(FRAGCOORD.xy) % 4;
 			int idx = c.x + c.y * 4;
 			float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-			if (k * occlusion_strength > (bayer[idx] + 0.5) / 16.0) discard;
+			if (k > (bayer[idx] + 0.5) / 16.0) discard;
 		}
 	}
 	float up = normalize(w_normal).y;

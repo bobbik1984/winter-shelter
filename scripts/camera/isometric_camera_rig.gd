@@ -49,6 +49,13 @@ var focus_blend_seconds := 0.6
 var focus_fade_radius := 1.3
 ## 画质档位可关闭景深（GraphicsSettings）。
 var dof_enabled: bool = true
+## 地形挡视线时的抬升（度）。绕 rig 原点转，所以目标在屏幕上的位置不变（见 BuildSession.view_lift）。
+var _lift_deg := 0.0
+var _lift_want := 0.0
+var _lift_check_t := 0.0
+var lift_max_deg := 30.0
+var lift_rise_rate := 4.0
+var lift_fall_rate := 1.2
 var _attrs: CameraAttributesPractical
 
 @onready var camera_3d: Camera3D = $Camera3D
@@ -79,9 +86,12 @@ func _load_tuning() -> void:
 	zoom_max = t.tilt_zoom_max
 	focus_blend_seconds = t.build_focus_blend_seconds
 	focus_fade_radius = t.build_focus_fade_radius
+	lift_max_deg = t.tilt_lift_max_deg
+	lift_rise_rate = t.tilt_lift_rise_rate
+	lift_fall_rate = t.tilt_lift_fall_rate
 
 func _apply_view_mode() -> void:
-	rotation_degrees.x = camera_pitch_degrees if view_mode == ViewMode.ORTHO else tilt_shift_pitch_degrees
+	rotation_degrees.x = camera_pitch_degrees if view_mode == ViewMode.ORTHO else tilt_shift_pitch_degrees - _lift_deg
 	if view_mode == ViewMode.ORTHO:
 		camera_3d.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera_3d.size = camera_size * lerpf(1.0, _focus_zoom, _smooth_blend())
@@ -146,6 +156,30 @@ func camera_offset(zoom: float) -> Vector3:
 	var dist := tilt_shift_distance * zoom
 	return Basis(Vector3.UP, deg_to_rad(camera_yaw_degrees)) * Vector3(0.0, dist * sin(dep), dist * cos(dep))
 
+## 当前地形抬升角（测试 / 截图检查用）。
+func lift_degrees() -> float:
+	return _lift_deg
+
+## 地形挡住视线时抬高机位（远景和特写都适用）。正交机位本来就高，不需要。
+func _update_lift(goal: Vector3, delta: float) -> void:
+	if view_mode != ViewMode.TILT_SHIFT:
+		_lift_deg = 0.0
+		_lift_want = 0.0
+		return
+	_lift_check_t -= delta
+	if _lift_check_t <= 0.0:
+		_lift_check_t = 0.1   # 每秒查 10 次足够；视线没被挡时只采样十几个高度
+		var half_t := tan(deg_to_rad(tilt_shift_fov_deg) * 0.5)
+		var dep := -atan((1.0 + lens_shift) * half_t - 2.0 * half_t * player_screen_y)
+		var dist := tilt_shift_distance * lerpf(_zoom, _focus_zoom, _smooth_blend())
+		var ground := Vector3(goal.x, SnowField.height_at(goal.x, goal.z), goal.z)
+		_lift_want = BuildSession.view_lift(ground, dist, dep, Basis(Vector3.UP, deg_to_rad(camera_yaw_degrees)),
+			SnowField.height_at, lift_max_deg)
+	if absf(_lift_deg - _lift_want) > 0.01:
+		var rate := lift_rise_rate if _lift_want > _lift_deg else lift_fall_rate
+		_lift_deg = lerpf(_lift_deg, _lift_want, minf(rate * delta, 1.0))
+		rotation_degrees.x = tilt_shift_pitch_degrees - _lift_deg
+
 ## 把真实镜头参数推给天空 shader（Godot 天空背景不认 frustum_offset）。
 func _push_lens() -> void:
 	if camera_3d == null or not is_inside_tree():
@@ -186,6 +220,7 @@ func _process(delta: float) -> void:
 		get_tree().call_group("occlusion_fade", "set_focus_fade", lerpf(0.26, focus_fade_radius, k), lerpf(0.85, 1.0, k))
 	var goal: Vector3 = _focus_point if _focus_on else (target.global_position if is_instance_valid(target) else global_position)
 	global_position = global_position.lerp(goal, minf(follow_speed * delta, 1.0))
+	_update_lift(goal, delta)
 	# 基向量只随模式变；每帧推送开销很小，也顺带处理窗口缩放后的宽高比
 	_push_lens()
 	# 挡住"主体"的树镂空：平时主体是玩家，特写时是工地

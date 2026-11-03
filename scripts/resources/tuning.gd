@@ -209,6 +209,11 @@ extends Resource
 @export var tilt_distance_m: float = 23.0
 @export var tilt_zoom_min: float = 0.45
 @export var tilt_zoom_max: float = 2.6
+## [GAME] 地形挡住视线时机位最多抬高多少度（偏航、距离、玩家屏幕位置都不变；平时为 0 = 移轴不变）。
+@export var tilt_lift_max_deg: float = 30.0
+## [TUNE] 抬起 / 回落的快慢（每秒趋近比例）：要快点看见，回落慢点免得走路时镜头来回晃。
+@export var tilt_lift_rise_rate: float = 4.0
+@export var tilt_lift_fall_rate: float = 1.2
 
 # -----------------------------------------------------------------------------
 # 资源

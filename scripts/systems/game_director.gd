@@ -291,6 +291,7 @@ func _begin_night() -> void:
 	_night_input["night_snowfall"] = weather.atmosphere.snowfall
 	night = NightCurve.new(_night_input, tuning)
 	_bed_minutes = weather.current_time_minutes
+	SessionLog.log_event("bed", weather.clock_string(), {"warmth": int(night.warmth), "fire": night.has_fire_place, "dampness": snappedf(float(_night_input.get("dampness", 0.0)), 0.01)})
 	state = State.NIGHT
 	ui.show_vignette(null, "", 0.0)
 	ui.set_fade(0.0)
@@ -309,8 +310,8 @@ func _tick_night(delta: float) -> void:
 		var rate := night.duration / maxf(tuning.night_real_seconds, 1.0) * night_speed_scale
 		if Input.is_action_pressed("probe"):
 			rate *= tuning.night_fast_multiplier
-		var ev := night.advance_to(night.minute + rate * delta)
-		weather.current_time_minutes = _bed_minutes + night.minute
+		var ev := night.play(rate * delta)
+		weather.current_time_minutes = _bed_minutes + minf(night.playhead, night.duration)
 		weather.advance_minutes(0.0)
 		_sync_night_fire()
 		if ev != "":
@@ -335,6 +336,7 @@ func _sync_night_fire() -> void:
 
 func _show_night_event(ev: String) -> void:
 	headlamp.light_energy = 2.5   # 醒了：打开头灯
+	SessionLog.log_event("wake", weather.clock_string(), {"why": ev, "warmth": int(night.warmth)})
 	var labels: Array = []
 	for a in night.available_actions():
 		labels.append(NightText.action_label(a, night, tuning))
@@ -348,6 +350,7 @@ func _show_night_event(ev: String) -> void:
 func _night_act(a: String) -> void:
 	if night == null or not night.act(a):
 		return
+	SessionLog.log_event("night_act", weather.clock_string(), {"act": a, "warmth": int(night.warmth)})
 	if a == NightCurve.ACT_SLEEP:
 		ui.hide_night_event()
 		headlamp.light_energy = 0.0
@@ -402,7 +405,7 @@ func _show_report(night_res: Dictionary = {}) -> void:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
-	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "warmth": int(warmth.body_warmth)})
+	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "bed_warmth": int(warmth.body_warmth), "min_warmth": int(round(float(night_res.get("min_warmth", -1.0)))), "end_warmth": int(round(float(night_res.get("end_warmth", -1.0)))), "wakes": int(night_res.get("wakes", 0)), "cause": String(night_res.get("cause", ""))})
 	SessionLog.close()
 	var lvl := LevelState.level.index if LevelState.active() else 0
 	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day, LevelState.stage), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
@@ -1348,7 +1351,7 @@ func _unload_to_site() -> bool:
 	var parts: Array[String] = []
 	for k in moved:
 		parts.append("%d %s" % [int(moved[k]), names.get(k, k)])
-	ui.toast(Loc.t("Stacked at your site: %s") % ", ".join(parts), 3.0)
+	ui.toast(Loc.t("Added to your site pile: %s") % ", ".join(parts), 3.0)
 	return true
 
 ## 生火 / 添柴能用的柴：背包里的，加上就在工地旁边时堆里的。

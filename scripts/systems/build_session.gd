@@ -55,6 +55,28 @@ static func view_clear(cam: Vector3, aim: Vector3, height_fn: Callable) -> bool:
 			return false
 	return true
 
+## 机位要抬高多少度（绕目标抬升，距离不变）才能越过地形看到目标；0 = 不用抬。
+## 推近解决不了"脚下的坡比视线还陡"，抬高可以（2026-11-03 全部章节实测：最多 21° 就能全图可见）。
+## ground：目标脚下；base_rad：平时的俯角；yaw：相机偏航（基）；放不下时返回 max_deg。
+static func view_lift(ground: Vector3, dist: float, base_rad: float, yaw: Basis, height_fn: Callable,
+		max_deg: float, step_deg: float = 3.0) -> float:
+	var aim := ground + Vector3.UP * 0.9
+	var lift := 0.0
+	while lift < max_deg:
+		var a := base_rad + deg_to_rad(lift)
+		var cam := ground + yaw * Vector3(0.0, dist * sin(a), dist * cos(a))
+		if _ray_above_ground(cam, aim, height_fn):
+			return lift
+		lift += step_deg
+	return max_deg
+
+static func _ray_above_ground(cam: Vector3, aim: Vector3, height_fn: Callable) -> bool:
+	for i in range(0, 16):
+		var q := cam.lerp(aim, float(i) / 16.0)
+		if float(height_fn.call(q.x, q.z)) + 0.2 > q.y:
+			return false
+	return true
+
 ## 按顺序试的距离比例：先理想距离，再交替推近 / 拉远。
 static func zoom_candidates(want: float, min_ratio: float, max_ratio: float, steps: int = 3) -> PackedFloat32Array:
 	var out := PackedFloat32Array([want])

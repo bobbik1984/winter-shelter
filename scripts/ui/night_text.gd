@@ -124,7 +124,10 @@ static func conclusion(res: Dictionary, weakest: String) -> String:
 	var w := int(res["wakes"])
 	match String(res["outcome"]):
 		"SAFE": return Loc.t("You slept through and walked out at dawn. Lowest body warmth %d.") % lo
-		"COLD": return Loc.t("You made it to dawn, but it was a hard night: lowest body warmth %d, woke %d times. Biggest heat leak: %s.") % [lo, w, weakest]
+		"COLD":
+			if w == 1:
+				return Loc.t("You made it to dawn, but it was a hard night: lowest body warmth %d, woke once. Biggest heat leak: %s.") % [lo, weakest]
+			return Loc.t("You made it to dawn, but it was a hard night: lowest body warmth %d, woke %d times. Biggest heat leak: %s.") % [lo, w, weakest]
 	if String(res["cause"]) == "suffocated":
 		return Loc.t("The air ran out in a shelter with no vent. You woke with the warning and went back to sleep.")
 	return Loc.t("Your body warmth fell to %d — severe hypothermia. Biggest heat leak: %s.") % [lo, weakest]

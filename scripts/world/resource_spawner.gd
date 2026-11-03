@@ -42,11 +42,14 @@ func _ready() -> void:
 func set_focus(pos: Vector3) -> void:
 	if _mat_snag:
 		_mat_snag.set_shader_parameter("focus_pos", pos)
+		_mat_root.set_shader_parameter("focus_pos", pos)
 
 func set_focus_fade(radius: float, strength: float) -> void:
 	if _mat_snag:
 		_mat_snag.set_shader_parameter("occlusion_radius", radius)
 		_mat_snag.set_shader_parameter("occlusion_strength", strength)
+		_mat_root.set_shader_parameter("occlusion_radius", radius)
+		_mat_root.set_shader_parameter("occlusion_strength", strength)
 
 func _make_materials() -> void:
 	add_to_group("occlusion_fade")
@@ -55,6 +58,7 @@ func _make_materials() -> void:
 	_mat_snag.set_shader_parameter("rim_amount", 0.45)
 	_mat_log = _snow_mat(Color(0.20, 0.15, 0.10), 0.55)
 	_mat_root = _snow_mat(Color(0.24, 0.18, 0.13), 0.35)
+	_mat_root.set_shader_parameter("occlusion_fade", true)   # 翻倒的树根盘有 3 m 高，会挡住走到它后面的玩家
 	_mat_bough = _snow_mat(Color(0.07, 0.20, 0.12), 0.45)
 	_mat_birch = StandardMaterial3D.new()
 	_mat_birch.vertex_color_use_as_albedo = true

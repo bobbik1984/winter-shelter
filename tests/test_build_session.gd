@@ -44,4 +44,19 @@ func run() -> Dictionary:
 	_check(not BuildSession.view_clear(cam, aim, ridge), "视线穿过山脊：不行")
 	var zs := BuildSession.zoom_candidates(0.4, 0.6, 1.6)
 	_check(is_equal_approx(zs[0], 0.4) and zs[1] > 0.4 and zs[2] < 0.4, "先试理想距离，再交替拉远 / 推近")
+	# 2026-11-03 第四次评审：地形挡住远景。平地不抬；脚下的坡比视线还陡时推近没用，抬高才行。
+	var yaw := Basis(Vector3.UP, deg_to_rad(135.0))
+	var base := deg_to_rad(13.5)
+	var dir := yaw * Vector3(0, 0, 1)   # 相机一侧的水平方向
+	_check(is_zero_approx(BuildSession.view_lift(Vector3.ZERO, 23.0, base, yaw, flat, 30.0)), "平地不抬：移轴构图不变")
+	# 朝相机一侧上升的坡（坡度 ≈ 0.4，比 13.5° 的视线陡）
+	var slope := func(x: float, z: float) -> float: return maxf(0.0, Vector2(x, z).dot(Vector2(dir.x, dir.z))) * 0.4
+	var lift := BuildSession.view_lift(Vector3.ZERO, 23.0, base, yaw, slope, 30.0)
+	_check(lift > 0.0 and lift < 30.0, "挡视线的坡：抬高就能看见（%.0f°）" % lift)
+	var a := base + deg_to_rad(lift)
+	var cam2: Vector3 = yaw * Vector3(0.0, 23.0 * sin(a), 23.0 * cos(a))
+	_check(BuildSession._ray_above_ground(cam2, Vector3.UP * 0.9, slope), "抬高后的视线确实在地面之上")
+	_check(not BuildSession._ray_above_ground(yaw * Vector3(0.0, 23.0 * sin(base), 23.0 * cos(base)), Vector3.UP * 0.9, slope), "不抬确实被挡")
+	var wall := func(_x: float, _z: float) -> float: return 100.0
+	_check(is_equal_approx(BuildSession.view_lift(Vector3.ZERO, 23.0, base, yaw, wall, 30.0), 30.0), "再怎么抬也不够时停在上限")
 	return {"passed": _passed, "failures": _failures}

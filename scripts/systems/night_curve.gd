@@ -190,9 +190,23 @@ func _apply_loss(dt: float) -> void:
 func step() -> String:
 	return advance_to(INF)
 
-## 推进到 target 分钟（游戏播放用：每帧推进一点）；途中遇到事件就停下并返回事件 id。
+## 播放头：实时累积的分钟数，可以落在两步之间。显示（时钟、太阳）跟它走，才不会一跳 5 分钟。
+var playhead := 0.0
+
+## 游戏播放用：每帧传入这一帧该走的游戏分钟。模型按固定步长走，不足一步的部分留到下一帧，
+## 这样夜晚长度与帧率无关（2026-11-03 修：以前每帧至少走一整步，60 FPS 下 75 秒的夜晚只有约 4 秒）。
+func play(delta_minutes: float) -> String:
+	if waiting():
+		return ""
+	playhead = maxf(playhead, minute) + delta_minutes
+	var ev := advance_to(playhead)
+	if ev != "":
+		playhead = minute
+	return ev
+
+## 推进到 target 分钟，只走完整的步；途中遇到事件就停下并返回事件 id。
 func advance_to(target: float) -> String:
-	while not is_over() and minute < target:
+	while not is_over() and minute + t.night_step_min <= target:
 		var ev := _advance_one()
 		if ev != "":
 			_pending_event = ev
