@@ -41,6 +41,8 @@ func _ready() -> void:
 	gen.mix_rate = RATE
 	gen.buffer_length = 0.25
 	stream = gen
+	# 网页版默认"采样"播放，生成器流不支持，会没声音（控制台也会警告）
+	playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	volume_db = -6.0
 	play()
 	_pb = get_stream_playback() as AudioStreamGeneratorPlayback

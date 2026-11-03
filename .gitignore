@@ -26,3 +26,6 @@ Saved/
 Library/
 Temp/
 Obj/
+
+# Written by tools/deploy_web.sh
+build_info.txt

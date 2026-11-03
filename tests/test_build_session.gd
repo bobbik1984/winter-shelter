@@ -59,4 +59,30 @@ func run() -> Dictionary:
 	_check(not BuildSession._ray_above_ground(yaw * Vector3(0.0, 23.0 * sin(base), 23.0 * cos(base)), Vector3.UP * 0.9, slope), "不抬确实被挡")
 	var wall := func(_x: float, _z: float) -> float: return 100.0
 	_check(is_equal_approx(BuildSession.view_lift(Vector3.ZERO, 23.0, base, yaw, wall, 30.0), 30.0), "再怎么抬也不够时停在上限")
+	# 2026-11-03 触屏：文字改写、摇杆、按钮不出屏不重叠
+	_check(TouchMode.rewrite("Hold [E] to build") == "Hold [Use] to build", "键盘提示换成按钮名字")
+	_check(TouchMode.rewrite("[B] Step back") == "Step back", "按钮名字本身就在文字里时去掉键名")
+	_check(TouchMode.rewrite("Stand next to it and press [B].") == "Stand next to it and press [Build].", "句子里的 [B] 不能被删掉")
+	_check(TouchMode.rewrite("按住 [E] 施工   ·   [B] 退后", true) == "按住 [动作] 施工   ·   退后", "中文同样改写")
+	_check(TouchMode.rewrite("Map 1  ·  [N] new map") == "Map 1  ·  new map", "换图不是睡觉")
+	_check(TouchMode.rewrite("[N] rest when ready") == "[Sleep] rest when ready", "睡觉按钮")
+	_check(TouchMode.rewrite("no keys, 100%") == "no keys, 100%", "没有键名的文字不变")
+	_check(TouchMode.stick_vector(Vector2(2, 0), 86.0) == Vector2.ZERO, "摇杆死区")
+	_check(is_equal_approx(TouchMode.stick_vector(Vector2(0, -300), 86.0).length(), 1.0), "摇杆推到底 = 全速")
+	_check(TouchMode.stick_vector(Vector2(0, -86), 86.0).y < 0.0, "往上推 = 前进")
+	for cs in [360.0, 390.0, 430.0, 768.0]:
+		var fac := TouchMode.ui_factor(cs)
+		var canvas: Vector2 = Vector2(cs * 2.16, cs) * (1080.0 / cs) / fac
+		for ctx in [{"state": "briefing", "free_play": true}, {"state": "playing"}, {"state": "playing", "building": true}, {"state": "playing", "focused": true},
+				{"state": "paused", "web": true}, {"state": "night"}, {"state": "report", "has_next": true, "web": true}, {"state": "playing", "intel": true}]:
+			var bs := TouchMode.buttons_for(ctx)
+			var rs := TouchMode.layout(bs, canvas)
+			var ok := true
+			for i in rs.size():
+				if not Rect2(Vector2.ZERO, canvas).encloses(rs[i]) or rs[i].size.x < 60.0 or rs[i].size.y < 44.0:
+					ok = false
+				for j in range(i + 1, rs.size()):
+					if rs[i].intersects(rs[j]):
+						ok = false
+			_check(ok, "CSS 高 %d，%s：按钮都在屏幕内、够大、不重叠" % [int(cs), str(ctx)])
 	return {"passed": _passed, "failures": _failures}

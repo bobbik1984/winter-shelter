@@ -67,6 +67,10 @@ godot --headless --path . --import
 godot --headless --path . --check-only -s res://scripts/systems/night_simulator.gd
 # 跑全部逻辑测试（退出码非 0 即失败）
 godot --headless --path . -s res://tests/run_all.gd
+# 触屏：整局只用触摸事件走一遍（--touch 在桌面上打开触屏层）
+godot --headless --path . -s res://tools/touch_smoke_test.gd -- --touch --touch-css=390
+# 导出网页版并上传到 test.bobbik.org/winter/（要求工作区已提交；只写 vps1 的 /opt/test/winter/）
+tools/deploy_web.sh
 # 截图（headless 无法渲染，必须窗口模式）
 godot --path . -s res://tools/capture_snapshot.gd -- --out=snapshots/<name>.png
 ```

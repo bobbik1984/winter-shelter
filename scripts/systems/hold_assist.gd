@@ -9,6 +9,8 @@ static var enabled := false
 static var _loaded := false
 ## 当前锁存中的动作名（"probe" / "interact" / "fire"），空 = 无。
 static var latched := ""
+## 触屏的"生火"按钮按住时为 true（触屏按键不经过 Input 的键盘状态）。
+static var touch_fire := false
 
 static func load_setting() -> void:
 	if _loaded:
@@ -30,7 +32,7 @@ static func toggle() -> bool:
 ## 动作是否处于"按住"状态（真实按住，或辅助模式下已锁存）。
 static func held(action: String) -> bool:
 	if action == "fire":
-		if Input.is_key_pressed(KEY_F) or Input.is_joy_button_pressed(0, JOY_BUTTON_B):
+		if touch_fire or Input.is_key_pressed(KEY_F) or Input.is_joy_button_pressed(0, JOY_BUTTON_B):
 			return true
 	elif Input.is_action_pressed(action):
 		return true

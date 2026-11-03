@@ -63,6 +63,8 @@ var _night_input: Dictionary = {}
 var _bed_minutes := 0.0
 ## 测试工具用：夜晚播放倍速（smoke test 设大，避免等 75 秒）。
 static var night_speed_scale := 1.0
+## 手机网页版的触屏层（TouchMode.enabled 时才有）。
+var _touch: TouchControls
 var _fire_spot_ms := -100000
 var _last_minutes := 0.0
 var _markers: Array[Node3D] = []
@@ -99,6 +101,7 @@ func setup(p_main: Node3D, p_player: PlayerController, p_weather: WeatherControl
 	hud = p_hud
 
 func _ready() -> void:
+	TouchMode.detect()
 	Loc.ensure_cjk_font()
 	HoldAssist.load_setting()
 	HoldAssist.latched = ""
@@ -194,6 +197,10 @@ func _ready() -> void:
 
 	_apply_static_labels()
 	GameInput.ensure_joypad()
+	if TouchMode.enabled:
+		_touch = TouchControls.new()
+		_touch.director = self
+		add_child(_touch)
 	warmth.auto_update = false
 	warmth.has_extra_clothing = bool(gear["layer"])
 	warmth.set_body_warmth(tuning.warmth_max * 0.92)
@@ -306,6 +313,8 @@ func _begin_night() -> void:
 func _tick_night(delta: float) -> void:
 	if night == null:
 		return
+	if _touch != null and _touch.portrait:
+		return   # 手机竖着时夜晚也停住，转回来再继续
 	if not night.waiting():
 		var rate := night.duration / maxf(tuning.night_real_seconds, 1.0) * night_speed_scale
 		if Input.is_action_pressed("probe"):

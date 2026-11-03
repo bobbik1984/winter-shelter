@@ -1,0 +1,27 @@
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<style>
+html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body { position: fixed; inset: 0; }
+</style>
+<script>
+// 第一次点屏幕：能全屏就全屏并锁横屏（安卓）。iPhone 的 Safari 不支持，靠游戏里的"请横过来"提示。
+(function () {
+  function lock() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) { return; }
+    try {
+      var p = req.call(el);
+      var after = function () { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(function () {}); } };
+      if (p && p.then) { p.then(after).catch(function () {}); } else { after(); }
+    } catch (e) {}
+  }
+  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+    window.addEventListener('touchend', lock, { once: true, passive: true });
+  }
+  // 长按按钮时不要弹出浏览器菜单
+  window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+})();
+</script>

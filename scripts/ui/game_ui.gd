@@ -52,6 +52,8 @@ var _night_clock: Label
 var _night_graph: NightGraph
 var _night_event: PanelContainer
 var _night_event_box: VBoxContainer
+## 触屏按钮占的区域（TouchControls 写入），世界标签不能压上去。
+var touch_rects: Array[Rect2] = []
 
 func _ready() -> void:
 	layer = 5
@@ -63,8 +65,8 @@ func _ready() -> void:
 	# 交互提示（底部居中）
 	_prompt_card = _card(AMBER)
 	_prompt_card.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_prompt_card.position = Vector2(-220, -150)
-	_prompt_card.custom_minimum_size = Vector2(440, 0)
+	_prompt_card.position = Vector2(-190, -92) if TouchMode.enabled else Vector2(-220, -150)
+	_prompt_card.custom_minimum_size = Vector2(380 if TouchMode.enabled else 440, 0)
 	root.add_child(_prompt_card)
 	var pv := VBoxContainer.new()
 	_prompt_card.add_child(pv)
@@ -86,12 +88,18 @@ func _ready() -> void:
 
 	# 背包托盘（左下，操作说明上方）
 	var tray_card := _card(Color(0.62, 0.78, 0.95))
-	tray_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	tray_card.position = Vector2(32, -140)
+	if TouchMode.enabled:
+		tray_card.position = Vector2(10, 134)   # 左下留给摇杆：放到体温卡下面
+	else:
+		tray_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		tray_card.position = Vector2(32, -140)
 	root.add_child(tray_card)
 	var tv := VBoxContainer.new()
 	tray_card.add_child(tv)
 	_objective = _label("", 14, AMBER)
+	if TouchMode.enabled:
+		_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_objective.custom_minimum_size = Vector2(380, 0)
 	tv.add_child(_objective)
 	_tray = _label("", 13, CREAM)
 	tv.add_child(_tray)
@@ -99,8 +107,8 @@ func _ready() -> void:
 	# 消息（顶部居中）
 	_toast = _label("", 17, CREAM)
 	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_toast.position = Vector2(-330, 250)
-	_toast.custom_minimum_size = Vector2(660, 0)
+	_toast.position = Vector2(-160, 76) if TouchMode.enabled else Vector2(-330, 250)
+	_toast.custom_minimum_size = Vector2(520 if TouchMode.enabled else 660, 0)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_toast.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.06, 0.95))
@@ -110,8 +118,8 @@ func _ready() -> void:
 	# 建造面板
 	_build_card = _card(Color(0.45, 1.0, 0.55))
 	_build_card.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_build_card.position = Vector2(-330, -205)
-	_build_card.custom_minimum_size = Vector2(660, 0)
+	_build_card.position = Vector2(-300, -170) if TouchMode.enabled else Vector2(-330, -205)
+	_build_card.custom_minimum_size = Vector2(520 if TouchMode.enabled else 660, 0)
 	root.add_child(_build_card)
 	var bv := VBoxContainer.new()
 	_build_card.add_child(bv)
@@ -124,6 +132,7 @@ func _ready() -> void:
 	bv.add_child(_build_reason)
 	bv.add_child(_build_info)
 	_build_keys = _label(Loc.t("[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel"), 12, MUTED)
+	_build_keys.visible = not TouchMode.enabled
 	bv.add_child(_build_keys)
 	_build_card.visible = false
 
@@ -211,19 +220,21 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if TouchMode.enabled:
+		center.offset_bottom = -76.0   # 底部是按钮
 	shade.add_child(center)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 26)
 	center.add_child(outer)
 	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 56)
+	cols.add_theme_constant_override("separation", 28 if TouchMode.enabled else 56)
 	outer.add_child(cols)
 	# 左栏：标题 + 章 / 阶选择
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(520, 0)
+	left.custom_minimum_size = Vector2(440 if TouchMode.enabled else 520, 0)
 	left.add_theme_constant_override("separation", 12)
 	cols.add_child(left)
-	left.add_child(_label(Loc.t("SNOW SHELTER"), 52, CREAM))
+	left.add_child(_label(Loc.t("SNOW SHELTER"), 38 if TouchMode.enabled else 52, CREAM))
 	left.add_child(_label(Loc.t("C H A L L E N G E"), 18, CREAM))
 	left.add_child(_label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 14, AMBER))
 	left.add_child(HSeparator.new())
@@ -241,7 +252,7 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 			left.add_child(lh)
 	# 右栏：这一阶是什么、条件、开始
 	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(660, 0)
+	right.custom_minimum_size = Vector2(540 if TouchMode.enabled else 660, 0)
 	right.add_theme_constant_override("separation", 14)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
 	cols.add_child(right)
@@ -265,8 +276,9 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 	var go := _label(Loc.t("ENTER  Begin          [I]  Intel: gear, shelters, map, controls"), 20, AMBER)
 	go.name = "BriefingGo"
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	outer.add_child(go)
-	if level.is_empty() or bool(level.get("full_day_option", false)):
+	if not TouchMode.enabled:
+		outer.add_child(go)
+	if not TouchMode.enabled and (level.is_empty() or bool(level.get("full_day_option", false))):
 		var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
 		alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		outer.add_child(alt)
@@ -325,7 +337,12 @@ func toggle_intel(tab_key: String = "") -> void:
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shade.add_child(center)
 		var card := _card(Color(0.62, 0.78, 0.95))
-		card.custom_minimum_size = Vector2(1000, 600)
+		card.custom_minimum_size = Vector2(940, 400) if TouchMode.enabled else Vector2(1000, 600)
+		if TouchMode.enabled:
+			center.offset_bottom = -76.0
+			center.mouse_filter = Control.MOUSE_FILTER_PASS
+			shade.mouse_filter = Control.MOUSE_FILTER_PASS
+			card.mouse_filter = Control.MOUSE_FILTER_PASS
 		center.add_child(card)
 		_intel = shade
 		var v := VBoxContainer.new()
@@ -339,8 +356,19 @@ func toggle_intel(tab_key: String = "") -> void:
 		_intel_body.name = "IntelBody"
 		_intel_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_intel_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		v.add_child(_intel_body)
-		v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close"), 13, AMBER))
+		if TouchMode.enabled:
+			# 手机上一页放不下：正文可以用手指拖动
+			var sc := ScrollContainer.new()
+			sc.custom_minimum_size = Vector2(900, 330)
+			sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			_intel_body.custom_minimum_size = Vector2(880, 0)
+			_intel_body.mouse_filter = Control.MOUSE_FILTER_PASS
+			_intel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sc.add_child(_intel_body)
+			v.add_child(sc)
+		else:
+			v.add_child(_intel_body)
+			v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close"), 13, AMBER))
 		get_child(0).add_child(_intel)
 	_intel.visible = true
 	_render_intel()
@@ -387,7 +415,7 @@ func set_shelter_card(title: String, line: String, done: bool) -> void:
 	if _shelter_card == null:
 		_shelter_card = _card(Color(1.0, 0.7, 0.35))
 		_shelter_card.name = "ShelterCard"
-		_shelter_card.position = Vector2(32, 178)
+		_shelter_card.position = Vector2(10, 222) if TouchMode.enabled else Vector2(32, 178)
 		_shelter_card.custom_minimum_size = Vector2(398, 0)
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 2)
@@ -416,8 +444,8 @@ func show_build_focus(title: String, needs: String, time_line: String, keys: Str
 		_focus_panel = _card(AMBER)
 		_focus_panel.name = "BuildFocusPanel"
 		_focus_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-		_focus_panel.position = Vector2(-330, -210)
-		_focus_panel.custom_minimum_size = Vector2(660, 0)
+		_focus_panel.position = Vector2(-400, -150) if TouchMode.enabled else Vector2(-330, -210)
+		_focus_panel.custom_minimum_size = Vector2(560 if TouchMode.enabled else 660, 0)
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 4)
 		_focus_panel.add_child(v)
@@ -428,6 +456,7 @@ func show_build_focus(title: String, needs: String, time_line: String, keys: Str
 		_focus_time = _label("", 13, MUTED)
 		_focus_keys = _label("", 15, AMBER)
 		_focus_keys.name = "BuildFocusKeys"
+		_focus_keys.visible = not TouchMode.enabled
 		_focus_progress = ProgressBar.new()
 		_focus_progress.custom_minimum_size = Vector2(0, 6)
 		_focus_progress.show_percentage = false
@@ -459,7 +488,26 @@ func occupied_rects() -> Array[Rect2]:
 			out.append((c as Control).get_global_rect())
 	if _toast.text != "" and _toast.modulate.a > 0.05:
 		out.append(_toast.get_global_rect())
+	out.append_array(touch_rects)
 	return out
+
+func credits_open() -> bool:
+	return _credits != null and _credits.is_visible_in_tree()
+
+## 触屏：内容比屏幕高时放进可以用手指拖动的滚动框，底部给按钮留位置。
+func _scroll_wrap(content: Control, parent: Control, bottom: float = 84.0) -> void:
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.offset_left = 12.0
+	scroll.offset_right = -12.0
+	scroll.offset_top = 10.0
+	scroll.offset_bottom = -bottom
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.add_child(content)
+	scroll.add_child(center)
+	parent.add_child(scroll)
 
 ## 切换语言后重建缓存的面板（简报 / 手册 / 暂停 / 建造面板操作行）。
 func relocalize() -> void:
@@ -494,6 +542,7 @@ func toggle_credits() -> void:
 				Loc.t("Snow Shelter Challenge — design and development by the Winter Shelter project."),
 				Loc.t("Built with the Godot Engine (godotengine.org). Character modelled procedurally in Blender."),
 				Loc.t("Chinese text fallback font: Droid Sans Fallback © Google, Apache License 2.0 (assets/fonts/DroidSansFallback-LICENSE.txt)."),
+				Loc.t("DejaVu Sans symbols font © Bitstream and DejaVu authors, free license (assets/fonts/DejaVuSans-LICENSE.txt)."),
 				Loc.t("All other art, sound and shaders are generated procedurally by this project."),
 				"", "Godot Engine — MIT License:"]:
 			var l := _label(line, 13, MUTED)
@@ -522,10 +571,16 @@ func show_pause(on: bool) -> void:
 		var t := _label(Loc.t("PAUSED"), 40, CREAM)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t)
-		for line in [Loc.t("[Esc] resume      [R] restart      [Q] quit      [C] credits"),
+		var keys_lines := [] if TouchMode.enabled else [Loc.t("[Esc] resume      [R] restart      [Q] quit      [C] credits"),
 				"", Loc.t("[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink"),
 				Loc.t("[B] build mode — [Tab] type, [R] rotate entrance, [E] place"),
-				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics") + "    [M] " + ("声音" if Loc.is_zh() else "sound") + "    [F11] " + ("全屏" if Loc.is_zh() else "fullscreen")]:
+				Loc.t("[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics") + "    [M] " + ("声音" if Loc.is_zh() else "sound") + "    [F11] " + ("全屏" if Loc.is_zh() else "fullscreen")]
+		if TouchMode.enabled:
+			var info := _label(BuildInfo.line(), 14, MUTED)
+			info.name = "BuildInfo"
+			info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(info)
+		for line in keys_lines:
 			var l := _label(line, 15 if line.begins_with("[Esc]") else 13, AMBER if line.begins_with("[Esc]") else MUTED)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			v.add_child(l)
@@ -549,7 +604,7 @@ func show_vignette(tex: Texture2D, caption: String, alpha: float) -> void:
 		v.add_theme_constant_override("separation", 14)
 		center.add_child(v)
 		_vignette_tex = TextureRect.new()
-		_vignette_tex.custom_minimum_size = Vector2(1040, 550)
+		_vignette_tex.custom_minimum_size = Vector2(700, 340) if TouchMode.enabled else Vector2(1040, 550)
 		_vignette_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		_vignette_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		v.add_child(_vignette_tex)
@@ -579,13 +634,16 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	var shade := ColorRect.new()
 	shade.color = Color(0.015, 0.025, 0.045, 0.94)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_child(center)
 	var v := VBoxContainer.new()
 	v.custom_minimum_size = Vector2(880, 0)
 	v.add_theme_constant_override("separation", 8)
-	center.add_child(v)
+	if TouchMode.enabled:
+		_scroll_wrap(v, shade)
+	else:
+		var center := CenterContainer.new()
+		center.set_anchors_preset(Control.PRESET_FULL_RECT)
+		shade.add_child(center)
+		center.add_child(v)
 	var outcome := String(data["outcome"])
 	var oc := {"SAFE": Color(0.55, 0.95, 0.6), "COLD": Color(1.0, 0.78, 0.4)}.get(outcome, Color(1.0, 0.45, 0.38)) as Color
 	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 14, MUTED))
@@ -646,7 +704,7 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	var lesson := _label(Loc.t("What to remember: ") + String(data["lesson"]), 14, AMBER)
 	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(lesson)
-	var foot := _label(Loc.t("Survival starts with understanding.          [R] try again"), 13, MUTED)
+	var foot := _label(Loc.t("Survival starts with understanding.          [R] try again") if not TouchMode.enabled else "", 13, MUTED)
 	v.add_child(foot)
 	_report_box = v
 	_report = shade
@@ -680,8 +738,8 @@ func show_night_hud(on: bool) -> void:
 		_night_graph = NightGraph.new()
 		_night_graph.custom_minimum_size = Vector2(440, 70)
 		v.add_child(_night_graph)
-		var hint := _label(Loc.t("Hold [Space] to fast-forward"), 12, MUTED)
-		v.add_child(hint)
+		if not TouchMode.enabled:
+			v.add_child(_label(Loc.t("Hold [Space] to fast-forward"), 12, MUTED))
 		get_child(0).add_child(_night_hud)
 	if _night_hud:
 		_night_hud.visible = on
@@ -698,7 +756,7 @@ func show_night_event(title: String, body: String, actions: Array) -> void:
 	_night_event = _card(Color(1.0, 0.62, 0.3))
 	_night_event.name = "NightEvent"
 	_night_event.set_anchors_preset(Control.PRESET_CENTER)
-	_night_event.position = Vector2(-260, -90)
+	_night_event.position = Vector2(-260, -130) if TouchMode.enabled else Vector2(-260, -90)
 	_night_event.custom_minimum_size = Vector2(520, 0)
 	_night_event_box = VBoxContainer.new()
 	_night_event_box.add_theme_constant_override("separation", 6)
@@ -709,9 +767,26 @@ func show_night_event(title: String, body: String, actions: Array) -> void:
 	_night_event_box.add_child(b)
 	_night_event_box.add_child(HSeparator.new())
 	for i in range(actions.size()):
-		var l := _label("[%d]  %s" % [i + 1, String(actions[i])], 15, CREAM)
+		var l := _label(("%s" if TouchMode.enabled else "[%d]  %s".replace("%d", str(i + 1))) % String(actions[i]), 15, CREAM)
 		l.name = "NightAction%d" % (i + 1)
-		_night_event_box.add_child(l)
+		if TouchMode.enabled:
+			# 触屏：整行是一个能点的按钮
+			var row := PanelContainer.new()
+			var rs := StyleBoxFlat.new()
+			rs.bg_color = Color(AMBER, 0.2)
+			rs.border_color = Color(AMBER, 0.8)
+			rs.set_border_width_all(2)
+			rs.set_corner_radius_all(8)
+			rs.set_content_margin_all(14)
+			row.add_theme_stylebox_override("panel", rs)
+			row.custom_minimum_size = Vector2(0, 56)
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.set_meta("touch_key", KEY_1 + i)
+			row.add_to_group("touch_tap")
+			row.add_child(l)
+			_night_event_box.add_child(row)
+		else:
+			_night_event_box.add_child(l)
 	get_child(0).add_child(_night_event)
 
 func hide_night_event() -> void:

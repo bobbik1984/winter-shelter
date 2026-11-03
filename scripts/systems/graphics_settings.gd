@@ -26,15 +26,49 @@ var _ready_frames := 0
 var _ready_to_apply := false
 ## 界面缩放（可读性）：[-] / [=] 切换，保存。
 const UI_SCALES := [0.9, 1.0, 1.15, 1.3]
+## [TUNE] 网页版每档的 3D 渲染高度（像素）。
+const COMPAT_3D_HEIGHT := [480, 720, 1080]
 var ui_scale_idx: int = 1
 
 func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
-		level = clampi(int(cfg.get_value("graphics", "level", 1)), 0, 2)
+		level = clampi(int(cfg.get_value("graphics", "level", _default_level())), 0, 2)
 		AudioServer.set_bus_mute(0, bool(cfg.get_value("audio", "muted", false)))
 		ui_scale_idx = clampi(int(cfg.get_value("ui", "scale_idx", 1)), 0, UI_SCALES.size() - 1)
+	else:
+		level = _default_level()
 	set_process(true)
+
+## 手机默认低档；帧率还不够时 TouchControls 自动降档。
+func _default_level() -> int:
+	return 0 if TouchMode.enabled else 1
+
+## 把"用户选的字号 × 手机放大倍数"应用到窗口；窗口转向时也调一次。
+func refresh_ui_scale() -> void:
+	if _ready_to_apply:
+		get_tree().root.content_scale_factor = _ui_factor()
+
+func _ui_factor() -> float:
+	var f: float = UI_SCALES[ui_scale_idx]
+	if TouchMode.enabled:
+		var w := get_window().size
+		var h := float(mini(w.x, w.y))
+		if OS.has_feature("web"):
+			var css = JavaScriptBridge.eval("Math.min(window.innerWidth, window.innerHeight)", true)
+			if css != null and float(css) > 0.0:
+				h = float(css)
+		if TouchMode.css_override > 0.0:
+			h = TouchMode.css_override
+		f *= TouchMode.ui_factor(h)
+	return f
+
+## 只降不存：这台设备这次跑不动。
+func step_down() -> void:
+	if _ready_to_apply and level > 0:
+		level -= 1
+		apply()
+		cycled.emit(level)
 
 ## [M] 静音（保存）；[F11] 全屏（不保存，跟随窗口）。
 func toggle_mute() -> bool:
@@ -50,7 +84,7 @@ func step_ui_scale(delta_idx: int) -> float:
 	if not _ready_to_apply:
 		return UI_SCALES[ui_scale_idx]
 	ui_scale_idx = clampi(ui_scale_idx + delta_idx, 0, UI_SCALES.size() - 1)
-	get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
+	get_tree().root.content_scale_factor = _ui_factor()
 	var cfg := ConfigFile.new()
 	cfg.load(PATH)
 	cfg.set_value("ui", "scale_idx", ui_scale_idx)
@@ -66,7 +100,7 @@ func _process(_delta: float) -> void:
 	if _ready_frames >= READY_FRAMES:
 		_ready_to_apply = true
 		set_process(false)
-		get_tree().root.content_scale_factor = UI_SCALES[ui_scale_idx]
+		get_tree().root.content_scale_factor = _ui_factor()
 		apply()
 
 func cycle() -> void:
@@ -82,8 +116,13 @@ func cycle() -> void:
 func apply() -> void:
 	var p: Array = PRESETS[level]
 	var vp := get_viewport()
-	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
-	vp.scaling_3d_scale = float(p[0])
+	if BuildInfo.is_compat():
+		# 网页版的渲染器没有 FSR；手机窗口像素很高，按固定的 3D 高度算比例，不按窗口比例
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		vp.scaling_3d_scale = clampf(float(COMPAT_3D_HEIGHT[level]) / maxf(float(get_window().size.y), 1.0), 0.25, 1.0)
+	else:
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
+		vp.scaling_3d_scale = float(p[0])
 	# 低档关闭 FXAA（画面已经过 FSR 放大；约 +2 FPS）
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if level == 0 else Viewport.SCREEN_SPACE_AA_FXAA
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(p[6]) as RenderingServer.ShadowQuality)

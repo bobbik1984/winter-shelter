@@ -136,6 +136,12 @@ func set_focus(world: Vector3, zoom: float) -> void:
 	_focus_point = world
 	_focus_zoom = zoom
 
+## 手机默认距离（玩家没有滚轮可以自己调）。
+func set_default_zoom(z: float) -> void:
+	_zoom = clampf(z, zoom_min, zoom_max)
+	if camera_3d:
+		_apply_view_mode()
+
 func clear_focus() -> void:
 	_focus_on = false
 

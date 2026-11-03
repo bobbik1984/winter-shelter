@@ -16,6 +16,8 @@ static func is_zh() -> bool:
 	return lang == "zh"
 
 const CJK_FONT := "res://assets/fonts/DroidSansFallbackFull.ttf"
+## 箭头、▣▼▸✓ 等符号：桌面靠系统字体，网页和手机没有系统字体后备，要随包带一个。
+const SYMBOL_FONT := "res://assets/fonts/DejaVuSans.ttf"
 static var _font_ready := false
 
 ## 给默认字体挂一个随包附带的 CJK 后备字体（Apache-2.0），没装中文字体的机器也能显示中文。
@@ -25,11 +27,13 @@ static func ensure_cjk_font() -> void:
 		return
 	_font_ready = true
 	var base := ThemeDB.fallback_font
-	var cjk := load(CJK_FONT) as Font
-	if base == null or cjk == null:
+	if base == null:
 		return
 	var fb := base.fallbacks
-	fb.append(cjk)
+	for path in [SYMBOL_FONT, CJK_FONT]:
+		var f := load(path) as Font
+		if f:
+			fb.append(f)
 	base.fallbacks = fb
 
 static func set_lang(l: String) -> void:
@@ -40,11 +44,46 @@ static func set_lang(l: String) -> void:
 	cfg.save(PATH)
 
 static func t(s: String) -> String:
-	if not is_zh():
-		return s
-	return ZH.get(s, s)
+	var out: String = ZH.get(s, s) if is_zh() else s
+	return TouchMode.rewrite(out, lang == "zh") if TouchMode.enabled else out
 
 const ZH := {
+	# —— 触屏按钮 ——
+	"Close": "关闭",
+	"Chapter": "章",
+	"Stage": "阶",
+	"New map": "换图",
+	"Intel": "情报",
+	"Full day": "全天",
+	"Begin": "开始",
+	"Build": "建造",
+	"Step back": "退后",
+	"Other spot": "换地方",
+	"Place": "放置",
+	"Type": "类型",
+	"Rotate": "旋转",
+	"Cancel": "取消",
+	"Roof": "屋顶",
+	"Vents": "通风",
+	"Use": "动作",
+	"Probe": "探测",
+	"Fire": "生火",
+	"Sleep": "睡觉",
+	"Menu": "菜单",
+	"Resume": "继续",
+	"Restart": "重开",
+	"Graphics": "画质",
+	"Sound": "声音",
+	"Text": "字号",
+	"Credits": "致谢",
+	"Save log": "保存记录",
+	"Speed up": "加速",
+	"Next stage": "下一阶",
+	"Try again": "再试一次",
+	"Please rotate your phone to landscape": "请把手机横过来",
+	"No play log yet.": "还没有试玩记录。",
+	"Play log saved.": "试玩记录已保存。",
+	"DejaVu Sans symbols font © Bitstream and DejaVu authors, free license (assets/fonts/DejaVuSans-LICENSE.txt).": "符号字体 DejaVu Sans © Bitstream 与 DejaVu 作者，自由许可（assets/fonts/DejaVuSans-LICENSE.txt）。",
 	# —— 探针分类 ——
 	"Shallow snow": "浅雪",
 	"~ %.1f m · lean-to only": "约 %.1f m · 只能搭倒棚",

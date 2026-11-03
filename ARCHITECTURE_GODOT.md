@@ -7,6 +7,10 @@
 
 ---
 
+## 手机网页版（2026-11-03）
+
+`TouchMode`（`scripts/systems/touch_mode.gd`，纯逻辑）判定触屏、改写键盘提示、按情境给按钮表和布局；`TouchControls`（`scripts/ui/touch_controls.gd`）跟踪手指、绘制、把动作和按键交给现有输入（`Input.action_press`、`Viewport.push_input`），不新增玩法入口。发布：`tools/deploy_web.sh`。测试：`tools/touch_smoke_test.gd`（CI）、`tools/web_phone_test.js`（真实浏览器）。
+
 ## 1. 工程文件目录规范 (Project Structure)
 
 ```text
@@ -54,6 +58,10 @@ Main (Node3D) [main.gd]
 - 其余视觉推送用节点组：`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）。
 
 ---
+
+## 手机网页版（2026-11-03）
+
+`TouchMode`（纯逻辑：是否启用、提示改写、按情境的按钮表、布局）+ `TouchControls`（手指、绘制、竖屏）。按钮只发现有的动作和按键，和手柄 `GameInput` 同一思路，玩法规则不知道输入来自触屏。网页版固定用兼容渲染器，3D 按固定高度缩放（`GraphicsSettings.COMPAT_3D_HEIGHT`）。`web/phone_head.html` 由 `tools/deploy_web.sh` 注入页面；游戏数据按内容哈希命名，避免手机缓存旧版。
 
 ## 3. 核心子系统技术设计 (System Specifications)
 

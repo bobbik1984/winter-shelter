@@ -28,6 +28,18 @@ static func log_event(ev: String, clock: String, data: Dictionary = {}) -> void:
 	_file.store_line(JSON.stringify(row))
 	_file.flush()
 
+## 最近几局的记录拼成一段文字（手机上用"保存记录"导出）。
+static func export_recent(count: int = 20) -> String:
+	var names := DirAccess.get_files_at("user://sessions")
+	if names.is_empty():
+		return ""
+	var sorted := Array(names)
+	sorted.sort()
+	var out := ""
+	for n in sorted.slice(maxi(0, sorted.size() - count)):
+		out += FileAccess.get_file_as_string("user://sessions/" + String(n))
+	return out
+
 static func close() -> void:
 	if _file:
 		_file.close()

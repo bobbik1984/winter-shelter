@@ -27,6 +27,9 @@ step "logic tests"
 if "$GODOT" --headless --path . -s res://tests/run_all.gd 2>&1 | tee /tmp/ws_ci_tests.log | grep -E "^\[(PASS|FAIL)\]|RESULT"; then :; fi
 grep -q "RESULT: PASS" /tmp/ws_ci_tests.log || fail=1
 
+step "touch smoke test (a whole game using touch events only)"
+"$GODOT" --headless --path . -s res://tools/touch_smoke_test.gd -- --touch --touch-css=390 2>&1 | grep -E "^(PASS|FAIL)|^RESULT" | tee /tmp/ws_ci_touch.log | grep -E "FAIL|RESULT"
+grep -q "RESULT PASS" /tmp/ws_ci_touch.log || fail=1
 step "input smoke test"
 win --path . -s res://tools/input_smoke_test.gd -- --weather=clear 2>&1 | grep -E "^(PASS|FAIL)|^RESULT" | tee /tmp/ws_ci_smoke.log | grep -E "FAIL|RESULT"
 grep -q "RESULT PASS" /tmp/ws_ci_smoke.log || fail=1
