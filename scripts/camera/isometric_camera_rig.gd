@@ -26,7 +26,7 @@ enum ViewMode { ORTHO, TILT_SHIFT }
 ## [TUNE] 光轴俯仰（度）：接近 0 = 竖线不汇聚。
 @export var tilt_shift_pitch_degrees: float = 0.0
 ## [TUNE] 镜头下移量（占半高比例，负 = 向下看地面）。
-@export var lens_shift: float = -0.38
+@export var lens_shift: float = -0.85
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var player_screen_y: float = 0.58
 ## [TUNE] 默认相机到玩家的距离（m）；滚轮按比例推拉。

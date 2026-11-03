@@ -163,6 +163,73 @@ func _run() -> void:
 	check(not d.session.focused() and d.site != null, "Step back keeps the site")
 	await wait(0.5)
 	await shot("07_far")
+	# 缺垫层：标出最近一处，并说明是什么、在哪；够了就撤掉
+	await wait(0.2)
+	check(d._bedding_short() > 0 and d.callouts.has_callout("bedding"), "short of bedding: nearest one is labelled")
+	check(d._bedding_hint().contains("spruce boughs"), "the hint says what bedding is")
+	var near_it = d._nearest_bedding()
+	var near_d: float = near_it.global_position.distance_to(p.global_position)
+	var closer := 0
+	for n in get_nodes_in_group("interactables"):
+		if n.kind in ["grass", "bough"] and n.uses_left != 0 and n.global_position.distance_to(p.global_position) < near_d:
+			closer += 1
+	check(closer == 0, "label points at the nearest bedding")
+	check(not Loc.t("Hold [E]  ").contains("[E]"), "the Use prompt has no keyboard letter on a phone")
+	# 走近：先有名字和采法，走进圈里后提示贴在东西旁边
+	var ng: Vector3 = near_it.global_position
+	p.global_position = Vector3(ng.x + 6.0, TerrainHeight.height_at(ng.x + 6.0, ng.z) + 0.3, ng.z)
+	await wait(0.2)
+	check(d.callouts.has_callout("near_item"), "walking near a collectable names it")
+	p.global_position = Vector3(ng.x + 1.5, TerrainHeight.height_at(ng.x + 1.5, ng.z) + 0.3, ng.z)
+	await wait(0.2)
+	if d.interaction.current != null:
+		var item_px: Vector2 = root.get_camera_3d().unproject_position(d.interaction.current.global_position)
+		var card: Rect2 = d.ui._prompt_card.get_global_rect()
+		check(d.ui._prompt_card.visible and card.grow(220.0).has_point(item_px), "the prompt sits next to the thing it's about")
+	# 火：放在人没挡住的地方，卡片说明怎么添柴，火有可见的光晕
+	# 找一块附近没有别的可交互物的地方（否则离得更近的东西会被选中，这是正常规则）
+	var clear := Vector3.INF
+	for x in range(-36, 37, 3):
+		for z in range(-36, 37, 3):
+			var q := Vector3(x, TerrainHeight.height_at(x, z), z)
+			var free_spot := true
+			for n in get_nodes_in_group("interactables"):
+				if n.global_position.distance_to(q) < 8.0:
+					free_spot = false
+					break
+			if free_spot:
+				clear = q
+				break
+		if clear != Vector3.INF:
+			break
+	check(clear != Vector3.INF, "found a clear spot for the fire test")
+	p.global_position = clear + Vector3.UP * 0.3
+	for i in 3: await physics_frame
+	var cf := Campfire.new()
+	cf.position = p.global_position + Vector3(3.0, 0, 0)   # 3 m：在取暖圈里，比旧的添柴距离 2.6 m 远
+	cf.warm_radius = d.tuning.fire_warm_radius_m
+	d.main.add_child(cf)
+	cf.ignite(50.0)
+	d._attach_fire_interactable(cf)
+	d.inventory.add("wood", 2)
+	await wait(0.2)
+	check(cf._glow.visible and d.callouts.has_callout("fire_status"), "a lit fire glows and has a status card")
+	check(cf._circle.visible and is_equal_approx(cf.warm_radius, d.tuning.fire_warm_radius_m), "the circle on the snow is the real warmth range")
+	check(d.interaction.current != null and d.interaction.current.kind == "fire", "everything at the fire works from inside the circle")
+	check(not d.interaction._ring.visible, "no small selection ring around the fire")
+	var fire_label := ""
+	for b in d._touch._buttons:
+		if b["id"] == "fire": fire_label = b["label"]
+	check(fire_label == Loc.t("Add log"), "Fire button becomes Add log")
+	await tap("fire")
+	await wait(0.2)
+	check(cf.fuel_minutes > 50.0, "Fire button adds a log (%.0f min)" % cf.fuel_minutes)
+	cf.queue_free()
+	await wait(0.1)
+	check(d.interaction.current == null or is_instance_valid(d.interaction.current), "a freed target is dropped cleanly")
+	d.inventory.add("bedding", d._bedding_short())
+	await wait(0.2)
+	check(d._bedding_short() <= 0 and not d.callouts.has_callout("bedding"), "enough bedding: label goes away")
 	# 夜：菜单、睡觉、醒来、加速
 	await tap("menu")
 	check(d.state == d.State.PAUSED, "Menu pauses")

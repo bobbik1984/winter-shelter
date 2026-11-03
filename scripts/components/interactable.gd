@@ -11,6 +11,8 @@ extends Node3D
 @export var hold_seconds: float = 1.35
 ## 剩余可用次数，-1 = 无限。
 @export var uses_left: int = -1
+## 够得着的距离（m）；<= 0 用 Tuning.interact_radius_m。火用它的取暖半径（站进光圈什么都能做）。
+@export var reach_m: float = -1.0
 ## 高亮圈半径（m）。
 @export var ring_radius: float = 0.9
 

@@ -202,7 +202,7 @@ extends Resource
 ## [TUNE] 光轴俯仰（0 = 竖线不汇聚）。
 @export var tilt_pitch_deg: float = 0.0
 ## [TUNE] 镜头下移量（占半高，负 = 看地面）。
-@export var tilt_lens_shift: float = -0.38
+@export var tilt_lens_shift: float = -0.85
 ## [TUNE] 玩家在画面中的高度（自顶向下 0..1）。
 @export var tilt_player_screen_y: float = 0.58
 ## [TUNE] 默认相机距离 28 m；滚轮缩放范围 0.45–2.6。
@@ -625,6 +625,9 @@ extends Resource
 @export_group("Interaction")
 ## [GAME] 可交互距离 2.4 m。
 @export var interact_radius_m: float = 2.4
+## [TUNE] 走近多少米时显示可采集物的名字和采法；多少米内显示火的状态卡。
+@export var near_item_label_m: float = 9.0
+@export var fire_card_m: float = 14.0
 ## [GAME] 采集一次的游戏分钟消耗 6。
 @export var gather_minutes: float = 6.0
 ## [GAME] 每次砍立枯木获得木材 2。

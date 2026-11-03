@@ -824,6 +824,9 @@ func _process(delta: float) -> void:
 			ui.set_fade(1.0)
 
 func _tick_playing(delta: float) -> void:
+	# 选中的东西刚被释放（采完的草、枝）时，控制器要到它自己的 _process 才换目标：这一帧先清掉
+	if not is_instance_valid(interaction.current):
+		interaction.current = null
 	# 游戏分钟推进 → 火堆燃烧
 	var now := weather.current_time_minutes
 	var dm := now - _last_minutes
@@ -859,9 +862,10 @@ func _tick_playing(delta: float) -> void:
 		elif _fire_hold >= 0.0:
 			ui.set_prompt(Loc.t("Striking the ferro rod… keep holding [F]"), _fire_hold / tuning.fire_hold_seconds)
 		elif p != "":
-			ui.set_prompt("[E]  " + p, interaction.progress)
+			ui.set_prompt(Loc.t("Hold [E]  ") + p, interaction.progress)
 		else:
 			ui.set_prompt("", 0.0)
+		_place_prompt()
 
 	# 世界内洞内视图（T4.4）
 	if site:
@@ -1380,6 +1384,87 @@ func _spend_fire_wood(n: int) -> bool:
 		site.refresh_pile()
 	return true
 
+## 走近可采集物时先告诉玩家这是什么、怎么采（走进圈里后由操作提示接手）。
+func _update_near_item_callout(building: bool) -> void:
+	var best: Interactable = null
+	var best_d := tuning.near_item_label_m
+	if not building:
+		for n in get_tree().get_nodes_in_group("interactables"):
+			var it := n as Interactable
+			if not (it.kind in ["grass", "bough", "birch"]) or it.uses_left == 0 or it == interaction.current or it.is_queued_for_deletion():
+				continue
+			var d := it.global_position.distance_to(player.global_position)
+			if d < best_d:
+				best_d = d
+				best = it
+	if best == null:
+		callouts.remove_callout("near_item")
+		return
+	var titles := {"grass": Loc.t("Dry grass"), "bough": Loc.t("Spruce boughs"), "birch": Loc.t("Birch bark")}
+	var sub_line := Loc.t("Tinder · walk up, hold [E]") if best.kind == "birch" else Loc.t("Bedding · walk up, hold [E]")
+	callouts.set_callout("near_item", best.global_position + Vector3(0, 0.7, 0), titles[best.kind], sub_line, Color(0.95, 0.82, 0.45), Vector2(28.0, -58.0), 2)
+
+## 火的状态卡：还能烧多久、怎么添柴。
+func _update_fire_callout() -> void:
+	var fire := _nearest_fire(tuning.fire_card_m)
+	if fire == null or session.focused():
+		callouts.remove_callout("fire_status")
+		return
+	var title := Loc.t("Fire: %d min left") % int(ceil(fire.fuel_minutes)) if fire.lit else Loc.t("Fire is out")
+	var inside := _nearest_fire(tuning.fire_warm_radius_m) != null
+	var lines: Array[String] = []
+	if fire.lit:
+		lines.append(Loc.t("You're warming up") if inside else Loc.t("Too far to feel the heat"))
+	if not inside:
+		lines.append(Loc.t("Step into the circle"))
+	elif _fire_wood() <= 0:
+		lines.append(Loc.t("No dry wood to add"))
+	else:
+		lines.append((Loc.t("[F] Add a log: +%d min (%d dry wood)") if fire.lit else Loc.t("[F] Relight with a log: +%d min (%d dry wood)")) % [int(tuning.campfire_minutes_per_wood), _fire_wood()])
+	var line := "\n".join(lines)
+	callouts.set_callout("fire_status", fire.global_position + Vector3(0, 1.1, 0), title, line, Color(1.0, 0.62, 0.2), Vector2(28.0, -70.0), 3)
+
+## 火放在面朝方向，但玩家背对相机时那正好在人身后、被挡住：这时往屏幕右侧偏。
+func _fire_place() -> Vector3:
+	var f := player.facing()
+	var cam := get_viewport().get_camera_3d()
+	if cam:
+		var away := -cam.global_transform.basis.z
+		away.y = 0.0
+		if f.dot(away.normalized()) > 0.6:
+			f = (f + cam.global_transform.basis.x).normalized()
+	return player.global_position + f * 1.3
+
+## 工地到完工还缺多少垫层（堆里 + 背包都算）；没有工地或已完工 = 0。
+func _bedding_short() -> int:
+	if site == null or site.is_complete():
+		return 0
+	return int(site.remaining_cost().get("bedding", 0)) - site.pile.total("bedding", inventory)
+
+func _nearest_bedding() -> Interactable:
+	var best: Interactable = null
+	var best_d := INF
+	for n in get_tree().get_nodes_in_group("interactables"):
+		var it := n as Interactable
+		if not (it.kind in ["grass", "bough"]) or it.uses_left == 0 or it.is_queued_for_deletion():
+			continue
+		var d := it.global_position.distance_to(player.global_position)
+		if d < best_d:
+			best_d = d
+			best = it
+	return best
+
+## 告诉玩家垫层是什么、最近的在哪（真实距离与方位）。
+func _bedding_hint() -> String:
+	var it := _nearest_bedding()
+	if it == null:
+		return Loc.t("Bedding: dry grass or low spruce boughs. None left on this map.")
+	return Loc.t("Bedding: dry grass (orange tufts) or low spruce boughs (green). Nearest: %d m %s") % _bearing_to(it)
+
+func _bearing_to(it: Node3D) -> Array:
+	var v := it.global_position - player.global_position
+	return [int(round(Vector2(v.x, v.z).length())), _dir_word(v)]
+
 func _material_names() -> Dictionary:
 	return {"wood": Loc.t("dry wood"), "bark": Loc.t("birch bark"), "bedding": Loc.t("bedding")}
 
@@ -1408,6 +1493,8 @@ func _update_focus_panel() -> void:
 	var left := weather.minutes_to_sunset()
 	var light := Loc.t("after sunset") if left <= 0.0 else Loc.t("%d min of daylight left") % int(left)
 	var time_line := Loc.t("~%d min of work  ·  %s") % [int(_stage_minutes() / _efficiency()), light]
+	if short and site.pile.total("bedding", inventory) < int(cost.get("bedding", 0)):
+		time_line = _bedding_hint()
 	var keys := Loc.t("[B] Step back & gather — your site stays here") if short else Loc.t("Hold [E] to build   ·   [B] Step back")
 	if site.stage() == 0:
 		keys += "   ·   " + Loc.t("[R] Pick another spot")
@@ -1537,7 +1624,7 @@ func _under_canopy(p: Vector3) -> bool:
 
 ## F 按下：附近有火 = 立即添柴；否则开始按住生火。
 func _begin_fire() -> void:
-	if _nearest_fire(2.6):
+	if _nearest_fire(tuning.fire_warm_radius_m):
 		_try_fire()
 		return
 	_fire_hold = 0.0
@@ -1583,7 +1670,7 @@ func fire_check_at(p: Vector3) -> Dictionary:
 	return GameRules.fire_check(_fire_wood(), inventory.bark, exposure, _under_canopy(p), inside_snow, tuning)
 
 func _try_fire() -> void:
-	var near := _nearest_fire(2.6)
+	var near := _nearest_fire(tuning.fire_warm_radius_m)
 	if near:
 		if not _spend_fire_wood(1):
 			ui.toast(Loc.t("No dry wood left to add."))
@@ -1592,7 +1679,7 @@ func _try_fire() -> void:
 		ui.toast(Loc.t("Added a log (+%d min of fire).") % int(tuning.campfire_minutes_per_wood))
 		_skip(2.0)
 		return
-	var p := player.global_position + player.facing() * 1.3
+	var p := _fire_place()
 	var check := fire_check_at(p)
 	if not bool(check["ok"]):
 		var reason := String(check["reason"])
@@ -1608,6 +1695,7 @@ func _try_fire() -> void:
 	var fire := Campfire.new()
 	fire.name = "Campfire"
 	fire.position = p
+	fire.warm_radius = tuning.fire_warm_radius_m
 	main.add_child(fire)
 	fire.ignite(tuning.fire_wood_cost * tuning.campfire_minutes_per_wood)
 	_attach_fire_interactable(fire)
@@ -1615,13 +1703,13 @@ func _try_fire() -> void:
 	audio.play_sfx("fire")
 	SessionLog.log_event("fire", weather.clock_string())
 	_mark("fire")
-	ui.toast(Loc.t("Fire lit. Warm up, dry off, and melt snow for a hot drink [E]."), 5.0)
+	ui.toast(Loc.t("Fire lit. Warm up, dry off, hold [E] for a hot drink. [F] adds a log."), 6.0)
 
 func _attach_fire_interactable(fire: Campfire) -> void:
 	var it := Interactable.new()
 	it.kind = "fire"
 	it.hold_seconds = 1.8
-	it.ring_radius = 0.9
+	it.reach_m = tuning.fire_warm_radius_m
 	it.prompt_fn = func() -> String: return Loc.t("Melt snow & drink hot water") if fire.lit else ""
 	it.handler = func() -> Dictionary:
 		var gained := warmth.apply_hot_drink()
@@ -1631,6 +1719,22 @@ func _attach_fire_interactable(fire: Campfire) -> void:
 	fire.add_child(it)
 
 # ------------------------------------------------------------------ 世界标签
+
+## 操作提示贴在目标上方（在屏幕底部时玩家根本注意不到）；探针、打火这类没有目标的贴在人头上方。
+func _place_prompt() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var head := player.global_position + Vector3.UP * 2.0
+	if cam.is_position_behind(head):
+		return
+	var anchor := cam.unproject_position(head)
+	if interaction.current != null and not player.is_probing and _fire_hold < 0.0:
+		var item := interaction.current.global_position + Vector3.UP * 1.0
+		if not cam.is_position_behind(item):
+			var s := cam.unproject_position(item)
+			anchor = Vector2(s.x, minf(s.y, anchor.y))
+	ui.place_prompt(anchor)
 
 func _update_world_callouts() -> void:
 	if callouts == null:
@@ -1654,6 +1758,16 @@ func _update_world_callouts() -> void:
 			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0), 1)
 	elif callouts.has_callout("deadwood"):
 		callouts.remove_callout("deadwood")
+	_update_near_item_callout(building)
+	_update_fire_callout()
+	# 工地还缺垫层时标出最近的一处（不限距离：垫层点围绕出生点散布，工地可能离得很远）
+	var bedding := _nearest_bedding() if _bedding_short() > 0 and not building else null
+	if bedding:
+		callouts.set_callout("bedding", bedding.global_position + Vector3(0, 0.7, 0), Loc.t("Bedding"),
+			Loc.t("Dry grass") if bedding.kind == "grass" else Loc.t("Spruce boughs"),
+			Color(0.55, 0.85, 0.45), Vector2(28.0, -58.0), 2)
+	elif callouts.has_callout("bedding"):
+		callouts.remove_callout("bedding")
 	# 第二次评审：第 1 章（教程）里衣服湿了又没有火 → 标出最近的、按同一套火规则真的点得着的地方，教会"烘干"这一步
 	var teach_fire := LevelState.active() and LevelState.level.index == 1 and GameRules.clothing_state(dampness, tuning) != "dry" \
 		and get_tree().get_nodes_in_group("campfires").is_empty() and not building
@@ -1706,6 +1820,10 @@ func _shelter_card_text() -> Array:
 				miss.append("%d %s" % [int(rest[k]) - have, names.get(k, k)])
 		if not miss.is_empty():
 			parts.append(Loc.t("still to gather: %s") % ", ".join(miss))
+		if _bedding_short() > 0:
+			var near_bed := _nearest_bedding()
+			if near_bed:
+				parts.append(Loc.t("nearest bedding: %d m %s") % _bearing_to(near_bed))
 		if interaction.current != site.interactable:
 			parts.append(Loc.t("Return to site [E]"))
 	if d > 8.0 and not _inside_site():

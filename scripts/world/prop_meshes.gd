@@ -136,6 +136,42 @@ static func grass_tuft(seed_idx: int) -> ArrayMesh:
 	return st.commit()
 
 
+## 云杉低枝丛：贴地的一矮堆宽枝（不是小树）。约 1.9 m 宽、0.55 m 高，放置时不缩放。
+## 两层重叠的宽枝，枝梢落到雪面，轮廓是闭合的矮丘，下面没有空隙（否则读成带腿的虫）。
+## 枝片两面都画（snow_cover 只画正面）。
+static func bough_clump(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)   # 平面法线：两面重合的顶点若一起平滑，法线相消、枝变成全黑
+	for layer in [[9, 0.95, 0.34, 0.0], [6, 0.55, 0.52, 0.5]]:
+		var count: int = layer[0]
+		for b in range(count):
+			var a := TAU * (float(b) + float(layer[3]) + (TerrainHeight.hash2(seed_idx, b, 111) - 0.5) * 0.35) / float(count)
+			var out := Vector3(cos(a), 0.0, sin(a))
+			var side := Vector3(-out.z, 0.0, out.x)
+			var length: float = float(layer[1]) * (0.85 + TerrainHeight.hash2(seed_idx, b, 113) * 0.3)
+			var rise: float = layer[2]
+			var segs := 4
+			var prev := Vector3.UP * rise
+			for i in range(1, segs + 1):
+				var t := float(i) / float(segs)
+				var c := out * length * t + Vector3.UP * (rise * (1.0 - t * t) + 0.01)
+				var w := lerpf(0.42, 0.16, t) * (length / 0.95 * 0.5 + 0.5)
+				for sgn in [-1.0, 1.0]:
+					# 枝片外缘一直垂到比枝低的位置，相邻枝互相盖住
+					var edge_prev: Vector3 = prev + side * sgn * w * 0.8 + Vector3.DOWN * minf(prev.y * 0.8, 0.14)
+					var edge: Vector3 = c + side * sgn * w + Vector3.DOWN * minf(c.y, 0.14)
+					_two_sided(st, prev, c, edge)
+					_two_sided(st, prev, edge, edge_prev)
+				prev = c
+	st.generate_normals()
+	return st.commit()
+
+static func _two_sided(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+	for v in [a, b, c, a, c, b]:
+		st.add_vertex(v)
+
+
 ## 风积雪舌：迎风端（-Z）圆钝高起，向下风（+Z）拉长变薄成尖，单位尺寸约 1×0.5×2。
 static func snow_drift() -> ArrayMesh:
 	var st := SurfaceTool.new()

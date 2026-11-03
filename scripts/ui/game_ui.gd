@@ -66,11 +66,11 @@ func _ready() -> void:
 	_prompt_card = _card(AMBER)
 	_prompt_card.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt_card.position = Vector2(-190, -92) if TouchMode.enabled else Vector2(-220, -150)
-	_prompt_card.custom_minimum_size = Vector2(380 if TouchMode.enabled else 440, 0)
+	_prompt_card.custom_minimum_size = Vector2(240, 0)
 	root.add_child(_prompt_card)
 	var pv := VBoxContainer.new()
 	_prompt_card.add_child(pv)
-	_prompt_label = _label("", 15, CREAM)
+	_prompt_label = _label("", 17, CREAM)
 	_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pv.add_child(_prompt_label)
 	_progress = ProgressBar.new()
@@ -178,6 +178,16 @@ func set_prompt(text: String, progress: float) -> void:
 	_prompt_label.text = text
 	_progress.value = progress
 	_progress.visible = progress > 0.0
+
+## 把操作提示放在 anchor（画布坐标）上方，不出屏。
+func place_prompt(anchor: Vector2) -> void:
+	if not _prompt_card.visible:
+		return
+	var view: Vector2 = get_viewport().get_visible_rect().size
+	var sz := _prompt_card.size
+	_prompt_card.global_position = Vector2(
+		clampf(anchor.x - sz.x * 0.5, 12.0, view.x - sz.x - 12.0),
+		clampf(anchor.y - sz.y - 10.0, 12.0, view.y - sz.y - 12.0))
 
 func set_inventory(wood: int, bark: int, bedding: int, max_wood: int = 4, max_bedding: int = 4) -> void:
 	_tray.text = Loc.t("Dry wood  %d/%d     Birch bark  %d     Bedding  %d/%d") % [wood, max_wood, bark, bedding, max_bedding]

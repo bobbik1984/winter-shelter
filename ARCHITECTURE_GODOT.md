@@ -1,6 +1,6 @@
 # ARCHITECTURE_GODOT.md — Godot 4 技术架构与实现图景
 
-> **引擎版本定位**：Godot 4.x (Forward+ / Mobile)  
+> **引擎版本定位**：Godot 4.x（2026-11-04 起桌面和网页都默认 Compatibility，用户决定：弱集显上比 Forward+ 流畅约 50%，也让各平台画面一致）  
 > **核心渲染模型**：移轴透视 3D（默认，D8；正交等距为 V 键备用）+ 2D CanvasLayer HUD · Godot **4.3 stable** · Forward+（Vulkan）
 > **修订**：2026-11-01（§1–§4 按实际代码更新；标 *规划* 的条目尚未实现）  
 > **参数标注规范**：`[REAL]` 现实规律 | `[GAME]` 机制抽象 | `[TUNE]` 调参基准

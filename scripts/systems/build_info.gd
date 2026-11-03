@@ -3,7 +3,7 @@ extends RefCounted
 
 ## 这是哪一次构建（tools/deploy_web.sh 导出前写 build_info.txt）：试玩反馈时能对上代码。
 
-## 网页版固定用兼容渲染器（Godot 4.3 没有直接查询当前渲染器的接口）。
+## 桌面和网页都默认兼容渲染器（2026-11-04 用户决定）。Godot 4.3 没有直接查询当前渲染器的接口。
 static func is_compat() -> bool:
 	return OS.has_feature("web") or String(ProjectSettings.get_setting_with_override("rendering/renderer/rendering_method")) == "gl_compatibility"
 

@@ -63,18 +63,20 @@ func _set_current(it: Interactable) -> void:
 	if it != current:
 		progress = 0.0
 	current = it
-	_ring.visible = it != null and forced == null   # 特写时不画高亮圈，免得压住工地
+	# 特写时不画高亮圈，免得压住工地；火有自己的取暖光圈，再画一个小圈只会让人以为那是范围
+	_ring.visible = it != null and forced == null and it.kind != "fire"
 
 func _find_nearest() -> Interactable:
 	var best: Interactable = null
-	var best_d := tuning.interact_radius_m if tuning else 2.4
+	var best_d := INF
+	var default_reach := tuning.interact_radius_m if tuning else 2.4
 	var pp := player.global_position
 	for n in get_tree().get_nodes_in_group("interactables"):
 		var it := n as Interactable
 		if it == null or not it.is_inside_tree() or it.current_prompt() == "":
 			continue
 		var d := Vector2(it.global_position.x - pp.x, it.global_position.z - pp.z).length()
-		if d < best_d:
+		if d < (it.reach_m if it.reach_m > 0.0 else default_reach) and d < best_d:
 			best_d = d
 			best = it
 	return best

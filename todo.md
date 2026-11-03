@@ -118,3 +118,9 @@
 - [ ] V5–V8：枯木 / 岩石可读性、远景冰湖、`AtmosphereState`、脚印（PRODUCTION_PLAN §4.V）
 - [ ] 移植 Web 原型 `world.ts` 深度场算法细节（T1.2 剩余，门槛按 D5）
 - [ ] 剖面面板的触发逻辑：建造模式或进洞时显示（T3.6 剩余）
+
+## 性能（2026-11-03，X1 Tablet Gen 3 / Intel UHD 620，1280×720，无其它负载）
+
+- Forward+：Low 29.8 FPS（GPU 26 ms）、Medium 21.6 FPS（41 ms）。Compatibility：Low 44.8 FPS（15 ms）、Medium 27.2 FPS（29 ms）。
+- 3D 渲染缩放降到 0.2 几乎不变（25→23 ms）；关阳光阴影、关天空、关雾也基本不变；连地形和树一起隐藏（只剩约 2 万三角形）仍要约 19 ms。主要是 Forward+ 这条渲染路径本身在弱集显上的固定开销（这组对比是推断，没有用 GPU 分析器逐 pass 确认）。
+- 集显默认 Low 已做。2026-11-04 用户决定：桌面版默认 Compatibility（渲染器不能运行时切换；失去 SSAO、景深、体积雾）。

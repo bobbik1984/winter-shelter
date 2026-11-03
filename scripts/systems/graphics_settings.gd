@@ -42,7 +42,18 @@ func _ready() -> void:
 
 ## 手机默认低档；帧率还不够时 TouchControls 自动降档。
 func _default_level() -> int:
-	return 0 if TouchMode.enabled else 1
+	return 0 if TouchMode.enabled or _weak_gpu() else 1
+
+## 集成显卡默认最低档（UHD 620 实测 Medium 约 27 FPS、Low 约 45 FPS）。
+## 兼容渲染器不一定报告显卡类型，所以再按名字认一次。
+static func _weak_gpu() -> bool:
+	if RenderingServer.get_video_adapter_type() == RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU:
+		return true
+	var name_l := RenderingServer.get_video_adapter_name().to_lower()
+	for hint in ["intel", "uhd", "iris", "radeon graphics", "vega", "llvmpipe"]:
+		if hint in name_l:
+			return true
+	return false
 
 ## 把"用户选的字号 × 手机放大倍数"应用到窗口；窗口转向时也调一次。
 func refresh_ui_scale() -> void:
@@ -128,11 +139,12 @@ func apply() -> void:
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(p[6]) as RenderingServer.ShadowQuality)
 	var env_node := get_tree().get_first_node_in_group("world_environment") as WorldEnvironment
 	if env_node and env_node.environment:
-		env_node.environment.ssao_enabled = bool(p[1])
+		# 兼容渲染器没有 SSAO、体积雾：不去请求，否则控制台报错
+		env_node.environment.ssao_enabled = bool(p[1]) and not BuildInfo.is_compat()
 		env_node.environment.glow_enabled = bool(p[3])
 		# T4.3 体积雾：只在高档开启（逆光穿林的暖色光幕，约 +6 ms GPU）
 		var env := env_node.environment
-		env.volumetric_fog_enabled = level == 2
+		env.volumetric_fog_enabled = level == 2 and not BuildInfo.is_compat()
 		env.volumetric_fog_density = 0.008
 		env.volumetric_fog_albedo = Color(0.86, 0.89, 0.96)
 		env.volumetric_fog_anisotropy = 0.6
@@ -140,7 +152,7 @@ func apply() -> void:
 		env.volumetric_fog_sky_affect = 0.0
 	var rig := get_tree().get_first_node_in_group("camera_rig")
 	if rig:
-		rig.dof_enabled = bool(p[2])
+		rig.dof_enabled = bool(p[2]) and not BuildInfo.is_compat()
 		rig.reapply()
 	var sun := get_tree().current_scene.get_node_or_null("SunLight") as DirectionalLight3D if get_tree().current_scene else null
 	if sun:

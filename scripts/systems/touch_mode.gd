@@ -98,7 +98,7 @@ static func buttons_for(ctx: Dictionary) -> Array:
 				b.append({"id": "use", "label": Loc.t("Use"), "action": "interact", "slot": "big_r", "primary": true})
 				b.append({"id": "probe", "label": Loc.t("Probe"), "action": "probe", "slot": "big_l"})
 				b.append(_key("build", Loc.t("Build"), KEY_B, "arc"))
-				b.append({"id": "fire", "label": Loc.t("Fire"), "hold_key": KEY_F, "slot": "arc"})
+				b.append({"id": "fire", "label": Loc.t("Add log") if bool(ctx.get("near_fire", false)) else Loc.t("Fire"), "hold_key": KEY_F, "slot": "arc"})
 				b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "arc"))
 				b.append(_key("menu", Loc.t("Menu"), KEY_ESCAPE, "top"))
 				b.append(_key("intel", Loc.t("Intel"), KEY_I, "top"))

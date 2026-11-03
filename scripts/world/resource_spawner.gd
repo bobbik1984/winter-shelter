@@ -59,7 +59,7 @@ func _make_materials() -> void:
 	_mat_log = _snow_mat(Color(0.20, 0.15, 0.10), 0.55)
 	_mat_root = _snow_mat(Color(0.24, 0.18, 0.13), 0.35)
 	_mat_root.set_shader_parameter("occlusion_fade", true)   # 翻倒的树根盘有 3 m 高，会挡住走到它后面的玩家
-	_mat_bough = _snow_mat(Color(0.07, 0.20, 0.12), 0.45)
+	_mat_bough = _snow_mat(Color(0.20, 0.46, 0.22), 0.16)
 	_mat_birch = StandardMaterial3D.new()
 	_mat_birch.vertex_color_use_as_albedo = true
 	_mat_birch.roughness = 0.9
@@ -185,8 +185,7 @@ func _spawn_grass(p: Vector2, i: int) -> void:
 
 func _spawn_bough(p: Vector2, i: int) -> void:
 	var root := _root("SpruceBoughs", p)
-	var m := _mesh(root, SpruceMesh.build(100 + i, Vector3.RIGHT, 0.2, 7), _mat_bough, 0.0, 0.32)
-	m.scale.y = 0.22
+	_mesh(root, PropMeshes.bough_clump(100 + i), _mat_bough, TerrainHeight.hash2(i, 5, 11) * TAU)
 	_interactable(root, "bough", Loc.t("Cut low spruce boughs (bedding)"), 2, 1.0)
 
 func _spawn_wet_log(p: Vector2, i: int) -> void:
