@@ -29,6 +29,8 @@ echo "$sha" > build_info.txt
 
 rm -rf build/web; mkdir -p build/web
 "$GODOT" --headless --path . --import >/dev/null 2>&1
+# 导出缓存可能留着旧的脚本默认值（见 tools/dump_resource_values.gd），每次都重新转换
+rm -rf .godot/exported
 "$GODOT" --headless --path . --export-release "Web" build/web/index.html 2>&1 | grep -E "ERROR|WARNING: .*export" || true
 [ -s build/web/index.pck ] || { echo "export failed: no index.pck" >&2; exit 1; }
 
@@ -49,6 +51,8 @@ html = html.replace('</head>', head + f'<meta name="build" content="{sha}">\n</h
 open(f'{d}/index.html', 'w', encoding='utf-8').write(html)
 print('built', sha, pck, os.path.getsize(f'{d}/{pck}'))
 PY
+
+GODOT="$GODOT" tools/check_export_values.sh "build/web/$(ls build/web | grep -E '^index-.*\.pck$')"
 
 [ $build_only = 1 ] && { echo "build only: build/web"; exit 0; }
 
