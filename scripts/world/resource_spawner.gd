@@ -51,6 +51,16 @@ func set_focus_fade(radius: float, strength: float) -> void:
 		_mat_root.set_shader_parameter("occlusion_radius", radius)
 		_mat_root.set_shader_parameter("occlusion_strength", strength)
 
+## 剖面切开（"occlusion_fade" 组回调，见 snow_cover.gdshader 的 section_*）。
+func set_section(on: bool, point: Vector3, normal: Vector3, radius: float) -> void:
+	for m in [_mat_snag, _mat_root]:
+		if m is ShaderMaterial:
+			var sm := m as ShaderMaterial
+			sm.set_shader_parameter("section_on", on)
+			sm.set_shader_parameter("section_point", point)
+			sm.set_shader_parameter("section_normal", normal)
+			sm.set_shader_parameter("section_radius", radius)
+
 func _make_materials() -> void:
 	add_to_group("occlusion_fade")
 	_mat_snag = _snow_mat(Color(0.32, 0.30, 0.28), 0.25)

@@ -1216,6 +1216,7 @@ func _enter_focus() -> void:
 		var aim := _focus_aim()
 		rig.set_focus(aim, _focus_zoom_for(aim))
 	_set_focus_hud(true)
+	_update_section()
 
 ## 退回远景（B / Esc）：工地和进度都保留。
 func _step_back() -> void:
@@ -1281,6 +1282,7 @@ func _release_focus() -> void:
 		rig.clear_focus()
 	ui.show_build_focus("", "", "", "", false, 0.0)
 	_set_focus_hud(false)
+	_update_section(false)
 
 func _set_focus_hud(on: bool) -> void:
 	if callouts:
@@ -1541,6 +1543,7 @@ func _enter_shelter() -> void:
 			rig.interior_focus = site.global_position - cam.global_transform.basis.z * 1.2
 			get_tree().call_group("occlusion_fade", "set_focus_fade", 6.0, 1.0)
 		cam.make_current()
+		_update_section()
 		callouts.only_prefix = "section_"
 		callouts.card_limit = 4
 		var i := 0
@@ -1549,6 +1552,28 @@ func _enter_shelter() -> void:
 			i += 1
 		if _compass:
 			_compass.visible = false)
+
+## 剖面切开：进到庇护所里（剖面相机在工地本地 +X）或树井建造特写（工地就在那棵老云杉底下）时，
+## 把切面朝镜头一侧的树切掉，像剖面图一样；其它时候关掉。
+func _update_section(focus_on: bool = true) -> void:
+	var normal := Vector3.ZERO
+	var back := 0.0
+	if site != null and _in_shelter:
+		normal = site.global_basis.x
+		back = tuning.section_cut_behind_m
+	elif focus_on and site != null and rig and site.preset_id == "TreeWell" and session.focused():
+		normal = rig.global_transform.basis.z
+	normal.y = 0.0
+	var on := normal.length() > 0.01
+	normal = normal.normalized() if on else Vector3.RIGHT
+	var point := site.global_position - normal * back if on else Vector3.ZERO
+	var radius := tuning.section_cut_radius_m + back
+	get_tree().call_group("occlusion_fade", "set_section", on, point, normal, radius)
+	# 火堆用的是普通材质，切不掉：在剖面里挡在镜头前面时整个藏起来（火照样在烧，规则不变）
+	for f in get_tree().get_nodes_in_group("campfires"):
+		var c := f as Node3D
+		var d := c.global_position - point
+		c.visible = not (on and _in_shelter and d.dot(normal) > 0.0 and Vector2(d.x, d.z).length() < radius)
 
 func _set_figure_particles(on: bool) -> void:
 	for n in player.find_children("*", "GPUParticles3D", true, false):
@@ -1577,6 +1602,7 @@ func _leave_shelter() -> void:
 			get_tree().call_group("occlusion_fade", "set_focus_fade", 0.26, 0.85)
 			rig.global_position = player.global_position
 			rig.camera_3d.make_current()
+		_update_section()
 		callouts.only_prefix = ""
 		callouts.card_limit = 0
 		callouts.remove_prefix("section_")
@@ -1607,7 +1633,8 @@ func _tick_inside_shelter() -> void:
 		_leave_shelter()
 
 func _needs_vent_stick() -> bool:
-	return site != null and site.is_complete() and site.is_snow_shelter() and site.vent_count == 1 \
+	# 树井没有通风管（枝条屋顶透气，见 ShelterBuilder.has_vent），不要它插木棍
+	return site != null and site.is_complete() and site.is_snow_shelter() and site.preset_id != "TreeWell" and site.vent_count == 1 \
 		and not site.vent_stick and weather.atmosphere.snowfall > 0.05
 
 func _site_prompt() -> String:

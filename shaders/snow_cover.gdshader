@@ -22,6 +22,12 @@ uniform vec3 focus_pos = vec3(0.0);
 uniform float occlusion_radius = 0.26;
 // D16 建造特写：半径放大到盖满画面、强度到 1 = 镜头与工地之间的树完全消失（影子不受影响）。
 uniform float occlusion_strength = 0.85;
+// 剖面切开（树井特写 / 进入庇护所）：切面朝镜头一侧、离 section_point 水平 section_radius 以内的部分不画。
+// 由 "occlusion_fade" 组的 set_section 推送；阴影 pass 不切，切掉的树仍然投影。
+uniform bool section_on = false;
+uniform vec3 section_point = vec3(0.0);
+uniform vec3 section_normal = vec3(1.0, 0.0, 0.0);
+uniform float section_radius = 5.0;
 // 风摆（T3.1）：树冠随高度二次方偏向下风，阵风调制；静态截图里也能读出风向。
 uniform float sway_amount = 0.0;
 uniform vec2 wind_dir = vec2(1.0, 0.0);
@@ -66,6 +72,10 @@ void fragment() {
 	// 阴影 pass（平行光正交投影）不镂空，否则地上的树影会变成网点；
 	// 代价：正交相机模式下也不做透视镂空（俯视基本不遮挡）。
 	bool ortho_pass = PROJECTION_MATRIX[3][3] > 0.5;
+	if (section_on && !ortho_pass) {
+		vec3 sd = w_pos - section_point;
+		if (dot(sd, section_normal) > 0.0 && length(sd.xz) < section_radius) discard;
+	}
 	if (occlusion_fade && !ortho_pass) {
 		vec3 fv = (VIEW_MATRIX * vec4(focus_pos + vec3(0.0, 0.9, 0.0), 1.0)).xyz;
 		if (-VERTEX.z < -fv.z - 1.2) {

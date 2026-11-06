@@ -98,6 +98,16 @@ func set_focus_fade(radius: float, strength: float) -> void:
 			(m as ShaderMaterial).set_shader_parameter("occlusion_radius", radius)
 			(m as ShaderMaterial).set_shader_parameter("occlusion_strength", strength)
 
+## 剖面切开（"occlusion_fade" 组回调，见 snow_cover.gdshader 的 section_*）。
+func set_section(on: bool, point: Vector3, normal: Vector3, radius: float) -> void:
+	for m in [_mat_spruce, _mat_deadwood, _mat_rock, _mat_rock_snow]:
+		if m is ShaderMaterial:
+			var sm := m as ShaderMaterial
+			sm.set_shader_parameter("section_on", on)
+			sm.set_shader_parameter("section_point", point)
+			sm.set_shader_parameter("section_normal", normal)
+			sm.set_shader_parameter("section_radius", radius)
+
 ## snow_cover 材质 + 遮挡镂空（岩石 / 雪枕在透视模式下也不能挡住玩家）。
 func _fade_material(base: Color, snow_amount: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()

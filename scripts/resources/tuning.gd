@@ -676,6 +676,10 @@ extends Resource
 @export var build_focus_zoom_trench: float = 0.34
 @export var build_focus_zoom_treewell: float = 0.36
 @export var build_focus_zoom_leanto: float = 0.42
+## [GAME] 剖面切开的半径：树井特写和进入庇护所时，切面朝镜头一侧这么远以内的树 / 枯木 / 石头不画（老云杉树冠约 4 m）。
+@export var section_cut_radius_m: float = 5.5
+## [GAME] 进入庇护所的剖面：切面再往后退这么多，把工地本身那棵树整棵去掉（剖面图里自己画了树干和枝条屋顶）。
+@export var section_cut_behind_m: float = 7.0
 ## 视线穿地形时，最多推近 / 拉远到理想距离的这个比例 [TUNE]。
 @export var build_focus_min_ratio: float = 0.6
 @export var build_focus_max_ratio: float = 2.0

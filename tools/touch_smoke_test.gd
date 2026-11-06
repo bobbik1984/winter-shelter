@@ -237,6 +237,14 @@ func _run() -> void:
 		guard += 1
 	d.inventory.wood = 0
 	d.inventory.bedding = 0
+	# 落雪时只有带通风管的雪庇护所要插木棍；树井是枝条屋顶，没有通风管（2026-11-07 试玩报告附带发现）
+	var snow0: float = d.weather.atmosphere.snowfall
+	var preset_real: String = d.site.preset_id
+	d.weather.atmosphere.snowfall = 1.0
+	d.site.preset_id = "TreeWell"
+	check(not d._needs_vent_stick(), "a tree well never asks for a vent stick")
+	d.site.preset_id = preset_real
+	d.weather.atmosphere.snowfall = snow0
 	var door: Vector3 = d.site.entrance_point() + d.site.entrance_dir * 1.0
 	p.global_position = Vector3(door.x, TerrainHeight.height_at(door.x, door.z) + 0.3, door.z)
 	await wait(0.3)
@@ -246,6 +254,8 @@ func _run() -> void:
 	check(d._in_shelter and root.get_camera_3d() != d.rig.camera_3d, "holding Use goes inside, with the section camera (hold %.1f s)" % d.site.interactable.hold_seconds)
 	check(d._inside_site() and p.visual_node.visible and not p.controls_enabled, "the figure is in the shelter, visible in the section, and can't walk")
 	check(d.callouts.has_callout("section_0"), "the section has labels")
+	var forest_mat: ShaderMaterial = get_first_node_in_group("forest")._fade_materials[0]
+	check(bool(forest_mat.get_shader_parameter("section_on")), "inside: trees in front of the section are cut away")
 	check(has_btn("out") and has_btn("sleep") and not has_btn("build") and not has_btn("fire"), "inside: Step outside and Sleep, no Build or Fire")
 	await shot("07b_inside")
 	await tap("out")
@@ -253,6 +263,7 @@ func _run() -> void:
 	check(not d._in_shelter and root.get_camera_3d() == d.rig.camera_3d, "Step outside returns to the normal camera")
 	check(p.controls_enabled and d.interaction.enabled and is_zero_approx(p.visual_node.rotation.x) and not d.callouts.has_callout("section_0"), "and the figure stands and walks again, labels gone")
 	check(not d._inside_site(), "standing outside the shelter again")
+	check(not bool(forest_mat.get_shader_parameter("section_on")) and get_nodes_in_group("campfires").all(func(f): return f.visible), "outside: the cut is off and every fire is visible")
 	await tap("menu")
 	check(d.state == d.State.PAUSED, "Menu pauses")
 	await shot("08_pause")

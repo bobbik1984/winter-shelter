@@ -55,7 +55,7 @@ Main (Node3D) [main.gd]
 
 **跨节点通信约定**：
 - 时间与大气 = **`AtmosphereState`**（V7，`scripts/systems/atmosphere_state.gd`）：`WeatherController` 唯一写入（组 `weather`），天空 / 环境光 / 雾、雪面、罗盘、降雪、头灯订阅 `changed` 或每帧读取（`AtmosphereState.of(tree)`）。
-- 其余视觉推送用节点组：`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）。
+- 其余视觉推送用节点组：`lens_receivers.set_lens(...)`（天空镜头修正）、`occlusion_fade.set_focus(pos)`（遮挡镂空）、`occlusion_fade.set_section(on, point, normal, radius)`（剖面切开：进入庇护所、树井特写，由 `GameDirector._update_section` 推送）。
 
 ---
 
