@@ -172,7 +172,8 @@ static func evaluate_shelter(
 - **世界对象**：`ResourceSpawner`（资源与树根挡风物，并给森林 / 场景里全部立枯木挂采集点）、`ShelterSite`（持有 `ShelterBuilder`，5 阶外观 + 每阶材料）、`BuildMode`（预览与校验）、`Campfire`、`Footprints`、`Snowfall`、玩家头灯。
 - **UI**：`GameUI`（代码构建：提示、背包、消息、建造面板、简报、暂停、黑屏、报告）；`WorldCallouts` 动态引线标签 API（优先级 + 屏幕空间避让 + 标记保护区；`set_marker` 只画环不放卡）；庇护所状态在 `GameUI.set_shelter_card`，简报之外的细节在 `[I]` 情报面板（`GameUI.set_intel`，含野外手册）。
 - **设置**：`GraphicsSettings`（F10，`user://settings.cfg`）。
-- **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。
+- **角色**：`HikerVisual` 加载 `assets/models/char_survivor.glb`（`tools/blender/build_hiker.py` 生成；Godot 导入会去掉 `-loop` 后缀，循环在代码里设置），`PlayerController.set_motion` 驱动 Idle / Walk / Probe / Dig。2026-11-07 第二版：放样 + 倒角 + 平滑着色（约 6.6k 面），毛领兜帽、护目镜、脖套、胸袋拉链、雪套、皮靴、带顶包 / 前袋 / 压缩带 / 雪铲 / 防潮垫的红背包；骨骼名和动作名不变。颜色偏亮：游戏镜头朝午后太阳，角色总是逆光。
+- **庇护所模型**：`tools/blender/build_shelters.py` 为八种预设各生成两个文件到 `assets/models/shelters/`：`<Preset>.glb`（外观，每个部件一个节点，名字 `s<a>_<b>__<部件>` = 第 a..b 阶段显示；材质按名字换成游戏的雪 / 木 / 枝条材质，`ShelterSite._model_visual`）和 `<Preset>_section.glb`（完工后沿入口轴线切开的那一半，切面单独材质，光照烘进顶点色，`ShelterInterior` 不受光直接画）。坐标全部按 Godot 工地局部坐标建模（+Z = 入口），`ENTRANCE_DIST`、`MODEL_VIEW`（人躺的位置、剖面相机）与模型尺寸对应。没有模型文件时退回旧的程序化外观。重新生成：`blender --background --python tools/blender/build_shelters.py -- assets/models/shelters`；看效果：`godot --path . --resolution 1280x720 -s res://tools/shelter_gallery.gd -- --out=<目录>`。
 - **本地化**：`Loc`（`scripts/ui/loc.gd`）按英文源串查中文表；`Loc.t("…%d…") % n`；`[L]` 切换并存 `user://settings.cfg`。新增玩家可见文字必须包 `Loc.t()` 并补表；`const` 里的文字在显示处再包。
 - **输入**：键盘为主；`GameInput.ensure_joypad()` 把手柄摇杆 / A / X 写进 InputMap，其余手柄键经 `GameInput.joy_to_key()` 转成等价键盘键。最好记录在 `Records`（`user://records.cfg`）。
 - **山谷轮换**：`TerrainHeight.SEED` 是静态变量（默认 7 = 测试基准）；`GameDirector._restart()` 在重载场景前切到 `VALLEY_SEEDS` 的下一个。只改噪声起伏与雪深分布，不改迎风坡—脊线—背风坡结构；所有建造器在 `_ready` 时读取，所以必须在重载前设置。

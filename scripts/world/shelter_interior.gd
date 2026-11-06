@@ -17,7 +17,24 @@ const BOUGH := Color(0.17, 0.33, 0.19)
 const BAG := Color(0.58, 0.20, 0.13)
 const PIT := Color(0.27, 0.38, 0.60)
 
+## Blender 生成的剖面模型（tools/blender/build_shelters.py）：切开的一半 + 烘好的光照（顶点色），不受光直接画。
+## 没有模型文件时用下面的程序化几何（旧版）。
+const SECTION_DIR := "res://assets/models/shelters/"
+## 每种模型里：人躺的位置（脚，局部坐标）、相机瞄准点、相机距离、有没有蜡烛、相机俯角（度）。和 build_shelters.py 的尺寸对应。
+## 斜顶棚（岩檐、倒木）俯角低一点，才看得到顶下面。
+const MODEL_VIEW := {
+	"RaisedCave": [Vector3(-0.55, 0.52, 0.25), Vector3(0.0, 0.75, 0.3), 6.4, true, 24.0],
+	"BasicCave": [Vector3(-0.55, 0.08, 0.5), Vector3(0.0, 0.75, 0.3), 6.4, true, 24.0],
+	"Quinzhee": [Vector3(-0.6, 0.08, 0.6), Vector3(0.0, 0.6, 0.4), 5.9, true, 24.0],
+	"SnowTrench": [Vector3(-0.3, 0.15, 0.3), Vector3(0.0, 0.5, -0.5), 5.3, true, 24.0],
+	"TreeWell": [Vector3(-0.85, 0.14, 0.5), Vector3(0.0, 1.3, 0.2), 7.8, true, 20.0],
+	"LeanTo": [Vector3(-0.6, 0.08, 0.55), Vector3(0.0, 0.7, 0.6), 6.8, false, 18.0],
+	"RockOverhang": [Vector3(-0.55, 0.1, 0.6), Vector3(0.0, 0.85, -0.3), 6.4, false, 12.0],
+	"FallenLog": [Vector3(-0.4, 0.08, 0.6), Vector3(0.0, 0.7, 0.1), 6.4, false, 12.0],
+}
+
 var camera: Camera3D
+var _model := false
 ## 人躺在哪（局部坐标，脚的位置）；头朝 -Z。
 var figure_spot := Vector3(-0.42, 0.25, 0.75)
 var _preset := ""
@@ -39,6 +56,7 @@ func build(preset: String, finished: bool, vents: int) -> void:
 	_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var aim := Vector3(0.0, 0.55, 0.45)
 	var dist := 5.6
+	var elev_deg := 26.0
 	match preset:
 		"RaisedCave":
 			_candle = finished
@@ -97,16 +115,34 @@ func build(preset: String, finished: bool, vents: int) -> void:
 	if _candle:
 		_box(_candle_pos - Vector3(0, 0.08, 0), Vector3(0.05, 0.08, 0.05), Color(0.95, 0.88, 0.7))
 		_box(_candle_pos + Vector3(0, 0.03, 0), Vector3(0.035, 0.05, 0.035), Color(1.0, 0.72, 0.28))
-	var mi := MeshInstance3D.new()
-	mi.mesh = _st.commit()
-	mi.material_override = _mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
+	var path := SECTION_DIR + preset + "_section.glb"
+	_model = MODEL_VIEW.has(preset) and ResourceLoader.exists(path)
+	if _model:
+		# 模型的顶点色是 Blender 里烘好的线性颜色（glTF COLOR_0），不能再按 sRGB 转一次（会暗一大截）
+		_mat.vertex_color_is_srgb = false
+		var inst := (load(path) as PackedScene).instantiate()
+		add_child(inst)
+		for n in inst.find_children("*", "MeshInstance3D", true, false):
+			var m := n as MeshInstance3D
+			m.material_override = _mat
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var v: Array = MODEL_VIEW[preset]
+		figure_spot = v[0]
+		aim = v[1]
+		dist = v[2]
+		_candle = bool(v[3]) and finished
+		elev_deg = v[4]
+	else:
+		var mi := MeshInstance3D.new()
+		mi.mesh = _st.commit()
+		mi.material_override = _mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
 	camera = Camera3D.new()
 	camera.fov = 36.0
 	camera.near = 0.1
 	camera.far = 1400.0
-	var elev := deg_to_rad(26.0)
+	var elev := deg_to_rad(elev_deg)
 	camera.position = aim + Vector3(cos(elev) * dist, sin(elev) * dist, -0.9)
 	add_child(camera)
 	camera.look_at(to_global(aim), Vector3.UP)
@@ -115,33 +151,39 @@ func build(preset: String, finished: bool, vents: int) -> void:
 func labels() -> Array:
 	match _preset:
 		"RaisedCave":
-			var out := [[Vector3(-0.3, 0.42, -0.7), Loc.t("Raised sleeping platform"), Loc.t("Stay above cold air")],
-				[Vector3(0, 0.02, 1.0), Loc.t("Cold-air pit"), Loc.t("Traps cold air (lower)")],
+			var out := [[Vector3(-0.3, 0.45, -0.7), Loc.t("Raised sleeping platform"), Loc.t("Stay above cold air")],
+				[Vector3(0, 0.02, 0.9), Loc.t("Cold-air pit"), Loc.t("Traps cold air (lower)")],
 				[Vector3(0, 0.3, 2.2), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
 			if _vents > 0:
-				out.append([Vector3(0, 2.05, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+				out.append([Vector3(0, 2.15, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
 			return out
-		"BasicCave", "Quinzhee":
-			var out := [[Vector3(0, 1.75, -0.8), Loc.t("Thick snow roof"), Loc.t("Snow holds your body heat in")],
+		"BasicCave":
+			var out := [[Vector3(0, 1.6, -0.6), Loc.t("Thick snow roof"), Loc.t("Snow holds your body heat in")],
 				[Vector3(0, 0.3, 2.2), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
 			if _vents > 0:
-				out.append([Vector3(0, 1.95, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+				out.append([Vector3(0, 2.15, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+			return out
+		"Quinzhee":
+			var out := [[Vector3(0, 1.3, -0.6), Loc.t("Thick snow roof"), Loc.t("Snow holds your body heat in")],
+				[Vector3(0, 0.3, 1.9), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
+			if _vents > 0:
+				out.append([Vector3(0, 1.6, -0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
 			return out
 		"SnowTrench":
-			return [[Vector3(0, 1.0, -0.4), Loc.t("Roof over the trench"), Loc.t("Blocks wind and falling snow")],
+			return [[Vector3(0, 0.95, -0.5), Loc.t("Roof over the trench"), Loc.t("Blocks wind and falling snow")],
 				[Vector3(-0.3, 0.1, -1.0), Loc.t("Bough floor"), Loc.t("Keeps you off the snow")]]
 		"TreeWell":
-			return [[Vector3(0, 1.7, -0.9), Loc.t("Spruce bough roof"), Loc.t("The tree shelters you")],
+			return [[Vector3(0, 1.9, -0.9), Loc.t("Spruce bough roof"), Loc.t("The tree shelters you")],
 				[Vector3(0, 0.5, -1.9), Loc.t("Snow wall"), Loc.t("Blocks the wind")]]
 		"LeanTo":
-			return [[Vector3(0, 1.1, -0.2), Loc.t("Thatched roof"), Loc.t("Open at the front")],
-				[Vector3(0, 0.05, 1.7), Loc.t("Fire side"), Loc.t("Heat reflects in from here")]]
+			return [[Vector3(0, 0.85, -0.2), Loc.t("Thatched roof"), Loc.t("Open at the front")],
+				[Vector3(0, 0.1, 2.0), Loc.t("Fire side"), Loc.t("Heat reflects in from here")]]
 		"RockOverhang":
-			return [[Vector3(0, 1.0, -1.8), Loc.t("Cold rock wall"), Loc.t("Blocks wind, drinks heat")],
+			return [[Vector3(-1.1, 1.2, -0.3), Loc.t("Cold rock wall"), Loc.t("Blocks wind, drinks heat")],
 				[Vector3(-0.6, 0.1, -1.0), Loc.t("Thick bough bed"), Loc.t("Keeps you off cold rock")]]
 		"FallenLog":
-			return [[Vector3(0, 1.25, -0.6), Loc.t("Fallen log ridge"), Loc.t("Holds up the thatched ribs")],
-				[Vector3(-0.55, 0.1, -1.1), Loc.t("Bough bed"), Loc.t("Keeps you off the snow")]]
+			return [[Vector3(-0.27, 1.4, -0.6), Loc.t("Fallen log ridge"), Loc.t("Holds up the thatched ribs")],
+				[Vector3(-0.45, 0.1, -1.1), Loc.t("Bough bed"), Loc.t("Keeps you off the snow")]]
 	return []
 
 ## 天黑后压暗，但洞里的烛光不熄（烛光已经画在顶点色里）。
@@ -150,7 +192,9 @@ func set_daylight(k: float) -> void:
 	var v := lerpf(0.3, 1.0, d)
 	if _candle:
 		v = maxf(v, 0.6)
-	_mat.albedo_color = Color(v, v, v * lerpf(1.3, 1.0, d))
+	# 模型的颜色是烘好的线性值：游戏的色调映射对不受光材质也生效，会把暗部压下去，整体提亮 1.5 倍补回来
+	var gain := 1.5 if _model else 1.0
+	_mat.albedo_color = Color(v * gain, v * gain, v * lerpf(1.3, 1.0, d) * gain)
 
 func _process(_delta: float) -> void:
 	if camera == null or not camera.current:

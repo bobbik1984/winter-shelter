@@ -5,6 +5,12 @@ extends Node3D
 ## 局部坐标：+Z = 入口朝向（出口方向）。交互（按住 E）推进下一阶段，材料与工时由 GameDirector 结算。
 
 const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
+## Blender 生成的外观模型（tools/blender/build_shelters.py）：每个部件一个节点，名字 "s<a>_<b>__<部件>" = 第 a..b 阶段显示。
+## 没有模型文件时用下面的程序化几何（旧版）。
+const MODEL_DIR := "res://assets/models/shelters/"
+## 入口离中心多远（米，和模型一致：标记、走出庇护所的落点都用它）。
+const ENTRANCE_DIST := {"RaisedCave": 2.3, "BasicCave": 2.3, "Quinzhee": 2.3, "SnowTrench": 1.1, "LeanTo": 1.0,
+	"TreeWell": 2.3, "RockOverhang": 1.7, "FallenLog": 2.2}
 
 
 var builder: ShelterBuilder
@@ -38,6 +44,8 @@ var _dark: StandardMaterial3D
 var _wood: ShaderMaterial
 var _bough: ShaderMaterial
 var _glow: StandardMaterial3D
+var _model_mats := {}
+var _has_model := false
 
 func setup(p_preset: String, p_dir: Vector3, depth: float, slope: float, windbreak: bool) -> void:
 	preset_id = p_preset
@@ -69,7 +77,9 @@ func _ready() -> void:
 	interactable = Interactable.new()
 	interactable.kind = "shelter"
 	interactable.ring_radius = 1.6
-	interactable.position = Vector3(0, 0.3, 1.4)
+	_has_model = ResourceLoader.exists(MODEL_DIR + preset_id + ".glb")
+	# 交互点在入口前面（模型的入口离中心更远）
+	interactable.position = Vector3(0, 0.3, maxf(1.4, float(ENTRANCE_DIST.get(preset_id, 1.9)) - 0.5) if _has_model else 1.4)
 	add_child(interactable)
 	_refresh()
 
@@ -88,6 +98,10 @@ var ready_at := 0.0
 ## 入口在世界里的位置（地面上）：每种庇护所的开口离中心不一样远，标记要真的指着开口。
 func entrance_point() -> Vector3:
 	var dist := 1.5
+	if _has_model:
+		dist = float(ENTRANCE_DIST.get(preset_id, 1.5))
+		var q := global_position + entrance_dir * dist
+		return Vector3(q.x, SnowField.height_at(q.x, q.z) + 0.12, q.z)
 	match preset_id:
 		"SnowTrench": dist = 0.7
 		"LeanTo": dist = 1.0
@@ -100,6 +114,8 @@ func entrance_point() -> Vector3:
 
 ## 工地在地面上大约占多大半径（米）。
 func footprint_radius() -> float:
+	if _has_model:
+		return 2.6 if preset_id in ["TreeWell", "Quinzhee"] else 2.3
 	return 2.4 if preset_id == "Quinzhee" else 2.0
 
 func next_stage_cost() -> Dictionary:
@@ -165,6 +181,75 @@ func _refresh() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
 	var s := builder.current_stage
+	if _has_model:
+		_model_visual(s)
+	else:
+		_legacy_visual(s)
+	if s == 0:
+		# 工地标桩：四根小木桩 + 入口方向
+		for c in [Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
+			_cyl(c * 1.1 + Vector3(0, 0.35, 0), 0.04, 0.7, _wood)
+
+## 模型外观：按阶段显示部件，材质换成游戏里的雪 / 木头 / 枝条，完工后入口亮灯（倒棚生火）。
+func _model_visual(s: int) -> void:
+	if s <= 0:
+		return
+	var inst := (load(MODEL_DIR + preset_id + ".glb") as PackedScene).instantiate()
+	_visual.add_child(inst)
+	var glow_at := Vector3.INF
+	for n in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var tag := String(mi.name).split("__")
+		var range_ := tag[0].trim_prefix("s").split("_")
+		var label := tag[1] if tag.size() > 1 else ""
+		var a := int(range_[0])
+		var b := int(range_[1]) if range_.size() > 1 else 5
+		var on := a <= s and s <= b
+		if label == "vent":
+			on = on and vent_count >= 1
+		elif label == "vent2":
+			on = on and vent_count >= 2
+		mi.visible = on
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			var m := _model_material(src.resource_name if src else "")
+			if m:
+				mi.set_surface_override_material(i, m)
+		if label == "mound" and on:
+			_mound = mi
+		if label == "glow" and on:
+			glow_at = mi.get_aabb().get_center()
+	if glow_at != Vector3.INF:
+		_entrance_light = OmniLight3D.new()
+		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
+		_entrance_light.omni_range = 5.0
+		_entrance_light.light_energy = 1.4
+		_entrance_light.position = glow_at + Vector3(0, 0.25, 0.7)
+		_visual.add_child(_entrance_light)
+	if preset_id == "LeanTo" and s >= 5 and fire == null:
+		fire = Campfire.new()
+		fire.position = Vector3(0, 0, 2.0)
+		add_child(fire)
+
+func _model_material(name_: String) -> Material:
+	if _model_mats.is_empty():
+		var inner := StandardMaterial3D.new()
+		inner.albedo_color = Color(0.22, 0.30, 0.46)
+		inner.roughness = 1.0
+		var metal := StandardMaterial3D.new()
+		metal.albedo_color = Color(0.40, 0.48, 0.60)
+		metal.metallic = 0.4
+		metal.roughness = 0.45
+		var grass := StandardMaterial3D.new()
+		grass.albedo_color = Color(0.62, 0.52, 0.28)
+		grass.roughness = 0.95
+		_model_mats = {"Snow": _snow, "SnowIn": inner, "Dark": _dark, "Bough": _bough, "Wood": _wood, "Glow": _glow,
+			"Rock": _snow_mat(Color(0.33, 0.34, 0.38), 0.45), "Metal": metal, "Grass": grass}
+	return _model_mats.get(name_.get_slice(".", 0))
+
+## 旧版程序化外观（没有模型文件时）。
+func _legacy_visual(s: int) -> void:
 	match preset_id:
 		"RaisedCave", "BasicCave":
 			_cave_visual(s)
@@ -180,10 +265,6 @@ func _refresh() -> void:
 			_rock_visual(s)
 		"FallenLog":
 			_fallen_visual(s)
-	if s == 0:
-		# 工地标桩：四根小木桩 + 入口方向
-		for c in [Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
-			_cyl(c * 1.1 + Vector3(0, 0.35, 0), 0.04, 0.7, _wood)
 
 func _sphere(pos: Vector3, r: float, scale_v: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -373,7 +454,8 @@ func set_inside(on: bool) -> void:
 			_mound_ghost.albedo_color = Color(0.88, 0.92, 1.0, 0.22)
 			_mound_ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			_mound_ghost.cull_mode = BaseMaterial3D.CULL_BACK
-		_mound.material_override = _mound_ghost if on else _snow
+		# 模型的雪丘有好几种材质（外面的雪、洞里的暗面），恢复时去掉整体覆盖即可
+		_mound.material_override = _mound_ghost if on else (null if _has_model else _snow)
 		_mound.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 func _trench_visual(s: int) -> void:

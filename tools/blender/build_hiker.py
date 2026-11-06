@@ -2,8 +2,11 @@
 
 Run:  blender --background --python tools/blender/build_hiker.py -- assets/models/char_survivor.glb
 
-Low-poly (~2k tris) survivor: brown hooded parka, dark trousers, boots, mitts, red backpack with a
-yellow sleeping pad, black/white banded avalanche probe in the right hand.
+v2 (2026-11-07): lofted, bevelled, smooth-shaded survivor (~9k tris) in the north-star palette (bright enough to read backlit — the game camera faces the afternoon sun):
+olive parka with a fur-ruffed hood, goggles and neck gaiter, chest pockets and zip, snow pants with
+knee pads and gaiters, leather boots with soles, mitts with thumbs; red expedition pack with lid,
+front pocket, compression straps, shoulder straps and hip belt, a strapped shovel blade and a
+rolled sleeping pad; black/white banded avalanche probe in the right hand.
 Rigid skinning: every part is weighted 100 % to one bone (robust, no weight painting).
 Actions: Idle-loop, Walk-loop, Probe, Dig-loop.  Character faces -Y in Blender (= +Z in Godot).
 """
@@ -23,19 +26,26 @@ def mat(name, rgb, rough=0.85):
     b = m.node_tree.nodes["Principled BSDF"]
     b.inputs["Base Color"].default_value = (*rgb, 1.0)
     b.inputs["Roughness"].default_value = rough
+    m.diffuse_color = (*rgb, 1.0)   # 预览（Workbench）用
     return m
 
 M = {
-    "coat": mat("Coat", (0.36, 0.25, 0.14)),
-    "hood": mat("Hood", (0.28, 0.19, 0.11)),
-    "fur": mat("Fur", (0.80, 0.74, 0.62), 1.0),
-    "pants": mat("Pants", (0.11, 0.12, 0.15)),
-    "boot": mat("Boot", (0.07, 0.06, 0.06)),
-    "mitt": mat("Mitt", (0.55, 0.12, 0.08)),
-    "face": mat("Face", (0.55, 0.38, 0.28)),
-    "pack": mat("Pack", (0.72, 0.12, 0.08), 0.7),
-    "strap": mat("Strap", (0.12, 0.10, 0.09)),
-    "pad": mat("Pad", (0.90, 0.68, 0.12), 0.6),
+    "coat": mat("Coat", (0.40, 0.42, 0.28)),
+    "coat_dark": mat("CoatDark", (0.20, 0.22, 0.15)),
+    "fur": mat("Fur", (0.85, 0.78, 0.64), 1.0),
+    "pants": mat("Pants", (0.13, 0.14, 0.17)),
+    "gaiter": mat("Gaiter", (0.07, 0.07, 0.08)),
+    "boot": mat("Boot", (0.30, 0.17, 0.08), 0.7),
+    "sole": mat("Sole", (0.02, 0.02, 0.02), 0.9),
+    "mitt": mat("Mitt", (0.10, 0.09, 0.08)),
+    "face": mat("Face", (0.52, 0.32, 0.22), 0.8),
+    "lens": mat("Lens", (0.10, 0.20, 0.26), 0.15),
+    "scarf": mat("Scarf", (0.33, 0.07, 0.05)),
+    "pack": mat("Pack", (0.80, 0.13, 0.06), 0.7),
+    "pack_dark": mat("PackDark", (0.45, 0.07, 0.04), 0.7),
+    "strap": mat("Strap", (0.03, 0.03, 0.03)),
+    "pad": mat("Pad", (0.80, 0.42, 0.06), 0.6),
+    "metal": mat("Metal", (0.16, 0.17, 0.19), 0.45),
     "white": mat("ProbeWhite", (0.88, 0.88, 0.86), 0.5),
     "black": mat("ProbeBlack", (0.05, 0.05, 0.06), 0.5),
 }
@@ -73,9 +83,11 @@ bpy.ops.object.mode_set(mode="OBJECT")
 # 不依赖顶点索引顺序（之前按索引分组导致权重错位、动作时拉出长三角）。
 part_objects = []
 
-def add_part(geom_fn, material, bone_name):
+def add_part(geom_fn, material, bone_name, smooth=True):
     bm = bmesh.new()
     geom_fn(bm)
+    for f in bm.faces:
+        f.smooth = smooth
     me_ = bpy.data.meshes.new(f"part_{len(part_objects)}")
     bm.to_mesh(me_)
     bm.free()
@@ -115,31 +127,153 @@ def seg_cyl(a, b, r1, r2, segs=8):
     rot = d.to_track_quat("Z", "Y").to_matrix().to_4x4()
     return cyl(((a + b) / 2), r1, r2, d.length, segs, rot)
 
-# torso / parka (slightly A-line), hips
-add_part(cyl((0, 0, 1.18), 0.25, 0.19, 0.56, 10), "coat", "chest")
-add_part(cyl((0, 0, 0.90), 0.21, 0.24, 0.20, 10), "coat", "hips")
-# hood, fur ruff, face
-add_part(sphere((0, 0.02, 1.58), 0.16, (1.0, 1.05, 1.12)), "hood", "head")
-add_part(cyl((0, -0.09, 1.57), 0.12, 0.12, 0.05, 12, Matrix.Rotation(math.radians(90), 4, "X")), "fur", "head")
-add_part(sphere((0, -0.10, 1.57), 0.085, (1, 0.5, 1.1), 8, 5), "face", "head")
-# arms + mitts
+# ---------------------------------------------------------------- v2 shape helpers
+def _ring(bm, z, rx, ry, segs, cx=0.0, cy=0.0, noise=0.0, seed=0):
+    vs = []
+    for i in range(segs):
+        a = 2 * math.pi * i / segs
+        n = 1.0 + noise * math.sin(a * 7 + seed) * math.cos(a * 3 + seed * 1.7)
+        vs.append(bm.verts.new((cx + math.cos(a) * rx * n, cy + math.sin(a) * ry * n, z)))
+    return vs
+
+def loft(rings, segs=16, cap0=True, cap1=True, matrix=None):
+    """rings: [(z, rx, ry[, cx, cy])] bottom→top; elliptical tube with optional caps."""
+    def fn(bm):
+        rs = [_ring(bm, r[0], r[1], r[2], segs, r[3] if len(r) > 3 else 0.0, r[4] if len(r) > 4 else 0.0) for r in rings]
+        for k in range(len(rs) - 1):
+            lo, hi = rs[k], rs[k + 1]
+            for i in range(segs):
+                j = (i + 1) % segs
+                bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
+        if cap0:
+            bm.faces.new(list(reversed(rs[0])))
+        if cap1:
+            bm.faces.new(rs[-1])
+        if matrix is not None:
+            bmesh.ops.transform(bm, matrix=matrix, verts=bm.verts)
+    return fn
+
+def limb(a, b, prof, segs=12):
+    """Tapered tube from a to b; prof = [(t, rx, ry)] along the segment."""
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    m = Matrix.Translation(a) @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
+    return loft([(t * d.length, rx, ry) for t, rx, ry in prof], segs, matrix=m)
+
+def rbox(center, size, bevel=0.02, segs=2):
+    def fn(bm):
+        res = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=Vector(size), verts=res["verts"])
+        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(bevel, min(size) * 0.45), segments=segs,
+                        affect="EDGES", profile=0.5)
+        bmesh.ops.translate(bm, vec=Vector(center), verts=bm.verts)
+    return fn
+
+def ellipsoid(center, radii, segs=14, rings=9):
+    def fn(bm):
+        bmesh.ops.create_uvsphere(bm, u_segments=segs, v_segments=rings, radius=1.0)
+        bmesh.ops.scale(bm, vec=Vector(radii), verts=bm.verts)
+        bmesh.ops.translate(bm, vec=Vector(center), verts=bm.verts)
+    return fn
+
+def torus_xz(center, rx, rz, minor, segs=22, msegs=6, noise=0.0):
+    """Ring in the XZ plane (faces -Y): the hood's fur ruff."""
+    def fn(bm):
+        rings = []
+        for i in range(segs):
+            a = 2 * math.pi * i / segs
+            n = 1.0 + noise * math.sin(a * 9.0) * 0.8 + noise * math.cos(a * 5.0 + 1.3)
+            c = Vector((math.cos(a) * rx, 0.0, math.sin(a) * rz))
+            out = Vector((math.cos(a), 0.0, math.sin(a)))
+            ring = []
+            for k in range(msegs):
+                b = 2 * math.pi * k / msegs
+                p = c + (out * math.cos(b) + Vector((0, -1, 0)) * math.sin(b)) * minor * n
+                ring.append(bm.verts.new(Vector(center) + p))
+            rings.append(ring)
+        for i in range(segs):
+            j = (i + 1) % segs
+            for k in range(msegs):
+                l = (k + 1) % msegs
+                bm.faces.new((rings[i][k], rings[j][k], rings[j][l], rings[i][l]))
+    return fn
+
+def hood(center, radii, open_y):
+    """Hood shell: an ellipsoid with the face opening cut out (faces whose centre is in front of open_y)."""
+    def fn(bm):
+        bmesh.ops.create_uvsphere(bm, u_segments=18, v_segments=12, radius=1.0)
+        bmesh.ops.scale(bm, vec=Vector(radii), verts=bm.verts)
+        bmesh.ops.translate(bm, vec=Vector(center), verts=bm.verts)
+        cut = [f for f in bm.faces if f.calc_center_median().y < open_y and abs(f.calc_center_median().z - center[2]) < radii[2] * 0.8]
+        bmesh.ops.delete(bm, geom=cut, context="FACES")
+        bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.012)
+    return fn
+
+# ---------------------------------------------------------------- v2 body
+# 裤子与骨盆（hips 骨）：雪裤 + 腰带 + 外套下摆（下摆跟 hips 走，弯腰时不会穿模）
+add_part(loft([(0.80, 0.155, 0.115), (0.92, 0.175, 0.125), (1.02, 0.17, 0.12)], 16), "pants", "hips")
+add_part(loft([(0.86, 0.222, 0.168), (0.93, 0.212, 0.160), (1.05, 0.205, 0.152)], 18, cap0=False, cap1=False), "coat", "hips")
+add_part(loft([(0.855, 0.226, 0.171), (0.875, 0.226, 0.171)], 18, cap0=False, cap1=False), "coat_dark", "hips")
+add_part(loft([(0.965, 0.224, 0.170), (1.005, 0.224, 0.170)], 18, cap0=False, cap1=False), "strap", "hips")   # 背包腰带
+for x in (-1, 1):
+    add_part(rbox((0.15 * x, -0.135, 0.985), (0.07, 0.04, 0.05), 0.012), "metal" if x > 0 else "strap", "hips")
+
+# 外套上身（chest 骨）：胸宽、收腰、肩线；拉链 + 两个胸袋 + 肩头
+add_part(loft([(1.00, 0.205, 0.152), (1.12, 0.212, 0.155), (1.25, 0.226, 0.162), (1.35, 0.228, 0.160),
+               (1.42, 0.205, 0.150), (1.47, 0.12, 0.105)], 20), "coat", "chest")
+add_part(rbox((0, -0.158, 1.18), (0.022, 0.012, 0.56), 0.004, 1), "coat_dark", "chest", smooth=False)
+for x in (-1, 1):
+    add_part(rbox((0.095 * x, -0.160, 1.26), (0.085, 0.022, 0.095), 0.01), "coat_dark", "chest")
+    add_part(ellipsoid((0.205 * x, 0.0, 1.375), (0.095, 0.098, 0.088)), "coat", "chest")
+
+# 手臂：上臂 + 肘 + 前臂 + 袖口 + 连指手套（带拇指）
 for s, x in (("L", 1), ("R", -1)):
-    add_part(seg_cyl((0.22 * x, 0, 1.38), (0.26 * x, 0, 1.10), 0.075, 0.065), "coat", f"upper_arm.{s}")
-    add_part(seg_cyl((0.26 * x, 0, 1.10), (0.27 * x, -0.02, 0.88), 0.065, 0.055), "coat", f"forearm.{s}")
-    add_part(sphere((0.27 * x, -0.03, 0.84), 0.055, (1, 1.1, 1.2), 8, 5), "mitt", f"forearm.{s}")
-    add_part(seg_cyl((0.10 * x, 0, 0.92), (0.10 * x, 0, 0.50), 0.095, 0.08), "pants", f"thigh.{s}")
-    add_part(seg_cyl((0.10 * x, 0, 0.50), (0.10 * x, 0, 0.10), 0.075, 0.07), "pants", f"shin.{s}")
-    add_part(box((0.10 * x, -0.04, 0.05), (0.12, 0.26, 0.10)), "boot", f"shin.{s}")
-# backpack on the back (+Y), straps, sleeping pad on top
-add_part(box((0, 0.24, 1.17), (0.40, 0.22, 0.56)), "pack", "chest")
-add_part(box((0, 0.36, 1.08), (0.30, 0.06, 0.26)), "pack", "chest")
-for x in (-0.13, 0.13):
-    add_part(box((x, -0.02, 1.25), (0.05, 0.40, 0.04)), "strap", "chest")
-add_part(cyl((0, 0.24, 1.52), 0.08, 0.08, 0.52, 10, Matrix.Rotation(math.radians(90), 4, "Y")), "pad", "chest")
-# avalanche probe in the right hand (banded)
+    add_part(limb((0.215 * x, 0, 1.38), (0.255 * x, 0, 1.11), [(0, 0.085, 0.087), (0.5, 0.079, 0.081), (1, 0.069, 0.071)]), "coat", f"upper_arm.{s}")
+    add_part(ellipsoid((0.255 * x, 0, 1.11), (0.069, 0.071, 0.069), 12, 8), "coat", f"upper_arm.{s}")
+    add_part(limb((0.255 * x, 0, 1.11), (0.268 * x, -0.02, 0.90), [(0, 0.069, 0.071), (0.75, 0.06, 0.063), (1, 0.056, 0.059)]), "coat", f"forearm.{s}")
+    add_part(limb((0.266 * x, -0.017, 0.93), (0.268 * x, -0.02, 0.895), [(0, 0.064, 0.066), (1, 0.064, 0.066)]), "coat_dark", f"forearm.{s}")
+    add_part(ellipsoid((0.27 * x, -0.03, 0.845), (0.047, 0.055, 0.068), 12, 8), "mitt", f"forearm.{s}")
+    add_part(ellipsoid((0.245 * x, -0.07, 0.87), (0.02, 0.026, 0.035), 8, 6), "mitt", f"forearm.{s}")
+
+# 腿：大腿 + 护膝 + 小腿 + 雪套 + 皮靴（鞋底、鞋头）
+for s, x in (("L", 1), ("R", -1)):
+    add_part(limb((0.10 * x, 0, 0.95), (0.105 * x, -0.01, 0.50), [(0, 0.10, 0.105), (0.5, 0.09, 0.095), (1, 0.074, 0.08)]), "pants", f"thigh.{s}")
+    add_part(ellipsoid((0.105 * x, -0.055, 0.52), (0.062, 0.035, 0.065), 10, 7), "coat_dark", f"thigh.{s}")
+    add_part(limb((0.105 * x, -0.01, 0.50), (0.10 * x, 0, 0.13), [(0, 0.074, 0.08), (0.4, 0.07, 0.074), (1, 0.064, 0.068)]), "pants", f"shin.{s}")
+    add_part(limb((0.10 * x, -0.002, 0.33), (0.10 * x, 0, 0.11), [(0, 0.074, 0.078), (1, 0.074, 0.078)]), "gaiter", f"shin.{s}")
+    add_part(rbox((0.10 * x, -0.04, 0.075), (0.115, 0.25, 0.11), 0.035), "boot", f"shin.{s}")
+    add_part(ellipsoid((0.10 * x, -0.15, 0.06), (0.058, 0.06, 0.05), 10, 6), "boot", f"shin.{s}")
+    add_part(rbox((0.10 * x, -0.045, 0.016), (0.128, 0.29, 0.032), 0.012), "sole", f"shin.{s}")
+
+# 头：脸 + 护目镜（镜片 + 绑带）+ 脖套 + 兜帽（开口）+ 毛领
+add_part(ellipsoid((0, -0.025, 1.585), (0.082, 0.088, 0.102), 14, 10), "face", "head")
+add_part(loft([(1.605, 0.094, 0.096, 0, -0.012), (1.64, 0.094, 0.096, 0, -0.012)], 16, cap0=False, cap1=False), "strap", "head")
+add_part(rbox((0, -0.103, 1.622), (0.15, 0.035, 0.058), 0.016), "lens", "head")
+add_part(loft([(1.44, 0.092, 0.088, 0, -0.01), (1.50, 0.088, 0.088, 0, -0.02), (1.555, 0.082, 0.082, 0, -0.03)], 16, cap0=False, cap1=False), "scarf", "head")
+add_part(hood((0, 0.012, 1.60), (0.135, 0.138, 0.16), -0.06), "coat", "head")
+add_part(torus_xz((0, -0.075, 1.595), 0.098, 0.118, 0.034, noise=0.12), "fur", "head")
+
+# 背包（+Y = 背后）：主仓、顶包、前袋、压缩带、肩带、雪铲、防潮垫卷
+add_part(rbox((0, 0.255, 1.17), (0.36, 0.22, 0.50), 0.06, 3), "pack", "chest")
+add_part(rbox((0, 0.245, 1.44), (0.34, 0.25, 0.11), 0.045, 3), "pack_dark", "chest")
+add_part(rbox((0, 0.37, 1.10), (0.26, 0.07, 0.25), 0.03, 2), "pack_dark", "chest")
+for z in (1.02, 1.30):
+    add_part(rbox((0, 0.369, z), (0.375, 0.012, 0.03), 0.005, 1), "strap", "chest", smooth=False)
+add_part(rbox((0, 0.412, 1.12), (0.19, 0.012, 0.23), 0.02, 2), "metal", "chest")
+add_part(limb((0, 0.412, 1.24), (0, 0.405, 1.40), [(0, 0.012, 0.012), (1, 0.012, 0.012)], 6), "strap", "chest")
+for x in (-1, 1):
+    path = [(0.11 * x, 0.15, 1.43), (0.12 * x, 0.0, 1.475), (0.125 * x, -0.150, 1.40), (0.12 * x, -0.168, 1.25), (0.13 * x, -0.165, 1.08)]
+    for p0, p1 in zip(path, path[1:]):
+        add_part(limb(p0, p1, [(0, 0.032, 0.012), (1, 0.032, 0.012)], 6), "strap", "chest")
+    add_part(rbox((0, -0.172, 1.30), (0.20, 0.01, 0.022), 0.004, 1), "strap", "chest", smooth=False)
+add_part(cyl((0, 0.25, 1.565), 0.078, 0.078, 0.52, 14, Matrix.Rotation(math.radians(90), 4, "Y")), "pad", "chest")
+for xx in (-0.16, 0.16):
+    add_part(cyl((xx, 0.25, 1.565), 0.083, 0.083, 0.03, 14, Matrix.Rotation(math.radians(90), 4, "Y")), "strap", "chest")
+
+# 探针杆（右手，黑白分段）
 for i in range(8):
     z0 = 0.10 + i * 0.22
-    add_part(cyl((-0.28, -0.05, z0 + 0.11), 0.017, 0.017, 0.22, 6), "white" if i % 2 == 0 else "black", "probe")
+    add_part(cyl((-0.28, -0.05, z0 + 0.11), 0.017, 0.017, 0.22, 8), "white" if i % 2 == 0 else "black", "probe")
 
 bpy.ops.object.select_all(action="DESELECT")
 for o in part_objects:
@@ -149,8 +283,9 @@ bpy.ops.object.join()
 obj = bpy.context.view_layer.objects.active
 obj.name = "HikerMesh"
 me = obj.data
-for p in me.polygons:
-    p.use_smooth = False
+# 平滑着色 + 35° 以上的折角保持锐利（盒子边、鞋底），外形柔和但不糊
+me.use_auto_smooth = True
+me.auto_smooth_angle = math.radians(35)
 
 obj.parent = rig
 mod = obj.modifiers.new("Armature", "ARMATURE")
@@ -262,16 +397,24 @@ print("EXPORTED", OUT, "tris", tris, "verts", len(me.vertices))
 if "--preview" in sys.argv:
     outdir = sys.argv[sys.argv.index("--preview") + 1]
     scene.render.engine = "BLENDER_WORKBENCH"
-    scene.display.shading.color_type = "MATERIAL"
-    scene.render.resolution_x = 360
-    scene.render.resolution_y = 480
+    sh = scene.display.shading
+    sh.light = "STUDIO"
+    sh.color_type = "MATERIAL"
+    sh.show_shadows = True
+    sh.show_cavity = True
+    scene.display.shadow_focus = 0.3
+    scene.render.resolution_x = 420
+    scene.render.resolution_y = 560
+    scene.render.film_transparent = False
     cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam"))
+    cam.data.lens = 85
     scene.collection.objects.link(cam)
     scene.camera = cam
-    for view, loc in (("side", (3.2, 0, 1.0)), ("front", (0.6, -3.2, 1.0))):
+    # 3/4 前、3/4 后（游戏镜头大多从斜后上方看）、正侧
+    for view, loc in (("front34", (2.6, -4.2, 2.4)), ("back34", (-2.6, 4.2, 2.6)), ("side", (5.0, 0, 1.4))):
         cam.location = loc
-        cam.rotation_euler = (Vector((0, 0, 0.9)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
-        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 8), ("Probe", 10), ("Dig-loop", 8), ("Chop-loop", 0), ("Chop-loop", 15)):
+        cam.rotation_euler = (Vector((0, 0, 0.95)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 8), ("Dig-loop", 8), ("Chop-loop", 15)):
             rig.animation_data.action = bpy.data.actions[act_name]
             for tr in rig.animation_data.nla_tracks:
                 tr.mute = True
