@@ -10,4 +10,4 @@ static func is_compat() -> bool:
 static func line() -> String:
 	var txt := FileAccess.get_file_as_string("res://build_info.txt").strip_edges()
 	var s := txt if txt != "" else "dev"
-	return "build %s  ·  %d FPS  ·  %s" % [s, int(Engine.get_frames_per_second()), "web" if OS.has_feature("web") else "native"]
+	return "build %s  ·  %d FPS  ·  %s" % [s, int(Engine.get_frames_per_second()), "web" if OS.has_feature("web") else ("android" if OS.has_feature("android") else "native")]

@@ -71,6 +71,9 @@ func _ui_factor() -> float:
 			var css = JavaScriptBridge.eval("Math.min(window.innerWidth, window.innerHeight)", true)
 			if css != null and float(css) > 0.0:
 				h = float(css)
+		elif OS.has_feature("mobile"):
+			# 安卓 / iOS：像素 → 与网页 CSS 像素相当的 dp（160 dpi = 1）。不换算的话字会小 2.5–3 倍。
+			h /= maxf(float(DisplayServer.screen_get_dpi()) / 160.0, 1.0)
 		if TouchMode.css_override > 0.0:
 			h = TouchMode.css_override
 		f *= TouchMode.ui_factor(h)

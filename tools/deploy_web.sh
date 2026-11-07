@@ -28,6 +28,7 @@ fi
 echo "$sha" > build_info.txt
 
 rm -rf build/web; mkdir -p build/web
+touch build/.gdignore   # 别让编辑器把导出的文件当资源导入（否则还会被打进别的导出包）
 "$GODOT" --headless --path . --import >/dev/null 2>&1
 # 导出缓存可能留着旧的脚本默认值（见 tools/dump_resource_values.gd），每次都重新转换
 rm -rf .godot/exported
