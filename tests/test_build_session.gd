@@ -74,7 +74,7 @@ func run() -> Dictionary:
 		var fac := TouchMode.ui_factor(cs)
 		var canvas: Vector2 = Vector2(cs * 2.16, cs) * (1080.0 / cs) / fac
 		for ctx in [{"state": "briefing", "free_play": true}, {"state": "playing"}, {"state": "playing", "building": true}, {"state": "playing", "focused": true},
-				{"state": "paused", "web": true}, {"state": "night"}, {"state": "report", "has_next": true, "web": true}, {"state": "playing", "intel": true}]:
+				{"state": "paused", "web": true}, {"state": "night"}, {"state": "night", "fire_place": true, "fire_watch": true}, {"state": "report", "has_next": true, "web": true}, {"state": "playing", "intel": true}]:
 			var bs := TouchMode.buttons_for(ctx)
 			var rs := TouchMode.layout(bs, canvas)
 			var ok := true
@@ -85,4 +85,11 @@ func run() -> Dictionary:
 					if rs[i].intersects(rs[j]):
 						ok = false
 			_check(ok, "CSS 高 %d，%s：按钮都在屏幕内、够大、不重叠" % [int(cs), str(ctx)])
+	# 2026-11-07 夜里：睡着时有"醒来"按钮；有火时有"守火"开关；醒着等选择时没有
+	var nb := TouchMode.buttons_for({"state": "night", "fire_place": true, "fire_watch": true})
+	var ids := nb.map(func(b): return b["id"])
+	_check("wake" in ids and "watch" in ids and "speed" in ids, "夜里睡着：醒来、守火、快进按钮都在（%s）" % str(ids))
+	_check(nb.filter(func(b): return b["id"] == "wake")[0]["key"] == KEY_W and nb.filter(func(b): return b["id"] == "watch")[0]["key"] == KEY_F, "醒来 = W，守火 = F（和键盘同一条路径）")
+	_check(not ("watch" in TouchMode.buttons_for({"state": "night"}).map(func(b): return b["id"])), "没有火时不显示守火")
+	_check(TouchMode.buttons_for({"state": "night", "waiting": true}).is_empty(), "醒着等选择时不显示这些按钮（行动在醒来面板里点）")
 	return {"passed": _passed, "failures": _failures}

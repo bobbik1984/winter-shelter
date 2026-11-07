@@ -137,7 +137,8 @@ func _context() -> Dictionary:
 		GameDirector.State.NIGHT: st = "night"
 		GameDirector.State.REPORT: st = "report"
 	return {"state": st, "inside": d._in_shelter, "near_fire": d._nearest_fire(d.tuning.fire_warm_radius_m) != null, "intel": d.ui.intel_open(), "building": d.build.active, "focused": d.session.focused(),
-		"waiting": d.night != null and d.night.waiting(), "has_next": d.state == GameDirector.State.REPORT and d._next_stage().x >= 0,
+		"waiting": d.night != null and d.night.waiting(),
+		"fire_place": d.night != null and d.night.has_fire_place, "fire_watch": d.night != null and d.night.fire_watch, "has_next": d.state == GameDirector.State.REPORT and d._next_stage().x >= 0,
 		"free_play": not LevelState.active() or LevelState.level.is_free(), "credits": d.ui.credits_open(), "web": OS.has_feature("web")}
 
 func _process(delta: float) -> void:

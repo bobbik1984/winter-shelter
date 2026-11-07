@@ -333,7 +333,34 @@ func _tick_night(delta: float) -> void:
 			_end_night()
 			return
 	ui.update_night_hud(weather.minutes_to_sunset() > 0.0, weather.clock_string(), int(night.warmth), night.curve + PackedVector2Array([Vector2(night.minute, night.warmth)]),
-		night.duration, night.timeline.filter(func(e): return e["kind"] == "event"), night.minute)
+		night.duration, night.timeline.filter(func(e): return e["kind"] == "event"), night.minute, night.asleep_minutes / 60.0, night_hint())
+
+## 睡着时自己醒来（添柴、暖身、烘袜子都要先醒）：花睡眠，不算被冻醒。
+func night_wake_now() -> void:
+	if night == null or state != State.NIGHT or not night.wake_now():
+		return
+	_show_night_event(NightCurve.EV_SELF)
+
+## 守火开关：火快烧完时叫醒我（默认开）。只有能整夜烧的火才有意义。
+func toggle_fire_watch() -> void:
+	if night == null or not night.has_fire_place:
+		return
+	night.fire_watch = not night.fire_watch
+	SessionLog.log_event("fire_watch", weather.clock_string(), {"on": night.fire_watch})
+	ui.toast(Loc.t("Fire watch on: you'll wake when the fire burns low.") if night.fire_watch else Loc.t("Fire watch off: you'll sleep until the cold wakes you."), 2.5)
+
+## 夜间面板底下的一行操作提示。
+func night_hint() -> String:
+	if night == null or night.waiting():
+		return ""
+	var parts: Array[String] = []
+	if not TouchMode.enabled:
+		parts.append(Loc.t("Hold [Space] to fast-forward"))
+		parts.append(Loc.t("[W] Wake up"))
+	if night.has_fire_place:
+		var watch := Loc.t("on") if night.fire_watch else Loc.t("off")
+		parts.append((Loc.t("[F] Fire watch: %s") if not TouchMode.enabled else Loc.t("Fire watch: %s")) % watch)
+	return "   ·   ".join(parts)
 
 ## 夜里的火：模型说烧着就烧着、说灭了就灭（倒棚反射火 / 睡前篝火）。
 func _sync_night_fire() -> void:
@@ -434,6 +461,7 @@ func _show_report(night_res: Dictionary = {}) -> void:
 	data["title"] = NightText.title(night_res, wet)
 	data["conclusion"] = NightText.conclusion(night_res, NightText.heat_leak(input, night_res, String(report["details"].get("min_axis", "heat")), tuning))
 	data["night_curve"] = night_res["curve"]
+	data["score_line"] = NightText.score_line(night_res)
 	data["night_duration"] = night.duration if night != null else tuning.night_duration_hours * 60.0
 	data["night_events"] = (night_res["timeline"] as Array).filter(func(e): return e["kind"] == "event")
 	var extra: Array[String] = [NightText.timeline(night_res, _bed_minutes if _bed_minutes > 0.0 else weather.current_time_minutes)]
@@ -457,10 +485,11 @@ func _show_report(night_res: Dictionary = {}) -> void:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
-	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "bed_warmth": int(warmth.body_warmth), "min_warmth": int(round(float(night_res.get("min_warmth", -1.0)))), "end_warmth": int(round(float(night_res.get("end_warmth", -1.0)))), "wakes": int(night_res.get("wakes", 0)), "cause": String(night_res.get("cause", ""))})
+	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "bed_warmth": int(warmth.body_warmth), "min_warmth": int(round(float(night_res.get("min_warmth", -1.0)))), "end_warmth": int(round(float(night_res.get("end_warmth", -1.0)))), "wakes": int(night_res.get("wakes", 0)), "cause": String(night_res.get("cause", "")), "score": int(night_res.get("score", 0)), "sleep_h": snappedf(float(night_res.get("sleep_h", 0.0)), 0.1), "planned_wakes": int(night_res.get("planned_wakes", 0))})
 	SessionLog.close()
 	var lvl := LevelState.level.index if LevelState.active() else 0
-	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day, LevelState.stage), String(data["outcome"]), int(round(float(report["details"].get("weighted_average", 0.0)))))
+	# 记录：结局 + 夜晚得分（体温 / 睡眠 / 健康）
+	Records.save(Records.key_for(String(input.get("shelter_type", "None")), lvl, full_day, LevelState.stage), String(data["outcome"]), int(night_res.get("score", 0)))
 	_unlock_after_report(lvl, String(data["outcome"]))
 	_learn_after_report(String(input.get("shelter_type", "None")), String(data["outcome"]))
 
@@ -542,6 +571,11 @@ func _unhandled_input(event: InputEvent) -> void:
 					_night_act(NightCurve.ACT_SLEEP)
 				elif k >= KEY_1 and k <= KEY_9 and int(k - KEY_1) < acts.size():
 					_night_act(acts[int(k - KEY_1)])
+			elif night != null:
+				if k == KEY_W:
+					night_wake_now()
+				elif k == KEY_F:
+					toggle_fire_watch()
 		State.REPORT:
 			if k == KEY_R:
 				_restart()
@@ -2151,7 +2185,9 @@ func night_input() -> Dictionary:
 			input["fire_held"] = lit
 			input["firewood_logs"] = float(logs)
 			input["fuel_hours"] = float(logs) * tuning.fire_fuel_hours_per_log
-			input["fire_exposure"] = GameRules.fire_exposure(lee, 1.0 if site.near_windbreak else 0.0, _tree_cover(sp))
+			# 火塘在棚口前：按挡风统一规则算火所在的位置——棚子自己的墙在下风一侧护着它（入口迎风就护不住）
+			var fp: Vector3 = site.fire.global_position if site.fire != null else sp
+			input["fire_exposure"] = fire_exposure_at(fp)
 	_add_campfire_to_night(input)
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed

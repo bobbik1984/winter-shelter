@@ -49,6 +49,7 @@ var _vignette_tex: TextureRect
 ## D14 夜晚：HUD（时钟 / 体温 / 曲线）与醒来面板。
 var _night_hud: PanelContainer
 var _night_clock: Label
+var _night_hint: Label
 var _night_graph: NightGraph
 var _night_event: PanelContainer
 var _night_event_box: VBoxContainer
@@ -659,6 +660,11 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 14, MUTED))
 	v.add_child(_label(String(data["title"]), 36, oc))
 	v.add_child(_label(Loc.t("Shelter: %s") % shelter_name, 14, MUTED))
+	if String(data.get("score_line", "")) != "":
+		var sl0 := _label(String(data["score_line"]), 16, CREAM)
+		sl0.name = "ReportScore"
+		sl0.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(sl0)
 	if data.has("timeline"):
 		var tl := _label(String(data["timeline"]), 12, MUTED)
 		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -748,16 +754,20 @@ func show_night_hud(on: bool) -> void:
 		_night_graph = NightGraph.new()
 		_night_graph.custom_minimum_size = Vector2(440, 70)
 		v.add_child(_night_graph)
-		if not TouchMode.enabled:
-			v.add_child(_label(Loc.t("Hold [Space] to fast-forward"), 12, MUTED))
+		_night_hint = _label("", 12, MUTED)
+		_night_hint.name = "NightHint"
+		v.add_child(_night_hint)
 		get_child(0).add_child(_night_hud)
 	if _night_hud:
 		_night_hud.visible = on
 
-func update_night_hud(before_sunset: bool, clock: String, warmth: int, points: PackedVector2Array, duration: float, events: Array, now_minute: float) -> void:
+func update_night_hud(before_sunset: bool, clock: String, warmth: int, points: PackedVector2Array, duration: float, events: Array, now_minute: float, slept_h: float = 0.0, hint: String = "") -> void:
 	if _night_hud == null:
 		return
-	_night_clock.text = (Loc.t("Before dark, trying to sleep · %s · body warmth %d") if before_sunset else Loc.t("Night · %s · body warmth %d")) % [clock, warmth]
+	_night_clock.text = ((Loc.t("Before dark, trying to sleep · %s · body warmth %d") if before_sunset else Loc.t("Night · %s · body warmth %d")) % [clock, warmth]) \
+		+ Loc.t(" · slept %.1f h") % slept_h
+	_night_hint.text = hint
+	_night_hint.visible = hint != ""
 	_night_graph.set_data(points, duration, events, now_minute)
 
 ## 醒来面板：标题（为什么醒）、一句说明、带编号的可选行动。

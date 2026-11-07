@@ -92,7 +92,8 @@ extends Resource
 @export var night_prewarm_hours: float = 2.0
 @export var night_prewarm_factor: float = 0.6
 ## [OB] 冷醒阈值、"一定会醒"的极危阈值；两次醒来最少间隔（游戏分钟）；整夜最多醒几次（极危不计入上限）。
-@export var night_wake_cold_w: float = 40.0
+## 冷醒略高于 SAFE 线（发抖把人冻醒时还来得及补救）；以前是 40，醒来时这一夜已经不安全了。
+@export var night_wake_cold_w: float = 52.0
 @export var night_wake_critical_w: float = 15.0
 @export var night_wake_spacing_min: float = 90.0
 @export var night_max_wakes: int = 5
@@ -133,11 +134,30 @@ extends Resource
 ## 模拟步长（游戏分钟）与结局阈值。
 @export var night_step_min: float = 5.0
 @export var night_safe_min_w: float = 50.0
-@export var night_safe_max_wakes: int = 1
+@export var night_safe_max_wakes: int = 3
 ## [GAME] 播放：整夜多少现实秒；按住 [Space] 快进倍数。
 @export var night_real_seconds: float = 75.0
 @export var night_fast_multiplier: float = 6.0
 ## [GAME] 白天醒来时离日落至少还有多少游戏分钟，才给"起床回到白天"的选项。
+## 睡眠：多暖算睡得实（体温 ≥ 这个值睡眠折算 1，往下到极危线线性降到 0）[GAME]
+@export var night_sleep_full_w: float = 55.0
+## 每次醒来后要多久才能重新睡着（游戏分钟）[REAL ~15–30]
+@export var night_resettle_min: float = 30.0
+## 这一夜睡着多大比例算睡眠满分（按睡得多沉折算；漫长的冬夜里没人能一觉睡满）[GAME]
+@export var night_sleep_target_frac: float = 0.85
+## 夜晚得分：最低体温到这条线算体温满分 [GAME]
+@export var night_score_warm_w: float = 70.0
+## 夜晚得分权重 [GAME]
+@export var night_score_w_warmth: float = 0.45
+@export var night_score_w_sleep: float = 0.35
+@export var night_score_w_health: float = 0.20
+## 健康扣分：湿透（按湿的比例）、冻靴、每次冻到极危、没处理的隐患（堵通风 / 积雪压顶）[GAME]
+@export var night_score_wet_penalty: float = 35.0
+@export var night_score_boots_penalty: float = 25.0
+@export var night_score_critical_penalty: float = 25.0
+@export var night_score_hazard_penalty: float = 20.0
+## 危险的一夜，总分封顶 [GAME]
+@export var night_score_dangerous_cap: float = 35.0
 @export var night_get_up_min_light_min: float = 20.0
 ## [GAME] 睡前提醒：湿衣让这一夜的最低体温比干衣低这么多以上，就先提醒、要再按一次才睡。
 @export var sleep_wet_warn_drop_w: float = 10.0

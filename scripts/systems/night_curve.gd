@@ -30,6 +30,10 @@ const EV_WET_FEET := "wet_feet"
 const EV_NO_VENT := "no_vent"
 const EV_VENT_CLOGGED := "vent_clogged"
 const EV_SNOW_LOAD := "snow_load"
+## 自己醒来（玩家随时可以按"醒来"：添柴、暖身、烘袜子）。花睡眠，不算"被冻醒"。
+const EV_SELF := "self"
+## 守火：睡前约好"火快灭时叫醒我"——火快烧完时醒来添柴，人还暖和。花睡眠，不算"被冻醒"。
+const EV_FIRE_WATCH := "fire_watch"
 
 var t: Tuning
 var input: Dictionary
@@ -78,6 +82,13 @@ var _ex_total := 0
 var _pending_event := ""
 ## 白天醒来后起床了：这一夜到此为止，游戏回到白天（不出报告）。
 var got_up := false
+## 守火（默认开，有能整夜烧的火才有意义）：火只剩 30 分钟时把人叫醒添柴。
+var fire_watch := true
+## 自己 / 守火醒来的次数（花睡眠，但不算被冻醒，不影响 SAFE 判定）。
+var planned_wakes := 0
+## 睡着的分钟数（按睡得多沉折算：暖和时 1，冷到发抖时接近 0）；醒来、做事、重新入睡都不算。
+var asleep_minutes := 0.0
+var _resettle_left := 0.0
 var _fire_dying_reported := false
 var _is_snow := false
 var _shelter := "None"
@@ -127,6 +138,7 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 		snow_load_due = t.night_snow_load_wake_min
 	if NightSimulator.wet_fraction(dampness, t) >= 0.99:
 		wet_feet_due = t.night_wet_feet_wake_min
+	fire_watch = bool(input.get("fire_watch", true))
 	curve.append(Vector2(0.0, warmth))
 
 ## 庇护所保护度 0..1：原 6 维（不含空气）在"没有火、没有暖身、干衣、满体温"下的加权平均——只看庇护所本身。
@@ -232,6 +244,10 @@ func waiting() -> bool:
 func _advance_one() -> String:
 	var dt := t.night_step_min
 	_apply_loss(dt)
+	if _resettle_left > 0.0:
+		_resettle_left = maxf(0.0, _resettle_left - dt)
+	else:
+		asleep_minutes += dt * sleep_depth()
 	minute += dt
 	if fire_minutes > 0.0:
 		fire_minutes = maxf(0.0, fire_minutes - dt)
@@ -252,6 +268,7 @@ func _advance_one() -> String:
 		if minute - _last_wake >= 30.0:
 			critical_wakes += 1
 			_last_wake = minute
+			_wake_cost()
 			return EV_CRITICAL
 		return ""
 	if minute - _last_wake < t.night_wake_spacing_min:
@@ -269,6 +286,14 @@ func _advance_one() -> String:
 	elif has_fire_place and fire_minutes > 0.0 and fire_minutes <= 30.0 and stock_logs > 0 and not _fire_dying_reported and _fire_bites():
 		_fire_dying_reported = true
 		ev = EV_FIRE_DYING
+	elif fire_watch and has_fire_place and _fire_factor() > 0.0 and fire_minutes <= 30.0 and stock_logs > 0 and not _fire_dying_reported:
+		# 守火：人还暖和，按约好的醒来添柴（不算被冻醒，不占醒来上限）
+		_fire_dying_reported = true
+		_fire_out_reported = fire_minutes <= 0.0
+		planned_wakes += 1
+		_last_wake = minute
+		_wake_cost()
+		return EV_FIRE_WATCH
 	elif has_fire_place and fire_minutes <= 0.0 and stock_logs > 0 and not _fire_out_reported and _fire_bites():
 		_fire_out_reported = true
 		ev = EV_FIRE_OUT
@@ -280,7 +305,28 @@ func _advance_one() -> String:
 		wakes += 1
 		_last_wake = minute
 		sleep_quality -= 1
+		_wake_cost()
 	return ev
+
+## 睡得多沉 0..1：暖和（≥ night_sleep_full_w）睡得实，越冷越浅，冷到极危基本睡不着。
+func sleep_depth() -> float:
+	return clampf((warmth - t.night_wake_critical_w) / maxf(t.night_sleep_full_w - t.night_wake_critical_w, 1.0), 0.0, 1.0)
+
+## 每次醒来：要一阵子才能重新睡着。
+func _wake_cost() -> void:
+	_resettle_left = t.night_resettle_min
+
+## 玩家自己醒来（睡着时随时可以）。返回是否醒了。
+func wake_now() -> bool:
+	if is_over() or waiting():
+		return false
+	planned_wakes += 1
+	_last_wake = minute
+	sleep_quality -= 1
+	_wake_cost()
+	_pending_event = EV_SELF
+	timeline.append({"minute": minute, "kind": "event", "id": EV_SELF, "warmth": warmth})
+	return true
 
 func _woke_for(ev: String) -> bool:
 	for e in timeline:
@@ -365,8 +411,37 @@ func act(a: String) -> bool:
 			_pending_event = ""
 	return true
 
-## 整夜结局（CORE_GAMEPLAY §10.5）。
+## 整夜结局（CORE_GAMEPLAY §10.5）。结局只看被迫醒来（冻醒 / 隐患），自己醒、守火醒只花睡眠。
 func result() -> Dictionary:
+	var r := _result()
+	r.merge(score(r, t), true)
+	return r
+
+## 夜晚得分 0..100 = 体温 × w + 睡眠 × w + 健康 × w（权重见 Tuning）。危险的一夜封顶。
+##   体温：最低体温从极危线到 night_score_warm_w 线性；睡眠：这一夜睡着的比例（按睡得多沉折算）÷ night_sleep_target_frac；
+##   健康：湿衣、冻靴、冻到极危、没清的通风、没顶落的积雪各扣分，窒息 = 0。
+static func score(r: Dictionary, t: Tuning) -> Dictionary:
+	var warm := 100.0 * clampf((float(r["min_warmth"]) - t.night_wake_critical_w) / maxf(t.night_score_warm_w - t.night_wake_critical_w, 1.0), 0.0, 1.0)
+	var slp := 100.0 * clampf(float(r["sleep_frac"]) / maxf(t.night_sleep_target_frac, 0.05), 0.0, 1.0)
+	var health := 100.0
+	health -= t.night_score_wet_penalty * NightSimulator.wet_fraction(float(r["end_damp"]), t)
+	if bool(r["boots_frozen"]):
+		health -= t.night_score_boots_penalty
+	health -= t.night_score_critical_penalty * float(r["critical_wakes"])
+	if bool(r["clog_unresolved"]):
+		health -= t.night_score_hazard_penalty
+	if bool(r["snow_load_active"]):
+		health -= t.night_score_hazard_penalty
+	if bool(r["suffocated"]):
+		health = 0.0
+	health = clampf(health, 0.0, 100.0)
+	var wsum := maxf(t.night_score_w_warmth + t.night_score_w_sleep + t.night_score_w_health, 0.01)
+	var total := (warm * t.night_score_w_warmth + slp * t.night_score_w_sleep + health * t.night_score_w_health) / wsum
+	if String(r["outcome"]) == "DANGEROUS":
+		total = minf(total, t.night_score_dangerous_cap)
+	return {"score": int(round(total)), "score_warmth": int(round(warm)), "score_sleep": int(round(slp)), "score_health": int(round(health))}
+
+func _result() -> Dictionary:
 	var outcome := "COLD"
 	var cause := ""
 	if suffocated:
@@ -375,15 +450,22 @@ func result() -> Dictionary:
 	elif min_warmth < t.night_wake_critical_w:
 		outcome = "DANGEROUS"
 		cause = "hypothermia"
-	elif min_warmth >= t.night_safe_min_w and (wakes + critical_wakes) <= t.night_safe_max_wakes and not clog_unresolved:
+	elif min_warmth >= t.night_safe_min_w and (wakes + critical_wakes) <= t.night_safe_max_wakes and not clog_unresolved \
+			and NightSimulator.wet_fraction(dampness, t) < 0.5:
+		# 早上衣服还湿着不算安全：靠整夜起来活动硬撑过去，体温线好看，人并不安全
 		outcome = "SAFE"
 	return {"outcome": outcome, "cause": cause, "min_warmth": min_warmth, "end_warmth": warmth, "wakes": wakes + critical_wakes,
 		"sleep_quality": sleep_quality, "protection": protection, "base_loss": base_loss, "curve": curve, "timeline": timeline,
 		"boots_frozen": NightSimulator.wet_fraction(dampness, t) > 0.5 and not has_fire_place,
-		"had_fire": has_fire_place, "fire_out_at": fire_out_at, "logs_left": stock_logs, "end_damp": dampness}
+		"had_fire": has_fire_place, "fire_out_at": fire_out_at, "logs_left": stock_logs, "end_damp": dampness,
+		"sleep_h": asleep_minutes / 60.0, "sleep_frac": asleep_minutes / maxf(minute, 1.0), "planned_wakes": planned_wakes, "critical_wakes": critical_wakes,
+		"suffocated": suffocated, "clog_unresolved": clog_unresolved, "snow_load_active": snow_load_active}
 
-## 测试 / 机器人用：按策略跑完整夜。policy: "sleep"（醒了什么都不做）或 "smart"（能做的都做）。
+## 测试 / 机器人用：按策略跑完整夜。policy: "sleep"（醒了什么都不做）、"smart"（醒了能做的都做）、
+## "vigilant"（另外看着体温，快冷到 SAFE 线时自己醒来添柴 / 暖身——花睡眠换体温）。
 static func run(p_input: Dictionary, p_t: Tuning, policy: String = "smart") -> Dictionary:
+	if policy == "vigilant":
+		return _run_vigilant(p_input, p_t)
 	var n := NightCurve.new(p_input, p_t)
 	var guard := 0
 	while not n.is_over() and guard < 500:
@@ -399,4 +481,25 @@ static func run(p_input: Dictionary, p_t: Tuning, policy: String = "smart") -> D
 			while n.warmth <= p_t.night_wake_cold_w and n.exercise_gain() >= 3.0:
 				n.act(ACT_EXERCISE)
 		n.act(ACT_SLEEP)
+	return n.result()
+
+static func _tend(n: NightCurve, p_t: Tuning, warm_to: float) -> void:
+	for a in [ACT_CLEAR_VENT, ACT_KNOCK_SNOW, ACT_ADD_WOOD, ACT_DRY_SOCKS]:
+		if a in n.available_actions():
+			n.act(a)
+	while n.warmth <= warm_to and n.exercise_gain() >= 3.0:
+		n.act(ACT_EXERCISE)
+	n.act(ACT_SLEEP)
+
+static func _run_vigilant(p_input: Dictionary, p_t: Tuning) -> Dictionary:
+	var n := NightCurve.new(p_input, p_t)
+	var thr := p_t.night_safe_min_w + 3.0
+	var guard := 0
+	while not n.is_over() and guard < 2000:
+		guard += 1
+		var ev := n.advance_to(n.minute + p_t.night_step_min)
+		if ev != "":
+			_tend(n, p_t, thr + 8.0)
+		elif not n.is_over() and n.warmth <= thr and n.minute - n._last_wake >= 30.0 and n.wake_now():
+			_tend(n, p_t, thr + 8.0)
 	return n.result()

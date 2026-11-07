@@ -120,6 +120,9 @@ static func buttons_for(ctx: Dictionary) -> Array:
 		"night":
 			if not bool(ctx.get("waiting", false)):
 				b.append({"id": "speed", "label": Loc.t("Speed up"), "action": "probe", "slot": "big_r"})
+				b.append(_key("wake", Loc.t("Wake up"), KEY_W, "big_l"))
+				if bool(ctx.get("fire_place", false)):
+					b.append(_key("watch", Loc.t("Fire watch: %s") % (Loc.t("on") if bool(ctx.get("fire_watch", false)) else Loc.t("off")), KEY_F, "bar"))
 		"report":
 			if bool(ctx.get("has_next", false)):
 				b.append(_key("next_stage", Loc.t("Next stage"), KEY_ENTER, "bar", true))

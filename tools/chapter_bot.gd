@@ -315,6 +315,12 @@ func _run() -> void:
 	var smart := NightCurve.run(inp, d.tuning, "smart")
 	var lazy := NightCurve.run(inp, d.tuning, "sleep")
 	var rep := NightSimulator.evaluate(inp, d.tuning)
+	# --dump=<文件>：把这一夜的输入存成 JSON（tools/night_replay.gd 可以不重玩白天、直接用新规则重算这一夜）
+	var dump := _arg("dump", "")
+	if dump != "":
+		var fa := FileAccess.open(dump, FileAccess.WRITE)
+		fa.store_string(JSON.stringify({"ch": ch, "st": st, "route": route, "care": _arg("care", "full"), "input": inp}))
+		fa.close()
 	var f := SnowField.map_facts(d.tuning)
 	print("S7 ch=%d st=%d map=%d shape=%s weather=%s route=%s care=%s start=%s placed=%s stage=%d done=%s bed=%s forced=%s trips=%d walked=%d short=%s temp=%d wind=%d bedW=%d damp=%.2f prot=%.2f loss=%.1f hours=%.1f smart=%s/%d/%d sleep=%s/%d why=%s maxsnow=%.1f" % [
 		ch, st, map, TerrainHeight.RECIPE.shape, d.weather.weather_kind, route, care, start_clock, str(placed), d.site.stage() if d.site != null else 0, done_clock, d.weather.clock_string(), str(forced),

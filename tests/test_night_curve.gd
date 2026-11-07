@@ -42,7 +42,8 @@ func run() -> Dictionary:
 	# 1. 标定表（§10.2）
 	var expect := {
 		"none": ["DANGEROUS", "DANGEROUS"], "raised_dry": ["SAFE", "SAFE"], "raised_wet": ["COLD", "COLD"],
-		"trench": ["COLD", "COLD"], "treewell": ["COLD", "COLD"], "leanto_fire": ["COLD", "SAFE"], "cave_novent": ["DANGEROUS", "COLD"],
+		# 2026-11-07 平衡：冷醒在 SAFE 线之上（52），SAFE 允许 3 次被迫醒来——醒了就处理的人，树井 / 清了通风的雪洞能平安
+		"trench": ["COLD", "COLD"], "treewell": ["COLD", "SAFE"], "leanto_fire": ["COLD", "SAFE"], "cave_novent": ["DANGEROUS", "SAFE"],
 	}
 	for k in expect:
 		var sleep := NightCurve.run(c[k], t, "sleep")
@@ -58,7 +59,9 @@ func run() -> Dictionary:
 	_check(tr.base_loss > rd.base_loss and tw.base_loss > rd.base_loss and tr.base_loss < nn.base_loss, "保护度排序：高床雪洞 < 雪沟 / 树井 < 露天")
 	# 倒棚：火灭后失温明显快于火在时；按时添柴比一直睡暖得多
 	var lf_sleep := NightCurve.run(c["leanto_fire"], t, "sleep")
-	var lf_smart := NightCurve.run(c["leanto_fire"], t, "smart")
+	var lf_nowatch: Dictionary = (c["leanto_fire"] as Dictionary).duplicate()
+	lf_nowatch["fire_watch"] = false
+	var lf_smart := NightCurve.run(lf_nowatch, t, "smart")
 	_check(float(lf_smart["min_warmth"]) > float(lf_sleep["min_warmth"]) + 20.0, "倒棚：醒来添柴比一直睡暖得多（%d vs %d）" % [int(lf_smart["min_warmth"]), int(lf_sleep["min_warmth"])])
 	_check(int(lf_smart["wakes"]) >= 1, "倒棚：火灭后冷下来会醒（%d）" % int(lf_smart["wakes"]))
 	_check(float(lf_smart["fire_out_at"]) < 0.0 or float(lf_smart["fire_out_at"]) > float(lf_sleep["fire_out_at"]), "添过柴的火烧得更久（%.0f vs %.0f）" % [lf_smart["fire_out_at"], lf_sleep["fire_out_at"]])
@@ -117,7 +120,7 @@ func run() -> Dictionary:
 	# 4. 事件与行动
 	var cave := NightCurve.new(c["raised_dry"], t)
 	_check(not (NightCurve.ACT_ADD_WOOD in cave.available_actions()), "雪洞里不能添柴（D3）")
-	var lean := NightCurve.new(c["leanto_fire"], t)
+	var lean := NightCurve.new(lf_nowatch, t)
 	_check(lean.fire_minutes <= t.night_fire_initial_hours * 60.0 + 0.1 and lean.stock_logs > 0, "入睡时火里只架 %.1f h 的柴，其余是备柴（%d 根）" % [t.night_fire_initial_hours, lean.stock_logs])
 	var ev := lean.step()
 	_check(ev == NightCurve.EV_FIRE_OUT and lean.fire_minutes <= 0.0, "倒棚：暖和时火灭不叫醒人，冷下来才醒（%s）" % ev)
@@ -171,7 +174,60 @@ func run() -> Dictionary:
 			secs += 1.0 / fps
 		_check(absf(pn.minute - rate * 10.0) <= t.night_step_min + 1.0, "%d FPS：播放 10 秒走 %.0f 分钟（应约 %.0f）" % [int(fps), pn.minute, rate * 10.0])
 	_get_up(c, t)
+	_wake_and_score(c, t)
 	return {"passed": _passed, "failures": _failures}
+
+## 2026-11-07：自己醒来、守火、睡眠和夜晚得分。
+func _wake_and_score(c: Dictionary, t: Tuning) -> void:
+	# 自己醒来：睡着时随时可以，不算被冻醒；等选择时不能再"醒"一次
+	var n := NightCurve.new(c["trench"], t)
+	n.advance_to(60.0)
+	_check(n.wake_now() and n.pending_event() == NightCurve.EV_SELF and n.planned_wakes == 1 and n.wakes == 0, "随时可以自己醒来，不算被冻醒")
+	_check(not n.wake_now(), "已经醒着时不能再醒一次")
+	_check(NightCurve.ACT_EXERCISE in n.available_actions() and NightCurve.ACT_SLEEP in n.available_actions(), "自己醒来后能活动、能接着睡")
+	n.act(NightCurve.ACT_SLEEP)
+	# 守火：人还暖和时按约好的醒来添柴；关掉就睡到被冻醒
+	var watch := NightCurve.run(c["leanto_fire"], t, "smart")
+	var off: Dictionary = (c["leanto_fire"] as Dictionary).duplicate()
+	off["fire_watch"] = false
+	var nowatch := NightCurve.run(off, t, "smart")
+	_check(int(watch["planned_wakes"]) >= 1, "守火：火快烧完时醒来添柴（%d 次）" % int(watch["planned_wakes"]))
+	_check(float(watch["min_warmth"]) >= float(nowatch["min_warmth"]), "守火比等冻醒暖（%d vs %d）" % [int(watch["min_warmth"]), int(nowatch["min_warmth"])])
+	var lw := NightCurve.new(c["leanto_fire"], t)
+	var ev := lw.step()
+	_check(ev == NightCurve.EV_FIRE_WATCH and lw.warmth > t.night_wake_cold_w and lw.fire_minutes > 0.0, "守火在火灭之前、人还暖和时叫醒（%s，W=%d）" % [ev, int(lw.warmth)])
+	# 冷醒在 SAFE 线之上：发抖把人冻醒时还来得及
+	_check(t.night_wake_cold_w > t.night_safe_min_w, "冷醒（%d）在 SAFE 线（%d）之上" % [int(t.night_wake_cold_w), int(t.night_safe_min_w)])
+	# 睡眠：醒得越多睡得越少；越冷睡得越浅
+	var calm := NightCurve.run(c["raised_dry"], t, "sleep")
+	var broken := NightCurve.new(c["raised_dry"], t)
+	while not broken.is_over():
+		broken.advance_to(broken.minute + 60.0)
+		if broken.waiting():
+			broken.act(NightCurve.ACT_SLEEP)
+		elif not broken.is_over() and broken.wake_now():
+			broken.act(NightCurve.ACT_SLEEP)
+	var br := broken.result()
+	_check(float(br["sleep_h"]) < float(calm["sleep_h"]) - 2.0, "每小时醒一次，睡得少得多（%.1f vs %.1f h）" % [float(br["sleep_h"]), float(calm["sleep_h"])])
+	_check(int(br["score_sleep"]) < int(calm["score_sleep"]) and int(br["score"]) < int(calm["score"]), "睡得少，睡眠分和总分都低")
+	var cold := NightCurve.run(c["none"], t, "sleep")
+	_check(float(cold["sleep_frac"]) < float(calm["sleep_frac"]), "冷得发抖睡得浅（%.2f vs %.2f）" % [float(cold["sleep_frac"]), float(calm["sleep_frac"])])
+	# 得分：0..100，三项都在；危险的一夜封顶；早上衣服湿着不算 SAFE
+	for k in c:
+		for pol in ["sleep", "smart", "vigilant"]:
+			var r := NightCurve.run(c[k], t, pol)
+			var ok := int(r["score"]) >= 0 and int(r["score"]) <= 100 and r.has("score_warmth") and r.has("score_sleep") and r.has("score_health")
+			if String(r["outcome"]) == "DANGEROUS":
+				ok = ok and int(r["score"]) <= int(t.night_score_dangerous_cap)
+			if String(r["outcome"]) == "SAFE":
+				ok = ok and NightSimulator.wet_fraction(float(r["end_damp"]), t) < 0.5
+			_check(ok, "得分合法：%s / %s → %s %d" % [k, pol, r["outcome"], int(r["score"])])
+	_check(int(NightCurve.run(c["raised_dry"], t, "sleep")["score"]) > int(NightCurve.run(c["raised_wet"], t, "sleep")["score"]), "同一个雪洞：干衣得分高于湿衣")
+	# 自己醒来照看的人，不比只等冻醒的人差
+	for k in ["trench", "treewell", "leanto_fire"]:
+		var sm := NightCurve.run(c[k], t, "smart")
+		var vg := NightCurve.run(c[k], t, "vigilant")
+		_check(float(vg["min_warmth"]) >= float(sm["min_warmth"]) - 1.0, "%s：自己醒来照看，最低体温不比等冻醒低（%d vs %d）" % [k, int(vg["min_warmth"]), int(sm["min_warmth"])])
 
 ## 2026-11-07 试玩报告 P1：白天醒来可以起床回到白天；天黑以后、或离日落太近，没有这个选项。
 func _get_up(c: Dictionary, t: Tuning) -> void:
@@ -250,6 +306,7 @@ func _n5(c: Dictionary, t: Tuning) -> void:
 	# 火灭：暖和就接着睡，有柴能重新点
 	var warm: Dictionary = calm.duplicate()
 	warm["starting_warmth"] = 100.0
+	warm["fire_watch"] = false
 	var wn := NightCurve.new(warm, t)
 	var first_ev := wn.step()
 	_check(wn.fire_minutes <= 0.0 and wn.minute > wn.log_minutes + 60.0 and wn.warmth <= t.night_fire_wake_w + 1.0, "火灭之后还暖和，不会醒（%s，%d 分钟，W=%d）" % [first_ev, int(wn.minute), int(wn.warmth)])

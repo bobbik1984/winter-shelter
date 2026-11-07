@@ -17,6 +17,8 @@ static func event_title(ev: String) -> String:
 		NightCurve.EV_NO_VENT: return Loc.t("A pounding headache")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("Headache: the vent is blocked")
 		NightCurve.EV_SNOW_LOAD: return Loc.t("The roof sags under new snow")
+		NightCurve.EV_SELF: return Loc.t("You wake yourself")
+		NightCurve.EV_FIRE_WATCH: return Loc.t("Fire watch: the fire is low")
 	return ev
 
 static func event_body(ev: String, warmth: float) -> String:
@@ -29,6 +31,8 @@ static func event_body(ev: String, warmth: float) -> String:
 		NightCurve.EV_NO_VENT: return Loc.t("The air is stale — there is no vent. Make one, or don't wake up again.")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("New snow has buried the vent. The air is getting thick.")
 		NightCurve.EV_SNOW_LOAD: return Loc.t("Snow is piling on the boughs above you. If it caves in, the cold gets in.")
+		NightCurve.EV_SELF: return Loc.t("Body warmth %d. Awake by choice, before the cold wakes you: tend the fire or warm up, then sleep again. Every wake costs sleep.") % int(warmth)
+		NightCurve.EV_FIRE_WATCH: return Loc.t("Body warmth %d. You woke as planned, while still warm — feed it now and it keeps you warm.") % int(warmth)
 	return ""
 
 ## 为什么现在没法添柴（Hard ≠ Obscure：选项不能无声地消失）。能添柴时为空。
@@ -71,6 +75,8 @@ static func event_short(ev: String) -> String:
 		NightCurve.EV_NO_VENT: return Loc.t("stale air, no vent")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("vent blocked")
 		NightCurve.EV_SNOW_LOAD: return Loc.t("snow on the roof")
+		NightCurve.EV_SELF: return Loc.t("woke yourself")
+		NightCurve.EV_FIRE_WATCH: return Loc.t("fire watch")
 	return ev
 
 ## "21:40 火要灭了 → 添柴 · 02:10 冻醒（38）→ 起来活动"
@@ -148,3 +154,8 @@ static func three_comforts(input: Dictionary, res: Dictionary, t: Tuning) -> Str
 
 static func boots_line(res: Dictionary) -> String:
 	return Loc.t("You went to bed with wet boots and no fire to dry them — by morning they were frozen solid.") if bool(res.get("boots_frozen", false)) else ""
+
+## 报告：夜晚得分一行（总分 + 三项 + 睡了多久）。
+static func score_line(res: Dictionary) -> String:
+	return Loc.t("Night score %d / 100   ·   warmth %d  ·  sleep %d  ·  health %d   ·   slept about %.1f h") % [
+		int(res.get("score", 0)), int(res.get("score_warmth", 0)), int(res.get("score_sleep", 0)), int(res.get("score_health", 0)), float(res.get("sleep_h", 0.0))]

@@ -44,7 +44,7 @@ static func entrance_wind_angle(entrance_dir: Vector3, wind_from: Vector3) -> fl
 
 ## 火位 / 人的迎风暴露 0（背风 / 有挡风物）..1（完全迎风）。
 ## tree_cover 0..1：附近林木挡风（Read the Land：林子里风小）。
-## 暴露度 0..1。（旧的加法规则，只剩夜里倒棚火塘还在用；白天和其它夜间输入走 wind_shelter 统一规则）
+## 暴露度 0..1。（旧的加法规则，已不在游戏里使用；白天和夜里都走挡风统一规则 GameDirector.fire_exposure_at）
 static func fire_exposure(lee_factor: float, windbreak: float, tree_cover: float = 0.0) -> float:
 	return clampf(1.0 - lee_factor - 0.75 * clampf(windbreak, 0.0, 1.0) - 0.5 * clampf(tree_cover, 0.0, 1.0), 0.0, 1.0)
 
