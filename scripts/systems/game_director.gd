@@ -812,7 +812,7 @@ func _intel_tabs() -> Array:
 	match GameRules.dig_tool(gear):
 		"shovel": kit += "\n\n" + Loc.t("A shovel digs at full speed. Digging still makes you sweat — dry off by a fire before bed.")
 		_: kit += "\n\n" + Loc.t("Without a shovel every snow shelter takes much longer — a trench or a tree well may be all the day allows.")
-	var shelters := String(info.get("shelters_only", Loc.t("All shelters are open in free play.")))
+	var shelters := String(info.get("shelters_only", Loc.t("All shelters are open in free play."))) + "\n\n" + shelter_guide()
 	var map := Loc.t("Map %d  ·  Seed %d") % [int(info.get("map", 1)), int(info.get("seed", LevelState.game_seed))] + "\n" + \
 		Loc.t("Terrain: %s") % TerrainHeight.RECIPE.describe() + "\n\n" + Loc.t("[N] on this screen gives the same stage a new map.")
 	if String(info.get("locked_hint", "")) != "":
@@ -834,6 +834,77 @@ func _intel_tabs() -> Array:
 		{"key": "controls", "title": Loc.t("Controls"), "body": controls},
 		{"key": "records", "title": Loc.t("Records"), "body": records},
 	]
+
+## 情报 · 庇护所：每种庇护所是什么、要什么条件、要多少材料和工时、火帮不帮得上；你会不会、哪一章学。
+## 条件和数字直接读预设与 Tuning（和工地校验同一套），不会和规则对不上。
+const SHELTER_ABOUT := {
+	"RaisedCave": "Dug sideways into a deep drift on a slope, with the sleeping bench above the entrance so the warm air stays in. The warmest shelter, if you find snow deep enough.",
+	"BasicCave": "A snow cave dug sideways into a drifted slope. Warm and windproof; quicker than the raised cave, a little colder.",
+	"SnowTrench": "A trench dug into flat snow and roofed over. Works where the snow is too thin for a cave, but it is colder.",
+	"LeanTo": "A sloped roof of branches with a fire in front. Best with a rootball at its back; for thin snow and plenty of wood.",
+	"TreeWell": "The hollow under an old spruce's low branches, dug out and roofed. Quick, and the branches keep the snow off.",
+	"Quinzhee": "A heap of snow piled up, left to settle, then hollowed out. Works on flat ground with shallow snow; takes long.",
+	"RockOverhang": "The lee side of a tall rock or the foot of a cliff, walled in with branches. Dry and out of the wind; cold rock underneath, so pile on bedding.",
+	"FallenLog": "Branches leaned against a fallen trunk lying in the snow. Fast to build; works like a small lean-to.",
+}
+
+func shelter_guide() -> String:
+	var names := Records.preset_names()
+	var learned := Records.learned_shelters()
+	var here: PackedStringArray = LevelState.level.introduced_presets if LevelState.active() else PackedStringArray()
+	var intro := {}
+	for ch in range(1, LevelState.LEVEL_COUNT + 1):
+		var lv := LevelState.load_level(ch)
+		if lv != null:
+			for p in lv.introduced_presets:
+				if not intro.has(p):
+					intro[p] = ch
+	var all := ShelterPreset.create_all_presets()
+	var blocks: Array[String] = []
+	for p in BuildMode.PRESETS:
+		var pr: ShelterPreset = all[p]
+		var status := ""
+		if not LevelState.active() or LevelState.level.is_free():
+			status = Loc.t("open in free play")
+		elif p in learned:
+			status = Loc.t("you know it")
+		elif p in here:
+			status = Loc.t("new on this level")
+		else:
+			status = Loc.t("learn it in chapter %d") % int(intro.get(p, 0))
+		var wood := 0
+		var bedding := 0
+		for c in pr.stage_costs:
+			wood += int((c as Dictionary).get("wood", 0))
+			bedding += int((c as Dictionary).get("bedding", 0))
+		var mins := int(round(pr.build_minutes_total))
+		var time := (Loc.t("%d h %02d min") % [mins / 60, mins % 60]) if mins >= 60 else (Loc.t("%d min") % mins)
+		var site := ""
+		match p:
+			"RaisedCave", "BasicCave": site = Loc.t("snow ≥ %.1f m on a slope of 8° or more") % pr.min_snow_depth
+			"SnowTrench": site = Loc.t("snow ≥ %.1f m, flat or gentle ground") % pr.min_snow_depth
+			"TreeWell": site = Loc.t("an old spruce with snow ≥ %.1f m around it") % tuning.tree_well_min_snow_m
+			"Quinzhee": site = Loc.t("snow ≥ %.1f m on ground flatter than %d°") % [tuning.quinzhee_min_snow_m, int(tuning.quinzhee_max_slope_deg)]
+			"LeanTo": site = Loc.t("any snow; a rootball at its back blocks the wind")
+			"RockOverhang": site = Loc.t("within %d m of a tall rock, or below a cliff, on its downwind side") % int(tuning.rock_max_dist_m)
+			"FallenLog": site = Loc.t("within %d m of a fallen trunk") % int(tuning.fallen_log_max_dist_m)
+		var fire := ""
+		match p:
+			"RaisedCave", "BasicCave", "Quinzhee": fire = Loc.t("No fire inside a snow shelter, and one outside doesn't reach you while you sleep.")
+			"SnowTrench", "TreeWell": fire = Loc.t("A fire beside it helps a little.")
+			"LeanTo": fire = Loc.t("From stage 4 its back wall reflects the fire's heat onto you: the warmest fire you can have.")
+			"RockOverhang": fire = Loc.t("From stage 2 the rock reflects the fire's heat onto you.")
+			"FallenLog": fire = Loc.t("A fire in front helps; there is no wall to reflect it.")
+		var mats: Array[String] = []
+		if wood > 0:
+			mats.append(Loc.t("%d dry wood") % wood)
+		if bedding > 0:
+			mats.append(Loc.t("%d bedding") % bedding)
+		blocks.append("■ %s  ·  %s\n%s\n%s\n%s" % [String(names.get(p, p)).to_upper() if not Loc.is_zh() else String(names.get(p, p)), status,
+			Loc.t(SHELTER_ABOUT[p]),
+			Loc.t("Needs: %s  ·  about %s of work  ·  %s") % [site, time, ", ".join(mats) if not mats.is_empty() else Loc.t("no materials")],
+			fire])
+	return "\n\n".join(blocks)
 
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]
