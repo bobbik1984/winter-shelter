@@ -62,7 +62,8 @@ GODOT="$GODOT" tools/check_export_values.sh "build/web/$(ls build/web | grep -E 
 [ $build_only = 1 ] && { echo "build only: build/web"; exit 0; }
 
 # 先传新文件，HTML 最后切换，旧的 pck 最后才删，上传途中打开的人不会拿到一半
-rsync -rtz --delete-after --delay-updates --info=stats1 \
+# /download/ 是 tools/deploy_apk.sh 放的 APK 页面，别删
+rsync -rtz --delete-after --delay-updates --info=stats1 --filter='P /download/' \
   -e "ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15" build/web/ "$DEST"
 
 live=$(curl -sS -m 30 -H 'Cache-Control: no-cache' "$URL?v=$sha" | grep -o 'name="build" content="[^"]*"' || true)
