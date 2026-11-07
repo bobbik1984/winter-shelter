@@ -8,7 +8,7 @@ knee pads and gaiters, leather boots with soles, mitts with thumbs; red expediti
 front pocket, compression straps, shoulder straps and hip belt, a strapped shovel blade and a
 rolled sleeping pad; black/white banded avalanche probe in the right hand.
 Rigid skinning: every part is weighted 100 % to one bone (robust, no weight painting).
-Actions: Idle-loop, Walk-loop, Probe, Dig-loop.  Character faces -Y in Blender (= +Z in Godot).
+Actions: Idle-loop, Walk-loop (v3 gait: planted stance, knees bend backward), Probe, Dig-loop, Chop-loop.  Character faces -Y in Blender (= +Z in Godot).
 """
 import bpy, bmesh, math, sys
 from mathutils import Vector, Matrix
@@ -323,17 +323,56 @@ def idle(f):
     pb["upper_arm.L"].rotation_euler = (0, 0, R(6))
     pb["upper_arm.R"].rotation_euler = (0, 0, R(-6))
 
+# 步态（v3）：24 帧一步态周期（0.8 s）。支撑相 60 %：脚踩住不动（大腿匀速后摆，sin 空间线性）；
+# 摆动相 40 %：膝盖往后弯（正 X = 屈膝，之前写反了，膝盖往前折、靴子往前踢）。
+# 骨盆高度按两条腿里较长的那条算，脚始终落在地面上（双脚着地时最低、单脚支撑中段最高）。
+WALK_FRAMES = 24
+THIGH, SHIN = 0.42, 0.42
+TH_FWD, TH_BACK, STANCE = -27.0, 23.0, 0.6
+
+def _leg(p):
+    """一条腿在步态相位 p（0 = 脚跟着地）的 (大腿角, 屈膝角)，度；大腿正 = 向后。"""
+    p %= 1.0
+    if p < STANCE:
+        a = math.sin(R(TH_FWD)) + (math.sin(R(TH_BACK)) - math.sin(R(TH_FWD))) * (p / STANCE)
+        th = math.degrees(math.asin(a))
+    else:
+        u = (p - STANCE) / (1.0 - STANCE)
+        e = 0.5 - 0.5 * math.cos(u * math.pi)
+        th = TH_BACK + (TH_FWD - TH_BACK) * e
+    k = 3.0 + 12.0 * math.exp(-((p - 0.12) / 0.08) ** 2) + 55.0 * math.exp(-((p - 0.74) / 0.12) ** 2)
+    return th, k
+
+def _extent(th, k):
+    return THIGH * math.cos(R(th)) + SHIN * math.cos(R(th + k))
+
+def _reach(th, k):
+    return THIGH * math.sin(R(th)) + SHIN * math.sin(R(th + k))
+
 def walk(f):
-    t = f / 30.0 * 2 * math.pi
-    s = math.sin(t)
-    pb["thigh.L"].rotation_euler = (R(28) * s, 0, 0)
-    pb["thigh.R"].rotation_euler = (R(-28) * s, 0, 0)
-    pb["shin.L"].rotation_euler = (R(-30) * max(0.0, -s), 0, 0)
-    pb["shin.R"].rotation_euler = (R(-30) * max(0.0, s), 0, 0)
-    pb["upper_arm.L"].rotation_euler = (R(-22) * s, 0, R(6))
-    pb["upper_arm.R"].rotation_euler = (R(22) * s, 0, R(-6))
-    pb["chest"].rotation_euler = (R(8), 0, R(4) * s)   # 顶风前倾
-    pb["hips"].location = (0, 0.03 * abs(math.cos(t)), 0)
+    p = f / WALK_FRAMES
+    tl, kl = _leg(p)
+    tr, kr = _leg(p + 0.5)
+    pb["thigh.L"].rotation_euler = (R(tl), 0, 0)
+    pb["thigh.R"].rotation_euler = (R(tr), 0, 0)
+    pb["shin.L"].rotation_euler = (R(kl), 0, 0)
+    pb["shin.R"].rotation_euler = (R(kr), 0, 0)
+    drop = (THIGH + SHIN) - max(_extent(tl, kl), _extent(tr, kr))
+    pb["hips"].location = (0, -drop, 0)
+    # 手臂与对侧腿同摆，前臂微屈；顶风背包前倾，胸口随手臂轻扭，头回正
+    pb["upper_arm.L"].rotation_euler = (R(-0.7 * tl), 0, R(7))
+    pb["upper_arm.R"].rotation_euler = (R(-0.7 * tr), 0, R(-7))
+    pb["forearm.L"].rotation_euler = (R(-12 - 10 * max(0.0, -tl) / 27.0), 0, 0)
+    pb["forearm.R"].rotation_euler = (R(-12 - 10 * max(0.0, -tr) / 27.0), 0, 0)
+    tw = (tl - tr) / (TH_BACK - TH_FWD)
+    pb["chest"].rotation_euler = (R(10), 0, R(-5) * tw)
+    pb["head"].rotation_euler = (R(-6), 0, R(4) * tw)
+
+def walk_speed_mps():
+    """支撑脚相对骨盆的后移速度 = 角色前进速度（脚不打滑时）。"""
+    a = _reach(*_leg(0.0))
+    b = _reach(*_leg(STANCE - 1e-6))
+    return (b - a) / (STANCE * WALK_FRAMES / 30.0)
 
 def probe(f):
     t = min(f / 20.0, 1.0)
@@ -377,7 +416,8 @@ def chop(f):
     pb["hips"].location = (0, -0.04 * swing, 0)
 
 key("Idle-loop", [0, 15, 30, 45, 60], idle)
-key("Walk-loop", list(range(0, 31, 5)), walk)
+key("Walk-loop", list(range(0, WALK_FRAMES + 1, 2)), walk)
+print("WALK_MPS %.3f" % walk_speed_mps())
 key("Probe", [0, 5, 10, 15, 20, 25], probe, loop=False)
 key("Dig-loop", list(range(0, 31, 5)), dig)
 key("Chop-loop", list(range(0, 31, 5)), chop)
@@ -414,7 +454,7 @@ if "--preview" in sys.argv:
     for view, loc in (("front34", (2.6, -4.2, 2.4)), ("back34", (-2.6, 4.2, 2.6)), ("side", (5.0, 0, 1.4))):
         cam.location = loc
         cam.rotation_euler = (Vector((0, 0, 0.95)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
-        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 8), ("Dig-loop", 8), ("Chop-loop", 15)):
+        for act_name, frame in (("Idle-loop", 0), ("Walk-loop", 3), ("Walk-loop", 9), ("Walk-loop", 15), ("Dig-loop", 8), ("Chop-loop", 15)):
             rig.animation_data.action = bpy.data.actions[act_name]
             for tr in rig.animation_data.nla_tracks:
                 tr.mute = True

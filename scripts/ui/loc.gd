@@ -177,6 +177,7 @@ const ZH := {
 	"Stage 5: Light long-burning reflector campfire": "阶段 5：点燃长燃反射火",
 	# —— 采集 ——
 	"Your pack can't carry more wood. Stack it at your site.": "背包装不下更多木柴了。先堆到工地去。",
+	"Pack full": "背包满了",
 	"+%d dry wood — standing dead trees burn well.": "+%d 干柴——立枯木很好烧。",
 	"+%d birch bark — the best tinder there is.": "+%d 桦树皮——最好的引火物。",
 	"+%d bedding (dry grass).": "+%d 垫层（干草）。",

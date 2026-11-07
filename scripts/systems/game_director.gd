@@ -127,11 +127,13 @@ func _ready() -> void:
 	interaction.tuning = tuning
 	add_child(interaction)
 	interaction.completed.connect(_on_interaction_completed)
+	interaction.blocked.connect(func(_it: Interactable, reason: String) -> void: ui.toast(reason))
 
 	spawner = ResourceSpawner.new()
 	spawner.name = "Resources"
 	spawner.tuning = tuning
 	spawner.on_harvest = _on_harvest
+	spawner.harvest_blocked = _harvest_blocked
 	main.add_child(spawner)
 
 	build = BuildMode.new()
@@ -946,6 +948,8 @@ func _tick_playing(delta: float) -> void:
 			ui.set_prompt(Loc.t("Probing snow depth…"), player._probe_t / tuning.probe_seconds if player._probe_t > 0.0 else 0.0)
 		elif _fire_hold >= 0.0:
 			ui.set_prompt(Loc.t("Striking the ferro rod… keep holding [F]"), _fire_hold / tuning.fire_hold_seconds)
+		elif p != "" and interaction.current.blocked_reason() != "":
+			ui.set_prompt(Loc.t("Pack full") + "  ·  " + p, 0.0)
 		elif p != "":
 			ui.set_prompt(Loc.t("Hold [E]  ") + p, interaction.progress)
 		else:
@@ -1172,6 +1176,17 @@ func _add_marker(pos: Vector3, depth: float, color: Color) -> void:
 		_markers.pop_front().queue_free()
 
 # ------------------------------------------------------------------ 采集（T2.2）
+
+## 背包满了：不开始采（不播砍 / 拔的动作，不耗时间），提示里直接说明。
+func _harvest_blocked(it: Interactable) -> String:
+	match it.kind:
+		"deadwood":
+			if inventory.wood >= inventory.max_wood:
+				return Loc.t("Your pack can't carry more wood. Stack it at your site.")
+		"grass", "bough":
+			if inventory.bedding >= inventory.max_bedding:
+				return Loc.t("Your pack can't carry more bedding. Stack it at your site.")
+	return ""
 
 func _on_harvest(it: Interactable) -> Dictionary:
 	match it.kind:

@@ -18,6 +18,8 @@ extends Node3D
 
 var handler: Callable
 var prompt_fn: Callable
+## 可选：Callable() -> String。非空 = 现在做不了（比如背包满了）：不开始按住、不播动作，只提示这句话。
+var blocked_fn: Callable
 var enabled: bool = true
 
 func _ready() -> void:
@@ -29,6 +31,9 @@ func current_prompt() -> String:
 	if prompt_fn.is_valid():
 		return String(prompt_fn.call())
 	return prompt
+
+func blocked_reason() -> String:
+	return String(blocked_fn.call()) if blocked_fn.is_valid() else ""
 
 func trigger() -> Dictionary:
 	if not handler.is_valid():

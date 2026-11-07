@@ -5,6 +5,8 @@ extends Node
 ## 淡橙高亮圈画在被选中物体脚下（参考图 6 号元素）。
 
 signal completed(target: Interactable, result: Dictionary)
+## 按下交互键但目标现在做不了（blocked_fn 非空）：只发一次，不推进、不播动作。
+signal blocked(target: Interactable, reason: String)
 
 var player: Node3D
 var tuning: Tuning
@@ -15,6 +17,7 @@ var forced: Interactable
 var progress: float = 0.0   # 0..1
 
 var _ring: MeshInstance3D
+var _blocked_sent := false
 
 func _ready() -> void:
 	_ring = MeshInstance3D.new()
@@ -40,7 +43,18 @@ func _process(delta: float) -> void:
 		_set_current(null)
 		return
 	_set_current(forced if is_instance_valid(forced) and forced.current_prompt() != "" else _find_nearest())
-	if current and HoldAssist.held("interact"):
+	var reason := current.blocked_reason() if current else ""
+	if reason != "":
+		progress = 0.0
+		# 按住不放只提示一次（不然每帧都弹一条）
+		if HoldAssist.held("interact"):
+			HoldAssist.release("interact")
+			if not _blocked_sent:
+				_blocked_sent = true
+				blocked.emit(current, reason)
+		else:
+			_blocked_sent = false
+	elif current and HoldAssist.held("interact"):
 		progress += delta / maxf(current.hold_seconds, 0.05)
 		if progress >= 1.0:
 			var target := current

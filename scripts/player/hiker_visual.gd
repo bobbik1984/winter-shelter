@@ -20,6 +20,8 @@ var _mat_white: StandardMaterial3D
 var _mat_hole: StandardMaterial3D
 
 const GLB := "res://assets/models/char_survivor.glb"
+## Walk 动作原速下的前进速度（m/s），build_hiker.py 构建时打印的 WALK_MPS。
+const WALK_MPS := 1.64
 
 var _anim: AnimationPlayer
 ## 体感表现（VISUAL_LANGUAGE §3）：呼出的白汽频率 + 寒颤幅度，随体温变化。
@@ -149,7 +151,8 @@ func set_motion(speed: float, probing: bool, working: bool, work_anim: String = 
 	elif speed > 0.3:
 		_play("Walk")
 		if _anim:
-			_anim.speed_scale = clampf(speed / 2.6, 0.6, 1.5)
+			# 脚步跟地面速度一致（不打滑）；太快时步频封顶，宁可略滑也不抽搐
+			_anim.speed_scale = clampf(speed / WALK_MPS, 0.5, 1.9)
 		return
 	else:
 		_play("Idle", 0.3)

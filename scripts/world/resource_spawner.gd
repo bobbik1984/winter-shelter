@@ -20,6 +20,8 @@ var _mat_bough: ShaderMaterial
 
 ## 由 GameDirector 注入：交互完成后的处理函数（按 kind 分发）。
 var on_harvest: Callable
+## Callable(it: Interactable) -> String：非空 = 现在采不了（背包满）。
+var harvest_blocked: Callable
 
 func _ready() -> void:
 	if tuning == null:
@@ -135,6 +137,7 @@ func _interactable(root: Node3D, kind: String, prompt: String, uses: int, ring: 
 	it.position = Vector3(0, 0.3, 0)
 	root.add_child(it)
 	it.handler = func() -> Dictionary: return on_harvest.call(it) if on_harvest.is_valid() else {}
+	it.blocked_fn = func() -> String: return String(harvest_blocked.call(it)) if harvest_blocked.is_valid() else ""
 	return it
 
 ## 树干类资源的碰撞（立枯木 / 白桦 / 树根盘）。
