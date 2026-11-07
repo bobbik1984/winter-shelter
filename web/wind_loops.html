@@ -1,0 +1,54 @@
+<script>
+// 网页版风声（2026-11-07）：两段循环由浏览器自己的音频线程无缝循环播放（AudioBufferSourceNode.loop），
+// 游戏只按帧调两段的音量（scripts/systems/ambient_audio.gd）。Godot 4.3 自己的"采样"播放是在主线程收到 ended
+// 事件后重新开始，主线程一卡就会断，所以这里绕开它。文件由 tools/deploy_web.sh 从 assets/audio/ 复制过来。
+window.wsWind = (function () {
+  var files = ['wind_open.wav', 'wind_muffled.wav'];
+  var ctx = null, gains = [], want = [0, 0], loading = null;
+  function init() {
+    if (loading) { return loading; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { return Promise.reject('no AudioContext'); }
+    ctx = new AC();
+    loading = Promise.all(files.map(function (f) {
+      return fetch(f).then(function (r) { return r.arrayBuffer(); }).then(function (b) {
+        return new Promise(function (ok, bad) { ctx.decodeAudioData(b, ok, bad); });
+      });
+    })).then(function (bufs) {
+      bufs.forEach(function (buf, i) {
+        var s = ctx.createBufferSource();
+        s.buffer = buf;
+        s.loop = true;
+        var g = ctx.createGain();
+        g.gain.value = want[i];
+        s.connect(g);
+        g.connect(ctx.destination);
+        s.start(0, Math.random() * 4);
+        gains[i] = g;
+      });
+    });
+    return loading;
+  }
+  // 浏览器要用户先点一下 / 按一下键才允许出声
+  function kick() {
+    init().then(function () { if (ctx.state !== 'running') { ctx.resume(); } }).catch(function () {});
+  }
+  ['pointerdown', 'touchend', 'keydown'].forEach(function (e) { window.addEventListener(e, kick, { capture: true, passive: true }); });
+  document.addEventListener('visibilitychange', function () {
+    if (!ctx) { return; }
+    if (document.hidden) { ctx.suspend(); } else { ctx.resume(); }
+  });
+  return {
+    set: function (a, b) {
+      want = [a, b];
+      if (gains.length !== 2) { return; }
+      var t = ctx.currentTime;
+      for (var i = 0; i < 2; i++) {
+        gains[i].gain.cancelScheduledValues(t);
+        gains[i].gain.setTargetAtTime(want[i], t, 0.08);
+      }
+    },
+    state: function () { return ctx ? ctx.state + ':' + gains.length + ':' + want.map(function (v) { return v.toFixed(3); }).join('/') : 'none'; }
+  };
+})();
+</script>

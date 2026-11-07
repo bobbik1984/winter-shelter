@@ -58,8 +58,9 @@ if [ "${1:-}" != "--quick" ]; then
   step "fuzz (3 x 30 s)"
   for sd in 1 3 5; do
     out=$(win --path . -s res://tools/fuzz_test.gd -- --seconds=30 --seed=$sd 2>&1)
+    echo "$out" > /tmp/ws_ci_fuzz_$sd.log   # 出错时看这里（随机输入、按帧时序，不一定复现得出来）
     echo "$out" | grep -o "FUZZ.*" || echo "seed $sd: no result (crash?)"
-    echo "$out" | grep -q "SCRIPT ERROR" && { echo "  script errors in seed $sd"; fail=1; }
+    echo "$out" | grep -q "SCRIPT ERROR" && { echo "  script errors in seed $sd (/tmp/ws_ci_fuzz_$sd.log):"; echo "$out" | grep -A4 "SCRIPT ERROR" | head -12; fail=1; }
   done
 fi
 

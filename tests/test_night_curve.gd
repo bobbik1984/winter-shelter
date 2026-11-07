@@ -170,7 +170,34 @@ func run() -> Dictionary:
 				pn.act(NightCurve.ACT_SLEEP)
 			secs += 1.0 / fps
 		_check(absf(pn.minute - rate * 10.0) <= t.night_step_min + 1.0, "%d FPS：播放 10 秒走 %.0f 分钟（应约 %.0f）" % [int(fps), pn.minute, rate * 10.0])
+	_get_up(c, t)
 	return {"passed": _passed, "failures": _failures}
+
+## 2026-11-07 试玩报告 P1：白天醒来可以起床回到白天；天黑以后、或离日落太近，没有这个选项。
+func _get_up(c: Dictionary, t: Tuning) -> void:
+	var early := (c["raised_wet"] as Dictionary).duplicate()
+	early["daylight_minutes"] = 240.0
+	var n := NightCurve.new(early, t)
+	var ev := n.step()
+	_check(ev != "", "湿衣早睡：天黑前就冻醒")
+	_check(n.light_left() >= t.night_get_up_min_light_min and NightCurve.ACT_GET_UP in n.available_actions(), "白天醒来有起床选项（离日落 %.0f 分钟）" % n.light_left())
+	_check(n.available_actions()[-1] == NightCurve.ACT_SLEEP, "接着睡始终是最后一项")
+	var w := n.warmth
+	_check(n.act(NightCurve.ACT_GET_UP) and n.got_up and n.is_over() and not n.waiting(), "起床：这一夜结束、不再等选择")
+	_check(n.step() == "" and n.warmth == w, "起床后模型不再推进")
+	var late := NightCurve.new(c["raised_wet"], t)
+	late.step()
+	_check(not (NightCurve.ACT_GET_UP in late.available_actions()), "天黑后醒来没有起床选项")
+	var edge := (c["raised_wet"] as Dictionary).duplicate()
+	edge["daylight_minutes"] = 1.0
+	var en := NightCurve.new(edge, t)
+	en.step()
+	_check(not (NightCurve.ACT_GET_UP in en.available_actions()), "离日落不到 %d 分钟：没有起床选项" % int(t.night_get_up_min_light_min))
+	# 机器人策略不会起床（不改原来的结局）
+	_check(not bool(NightCurve.run(early, t, "smart").get("got_up", false)), "smart 策略不起床")
+	# 网页版风声循环的交叉淡化：迎风端 0、闷声端 1、单调
+	_check(is_zero_approx(AmbientAudio.loop_mix(2600.0)) and is_equal_approx(AmbientAudio.loop_mix(60.0), 1.0), "风声循环：两端各是一段")
+	_check(AmbientAudio.loop_mix(1000.0) < AmbientAudio.loop_mix(400.0), "风声循环：截止越低越闷")
 
 ## N5：活动不能代替庇护所；冻醒不受上限限制；醒着做事也花时间；每章目标路线在第 1 / 5 / 10 阶都活得下来。
 func _n5(c: Dictionary, t: Tuning) -> void:

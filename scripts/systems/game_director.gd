@@ -279,7 +279,7 @@ func _vignette_texture() -> Texture2D:
 
 func _timeline_text() -> String:
 	var names := {"probe": Loc.t("first probe"), "site": Loc.t("site marked"), "done": Loc.t("shelter done"),
-		"fire": Loc.t("fire lit"), "sleep": Loc.t("bed")}
+		"fire": Loc.t("fire lit"), "sleep": Loc.t("bed"), "up": Loc.t("got up")}
 	var sm := int(weather.day_start_minutes)
 	var start := "%02d:%02d" % [sm / 60, sm % 60]
 	var events: Array = [[start, Loc.t("start")], [weather.sunset_clock(), Loc.t("sunset")]]
@@ -366,11 +366,50 @@ func _night_act(a: String) -> void:
 		ui.hide_night_event()
 		headlamp.light_energy = 0.0
 		return
+	if a == NightCurve.ACT_GET_UP:
+		_get_up()
+		return
 	ui.toast(NightText.action_done(a), 2.0)
 	weather.current_time_minutes = _bed_minutes + night.minute
 	weather.advance_minutes(0.0)
 	_sync_night_fire()
 	_show_night_event(night.pending_event())
+
+## 白天醒来、起床（2026-11-07 试玩报告 P1）：这一觉到此为止，回到白天。体温、受潮、时钟、火都接着夜里模型走到的状态；
+## 夜里烧掉的柴从工地堆 / 背包里扣掉。之后可以烘干衣服、添柴，再按 N 重新睡（新的一夜从那一刻算起）。
+func _get_up() -> void:
+	var up_at := _bed_minutes + night.minute
+	var burned := int(round(float(_night_input.get("firewood_logs", 0.0)))) - night.stock_logs
+	if night.has_fire_place and burned > 0:
+		if site != null:
+			site.pile.spend({"wood": mini(burned, site.pile.total("wood", inventory))}, inventory)
+		else:
+			inventory.add("wood", -mini(burned, inventory.wood))
+	warmth.body_warmth = night.warmth
+	dampness = night.dampness
+	SessionLog.log_event("get_up", weather.clock_string(), {"warmth": int(night.warmth), "dampness": snappedf(dampness, 0.01),
+		"light_left": int(night.light_left()), "logs_burned": maxi(burned, 0)})
+	night = null
+	_night_input = {}
+	_forced = false
+	_zero_t = 0.0
+	ui.hide_night_event()
+	ui.show_night_hud(false)
+	ui.set_fade(0.0)
+	_set_world_hud(true)
+	weather.current_time_minutes = up_at
+	weather.advance_minutes(0.0)
+	_last_minutes = weather.current_time_minutes
+	_timeline = _timeline.filter(func(e): return e[0] != "sleep")
+	_mark("up")
+	state = State.PLAYING
+	player.controls_enabled = true
+	interaction.enabled = true
+	weather.time_scale = _saved_time_scale
+	var msg := Loc.t("You get up. About %d minutes of light left.") % int(weather.minutes_to_sunset())
+	if GameRules.clothing_state(dampness, tuning) != "dry":
+		msg += " " + Loc.t("Dry your clothes by a fire, then [N] sleep again.")
+	ui.toast(msg, 6.0)
 
 func _end_night() -> void:
 	ui.hide_night_event()
@@ -796,12 +835,48 @@ func _apply_static_labels() -> void:
 
 func _request_sleep() -> void:
 	var done := site != null and site.is_complete()
-	if done or _sleep_confirm_t > 0.0:
+	if _sleep_confirm_t > 0.0:
 		_sleep(false)
 		return
-	_sleep_confirm_t = 4.0
-	var have := Loc.t("no shelter") if site == null else Loc.t("a shelter only %d/5 done") % site.stage()
-	ui.toast(Loc.t("Sleep now, with %s? Press N again to confirm.") % have, 4.0)
+	var lines: Array[String] = []
+	if not done:
+		var have := Loc.t("no shelter") if site == null else Loc.t("a shelter only %d/5 done") % site.stage()
+		lines.append(Loc.t("Sleep now, with %s?") % have)
+	var wet := wet_sleep_forecast()
+	if not wet.is_empty():
+		lines.append(Loc.t("Your clothes are %s. Tonight your warmth would fall to about %d if you sleep through, about %d if you get up and move each time you wake. With dry clothes: about %d. Dry off by a fire first.") \
+			% [Loc.t(String(wet["state"])), int(wet["wet_sleep"]), int(wet["wet_smart"]), int(wet["dry_min"])])
+	if lines.is_empty():
+		_sleep(false)
+		return
+	var secs := 4.0 if wet.is_empty() else 7.0
+	_sleep_confirm_t = secs
+	lines.append(Loc.t("Press [N] again to sleep anyway."))
+	ui.toast(" ".join(lines), secs)
+	SessionLog.log_event("sleep_warn", weather.clock_string(), {"done": done, "wet": wet})
+
+## 睡前提醒（2026-11-07 试玩报告 P1）：按入睡这一刻的真实过夜模型，湿衣 / 干衣各算两种过法——一觉睡到天亮（"sleep"），
+## 每次醒来都起来活动、处理（"smart"）。雪沟这类庇护所一觉睡到天亮干衣也会冻到 0，差别只在醒来活动时才看得出来，所以两种都比。
+## 任一种过法里湿衣让最低体温低 sleep_wet_warn_drop_w 以上、且湿衣不是 SAFE 才提醒；否则返回 {}。
+func wet_sleep_forecast() -> Dictionary:
+	if GameRules.clothing_state(dampness, tuning) == "dry":
+		return {}
+	var inp := night_input()
+	inp["night_snowfall"] = weather.atmosphere.snowfall
+	var dry := inp.duplicate()
+	dry["dampness"] = 0.0
+	var r := {}
+	for pol in ["sleep", "smart"]:
+		r["wet_" + pol] = NightCurve.run(inp, tuning, pol)
+		r["dry_" + pol] = NightCurve.run(dry, tuning, pol)
+	var m := func(k: String) -> float: return roundf(float(r[k]["min_warmth"]))
+	var drop := maxf(m.call("dry_sleep") - m.call("wet_sleep"), m.call("dry_smart") - m.call("wet_smart"))
+	var wet_safe := String(r["wet_sleep"]["outcome"]) == "SAFE" and String(r["wet_smart"]["outcome"]) == "SAFE"
+	if wet_safe or drop < tuning.sleep_wet_warn_drop_w:
+		return {}
+	return {"state": GameRules.clothing_state(dampness, tuning), "wet_sleep": m.call("wet_sleep"), "wet_smart": m.call("wet_smart"),
+		"dry_min": maxf(m.call("dry_sleep"), m.call("dry_smart")), "drop": drop,
+		"wet_outcome": String(r["wet_smart"]["outcome"]), "dry_outcome": String(r["dry_smart"]["outcome"])}
 
 # ------------------------------------------------------------------ 每帧
 

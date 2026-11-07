@@ -269,6 +269,26 @@ func _run() -> void:
 	await shot("08_pause")
 	await tap("resume")
 	check(d.state == d.State.PLAYING, "Resume returns to play")
+	# 2026-11-07 试玩报告 P1：湿衣睡觉先提醒（按真实过夜模型算湿 / 干两种结果），再点一次才睡。
+	# 找一个"衣服干湿真的决定这一夜"的入睡时刻（太早睡的话干衣也撑不过 19 小时的夜，那时不该怪衣服）。
+	d.dampness = 1.0
+	var fc: Dictionary = {}
+	for h in [16.5, 16.0, 15.5, 15.0, 14.0]:
+		d.weather.current_time_minutes = h * 60.0
+		d.weather.advance_minutes(0.0)
+		d._last_minutes = d.weather.current_time_minutes
+		fc = d.wet_sleep_forecast()
+		if not fc.is_empty():
+			break
+	print("FORECAST %s at %s" % [str(fc), d.weather.clock_string()])
+	check(not fc.is_empty() and float(fc["drop"]) >= d.tuning.sleep_wet_warn_drop_w and float(fc["dry_min"]) > float(fc["wet_smart"]), "wet clothes: the forecast shows how much colder the night gets (%s)" % str(fc))
+	await tap("sleep")
+	for i in 5: await process_frame
+	check(d.state == d.State.PLAYING and d._sleep_confirm_t > 0.0, "wet clothes: the first Sleep only warns")
+	# 照样睡，但拨回中午：湿衣早睡会在天黑前冻醒，下面测"白天醒来起床"
+	d.weather.current_time_minutes = 12.5 * 60.0
+	d.weather.advance_minutes(0.0)
+	d._last_minutes = d.weather.current_time_minutes
 	await tap("sleep")
 	for i in 5: await process_frame
 	if d.state == d.State.PLAYING:
@@ -288,13 +308,39 @@ func _run() -> void:
 	GameDirector.night_speed_scale = 20.0
 	var wakes := 0
 	var shot_wake := false
+	var got_up := false
 	t0 = Time.get_ticks_msec()
 	while d.state != d.State.REPORT and Time.get_ticks_msec() - t0 < 40000:
+		if d.state == d.State.NIGHT and d.night.waiting() and not got_up:
+			# 白天冻醒：点"起床"回到白天，体温 / 时钟接着夜里的走
+			var acts: PackedStringArray = d.night.available_actions()
+			check(NightCurve.ACT_GET_UP in acts, "woke before dark: Get up is offered (%s)" % str(acts))
+			if not (NightCurve.ACT_GET_UP in acts):
+				break
+			var w_night: float = d.night.warmth
+			var clock_night: float = d._bed_minutes + d.night.minute
+			var up_rows := get_nodes_in_group("touch_tap").filter(func(n): return (n as Control).is_visible_in_tree() and not n.is_queued_for_deletion())
+			var up_c: Vector2 = (up_rows[acts.find(NightCurve.ACT_GET_UP)] as Control).get_global_rect().get_center()
+			await down(1, up_c)
+			await up(1, up_c)
+			for i in 5: await process_frame
+			got_up = true
+			check(d.state == d.State.PLAYING and p.controls_enabled and d.night == null, "Get up returns to the day")
+			check(absf(d.warmth.body_warmth - w_night) < 3.0 and absf(d.weather.current_time_minutes - clock_night) < 3.0, "and warmth and clock carry on from the night (%.0f / %.0f)" % [d.warmth.body_warmth, w_night])
+			check(has_btn("sleep") and d.weather.minutes_to_sunset() > 0.0, "it is still light and Sleep is available again")
+			await shot("10b_got_up")
+			d.dampness = 0.0
+			await tap("sleep")
+			for i in 5: await process_frame
+			if d.state == d.State.PLAYING:
+				await tap("sleep")
+			check(d.state != d.State.PLAYING, "Sleep again after getting up")
+			continue
 		if d.state == d.State.NIGHT and d.night.waiting():
 			if not shot_wake:
 				shot_wake = true
 				await shot("10_wake")
-			var rows := get_nodes_in_group("touch_tap").filter(func(n): return (n as Control).is_visible_in_tree())
+			var rows := get_nodes_in_group("touch_tap").filter(func(n): return (n as Control).is_visible_in_tree() and not n.is_queued_for_deletion())
 			if rows.is_empty():
 				check(false, "wake panel has tappable rows")
 				break

@@ -19,6 +19,8 @@ const ACT_CLEAR_VENT := "clear_vent"
 const ACT_KNOCK_SNOW := "knock_snow"
 const ACT_DRY_SOCKS := "dry_socks"
 const ACT_SLEEP := "sleep"
+## 白天醒来（离日落还有 night_get_up_min_light_min 以上）可以起床、回到白天：烘干衣服、添柴，再重新睡。
+const ACT_GET_UP := "get_up"
 
 const EV_COLD := "cold"
 const EV_CRITICAL := "critical"
@@ -74,6 +76,8 @@ var _last_wake := -INF
 var _ex_this_wake := 0
 var _ex_total := 0
 var _pending_event := ""
+## 白天醒来后起床了：这一夜到此为止，游戏回到白天（不出报告）。
+var got_up := false
 var _fire_dying_reported := false
 var _is_snow := false
 var _shelter := "None"
@@ -145,7 +149,11 @@ static func protection_of(p_input: Dictionary, p_t: Tuning) -> float:
 	return clampf(sum / maxf(wsum, 0.001), 0.0, 1.0)
 
 func is_over() -> bool:
-	return minute >= duration or (warmth <= 0.0 and minute > 0.0) or suffocated
+	return minute >= duration or (warmth <= 0.0 and minute > 0.0) or suffocated or got_up
+
+## 离日落还有多少游戏分钟（负 = 已经天黑）。
+func light_left() -> float:
+	return daylight_minutes - minute
 
 ## 当前每小时净失温（正 = 在掉）。
 func loss_per_hour() -> float:
@@ -292,6 +300,8 @@ func available_actions() -> PackedStringArray:
 	if has_fire_place and fire_minutes > 0.0 and NightSimulator.wet_fraction(dampness, t) > 0.0:
 		out.append(ACT_DRY_SOCKS)
 	out.append(ACT_EXERCISE)
+	if light_left() >= t.night_get_up_min_light_min:
+		out.append(ACT_GET_UP)
 	out.append(ACT_SLEEP)
 	return out
 
@@ -342,6 +352,10 @@ func act(a: String) -> bool:
 			dampness = maxf(0.0, dampness - 0.3)
 			wet_feet_due = INF
 			_spend(15.0)
+		ACT_GET_UP:
+			got_up = true
+			_ex_this_wake = 0
+			_pending_event = ""
 		ACT_SLEEP:
 			if _pending_event == EV_SNOW_LOAD and snow_load_due <= minute:
 				snow_load_active = true   # 没顶落就继续睡 → 结构受损

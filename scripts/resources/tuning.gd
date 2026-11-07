@@ -137,6 +137,10 @@ extends Resource
 ## [GAME] 播放：整夜多少现实秒；按住 [Space] 快进倍数。
 @export var night_real_seconds: float = 75.0
 @export var night_fast_multiplier: float = 6.0
+## [GAME] 白天醒来时离日落至少还有多少游戏分钟，才给"起床回到白天"的选项。
+@export var night_get_up_min_light_min: float = 20.0
+## [GAME] 睡前提醒：湿衣让这一夜的最低体温比干衣低这么多以上，就先提醒、要再按一次才睡。
+@export var sleep_wet_warn_drop_w: float = 10.0
 
 @export_group("Gear")
 ## [TUNE] 没有雪铲、用随身的锅（billy pot）挖雪的工时倍数。`[OB]`：Outdoor Boys《Lost in Alaska》只带锯、打火棒、刀、锅、勺也熬过冬夜——靠的是换策略（树井 / 倒棚 / 火），不是硬挖雪洞。

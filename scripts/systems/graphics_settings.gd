@@ -41,8 +41,10 @@ func _ready() -> void:
 	set_process(true)
 
 ## 手机默认低档；帧率还不够时 TouchControls 自动降档。
+## 网页版一律默认低档（2026-11-07 用户定）：浏览器里认不出集显（X1 上桌面浏览器默认成了 Medium），
+## 而且网页版是单线程，比本地版慢（X1 Low：本地约 57 FPS、浏览器约 40 FPS）。玩家自己按 F10 改过的档位照旧保留。
 func _default_level() -> int:
-	return 0 if TouchMode.enabled or _weak_gpu() else 1
+	return 0 if TouchMode.enabled or OS.has_feature("web") or _weak_gpu() else 1
 
 ## 集成显卡默认最低档（UHD 620 实测 Medium 约 27 FPS、Low 约 45 FPS）。
 ## 兼容渲染器不一定报告显卡类型，所以再按名字认一次。

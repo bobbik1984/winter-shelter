@@ -48,6 +48,7 @@ static func action_label(a: String, n: NightCurve, t: Tuning) -> String:
 		NightCurve.ACT_CLEAR_VENT: return Loc.t("Poke the vent clear")
 		NightCurve.ACT_KNOCK_SNOW: return Loc.t("Knock the snow off the roof")
 		NightCurve.ACT_DRY_SOCKS: return Loc.t("Dry your socks and boots by the fire")
+		NightCurve.ACT_GET_UP: return Loc.t("Get up: it's still light (%d min to sunset)") % int(n.light_left())
 		NightCurve.ACT_SLEEP: return Loc.t("Go back to sleep  [Enter]")
 	return a
 

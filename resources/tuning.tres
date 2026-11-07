@@ -246,3 +246,5 @@ night_safe_min_w = 50.0
 night_safe_max_wakes = 1
 night_real_seconds = 75.0
 night_fast_multiplier = 6.0
+night_get_up_min_light_min = 20.0
+sleep_wet_warn_drop_w = 10.0

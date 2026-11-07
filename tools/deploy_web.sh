@@ -46,7 +46,11 @@ html = open(f'{d}/index.html', encoding='utf-8').read()
 assert '"index.pck"' in html and 'GODOT_CONFIG = {' in html
 html = html.replace('"index.pck"', f'"{pck}"')
 html = html.replace('GODOT_CONFIG = {', f'GODOT_CONFIG = {{"mainPack":"{pck}",', 1)
-head = open('web/phone_head.html', encoding='utf-8').read()
+head = open('web/phone_head.html', encoding='utf-8').read() + open('web/wind_loops.html', encoding='utf-8').read()
+# 网页版风声循环由浏览器直接播放（web/wind_loops.html），文件放在页面旁边
+import shutil
+for f in ('wind_open.wav', 'wind_muffled.wav'):
+    shutil.copy(f'assets/audio/{f}', f'{d}/{f}')
 html = html.replace('</head>', head + f'<meta name="build" content="{sha}">\n</head>', 1)
 open(f'{d}/index.html', 'w', encoding='utf-8').write(html)
 print('built', sha, pck, os.path.getsize(f'{d}/{pck}'))

@@ -259,6 +259,7 @@ static func evaluate_shelter(
   4. `vfx_campfire_smoke_sparks`：打火石火星、桦树皮青烟、篝火跃动火苗、铝锅沸腾白汽、树冠落雪砸落粒子。
 - **音频（配合 `WindBus` 动态低通滤波）**：
   1. **环境风声**：`amb_wind_howl_loop.ogg`（高频呼啸）+ `amb_wind_deep_loop.ogg`（低频基底）——躲进树根后或雪洞内时高频瞬降；
+     > ✅ 现状（2026-11-07）：`AmbientAudio` 本地版逐采样合成（`AudioStreamGenerator`，22050 Hz）。网页版单线程，主线程一卡就断音，所以网页版的风改为浏览器播放的两段循环 `assets/audio/wind_open.wav`（截止 2000 Hz）/ `wind_muffled.wav`（150 Hz），`tools/bake_wind_loops.py` 用同一算法离线烤成；按截止频率等功率交叉淡化、按帧调音量和阵风。循环由页面里的 `web/wind_loops.html`（`window.wsWind`，`AudioBufferSourceNode.loop`）在浏览器音频线程里播放，`tools/deploy_web.sh` 把两段 wav 复制到页面旁边（不进 pck）；不用 Godot 4.3 网页版的"采样"播放，因为它是在主线程收到 ended 后重新开始，一卡照样断。本地版加 `-- --wind-loops` 可以试听循环版。脚步、火、一次性音效仍走生成器。
   2. **脚步与工具**：`sfx_step_shallow_snow`、`sfx_step_deep_snow`（深沉咯吱声）、`sfx_probe_thrust`（金属探针扎入雪层摩擦声）、`sfx_shovel_dig`、`sfx_axe_chop_dry`（清脆）vs `sfx_axe_chop_wet`（沉闷）；
   3. **温暖与治愈（ASMR 级）**：`sfx_ferro_scrape`（打火石咔嚓）、`sfx_tinder_catch`（火苗噗地燃起）、`sfx_fire_crackle_loop`（木柴噼啪声）、`sfx_snow_melt_boil`（融雪咕嘟冒泡与喝热饮长舒一口气）。
 
