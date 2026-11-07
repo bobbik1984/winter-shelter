@@ -56,7 +56,7 @@ else
   echo "no release key password file ($PASSF): signing with the local TEST key"
 fi
 out="build/android/winter-shelter-$sha$suffix.apk"
-apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias "$alias_" --ks-pass "$ks_pass" --key-pass "$ks_pass" \
+apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias "$alias_" --ks-pass "$ks_pass" \
   --out "$out" build/android/unsigned.apk
 apksigner verify "$out"
 rm -f build/android/unsigned.apk
