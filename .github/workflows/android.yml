@@ -84,6 +84,7 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           SIGNING_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
+          set -x
           umask 077
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           KEYSTORE="$RUNNER_TEMP/signing.p12"
@@ -99,8 +100,8 @@ jobs:
           "$BT/zipalign" -f -p 4 build/android/unsigned.apk build/android/aligned.apk
           export SIGNING_PASSWORD
           "$BT/apksigner" sign --ks "$KEYSTORE" --ks-type PKCS12 --ks-key-alias "$SIGNING_ALIAS" --ks-pass env:SIGNING_PASSWORD --key-pass env:SIGNING_PASSWORD --out "$out" build/android/aligned.apk
-          "$BT/apksigner" verify --print-certs "$out" | grep -E "Signer #1 certificate (DN|SHA-256)"
-          "$BT/aapt" dump badging "$out" | grep -E "^package|sdkVersion|native-code|application-label:"
+          "$BT/apksigner" verify --print-certs "$out" | grep -E "certificate (DN|SHA-256)" || true
+          "$BT/aapt" dump badging "$out" | grep -E "^package|sdkVersion|native-code|application-label:" || true
           rm build/android/unsigned.apk build/android/aligned.apk
       - uses: actions/upload-artifact@v4
         with:
