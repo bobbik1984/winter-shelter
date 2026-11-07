@@ -160,6 +160,18 @@ func _run() -> void:
 	check(not d.ui.intel_open() and d.state == d.State.PLAYING, "Esc closes the intel panel without pausing")
 	await key(KEY_I)
 	check(d.ui.intel_open() and d.ui.intel_tab_key() == "brief", "I opens the intel panel on the brief")
+	# 2026-11-07：庇护所页是图文卡片——八种都在，每张都有剖面图（除树井外还有外观图）
+	for i in 3:
+		await key(KEY_TAB)
+	check(d.ui.intel_tab_key() == "shelters", "Tab reaches the Shelters page")
+	var cards: Array = m.find_child("IntelCards", true, false).get_children() if m.find_child("IntelCards", true, false) else []
+	var pics_ok := cards.size() == 8
+	for c in cards:
+		var n := (c as Node).find_children("*", "TextureRect", true, false).filter(func(t): return (t as TextureRect).texture != null).size()
+		pics_ok = pics_ok and n >= (1 if String(c.name).ends_with("TreeWell") else 2)
+	check(pics_ok, "the Shelters page shows 8 shelter cards with pictures (%d cards)" % cards.size())
+	await key(KEY_I)
+	check(d.ui.intel_open() and d.ui.intel_tab_key() == "brief", "I on another page goes back to the brief")
 	await key(KEY_I)
 	check(not d.ui.intel_open(), "I closes it again")
 	var jb := InputEventJoypadButton.new()

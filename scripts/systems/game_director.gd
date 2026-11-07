@@ -812,7 +812,7 @@ func _intel_tabs() -> Array:
 	match GameRules.dig_tool(gear):
 		"shovel": kit += "\n\n" + Loc.t("A shovel digs at full speed. Digging still makes you sweat — dry off by a fire before bed.")
 		_: kit += "\n\n" + Loc.t("Without a shovel every snow shelter takes much longer — a trench or a tree well may be all the day allows.")
-	var shelters := String(info.get("shelters_only", Loc.t("All shelters are open in free play."))) + "\n\n" + shelter_guide()
+	var shelters := String(info.get("shelters_only", Loc.t("All shelters are open in free play.")))
 	var map := Loc.t("Map %d  ·  Seed %d") % [int(info.get("map", 1)), int(info.get("seed", LevelState.game_seed))] + "\n" + \
 		Loc.t("Terrain: %s") % TerrainHeight.RECIPE.describe() + "\n\n" + Loc.t("[N] on this screen gives the same stage a new map.")
 	if String(info.get("locked_hint", "")) != "":
@@ -828,7 +828,7 @@ func _intel_tabs() -> Array:
 		{"key": "brief", "title": Loc.t("Brief"), "body": brief},
 		{"key": "conditions", "title": Loc.t("Conditions"), "body": conditions},
 		{"key": "kit", "title": Loc.t("Kit"), "body": kit},
-		{"key": "shelters", "title": Loc.t("Shelters"), "body": shelters},
+		{"key": "shelters", "title": Loc.t("Shelters"), "body": shelters, "cards": shelter_cards()},
 		{"key": "map", "title": Loc.t("Map"), "body": map},
 		{"key": "guide", "title": Loc.t("Field guide"), "body": GameUI.field_guide_text()},
 		{"key": "controls", "title": Loc.t("Controls"), "body": controls},
@@ -848,7 +848,7 @@ const SHELTER_ABOUT := {
 	"FallenLog": "Branches leaned against a fallen trunk lying in the snow. Fast to build; works like a small lean-to.",
 }
 
-func shelter_guide() -> String:
+func shelter_cards() -> Array:
 	var names := Records.preset_names()
 	var learned := Records.learned_shelters()
 	var here: PackedStringArray = LevelState.level.introduced_presets if LevelState.active() else PackedStringArray()
@@ -860,18 +860,21 @@ func shelter_guide() -> String:
 				if not intro.has(p):
 					intro[p] = ch
 	var all := ShelterPreset.create_all_presets()
-	var blocks: Array[String] = []
+	var cards: Array = []
 	for p in BuildMode.PRESETS:
 		var pr: ShelterPreset = all[p]
 		var status := ""
+		var state := "known"
 		if not LevelState.active() or LevelState.level.is_free():
 			status = Loc.t("open in free play")
 		elif p in learned:
 			status = Loc.t("you know it")
 		elif p in here:
 			status = Loc.t("new on this level")
+			state = "new"
 		else:
 			status = Loc.t("learn it in chapter %d") % int(intro.get(p, 0))
+			state = "locked"
 		var wood := 0
 		var bedding := 0
 		for c in pr.stage_costs:
@@ -900,11 +903,11 @@ func shelter_guide() -> String:
 			mats.append(Loc.t("%d dry wood") % wood)
 		if bedding > 0:
 			mats.append(Loc.t("%d bedding") % bedding)
-		blocks.append("■ %s  ·  %s\n%s\n%s\n%s" % [String(names.get(p, p)).to_upper() if not Loc.is_zh() else String(names.get(p, p)), status,
-			Loc.t(SHELTER_ABOUT[p]),
-			Loc.t("Needs: %s  ·  about %s of work  ·  %s") % [site, time, ", ".join(mats) if not mats.is_empty() else Loc.t("no materials")],
-			fire])
-	return "\n\n".join(blocks)
+		cards.append({"id": p, "name": String(names.get(p, p)), "status": status, "state": state,
+			"about": Loc.t(SHELTER_ABOUT[p]),
+			"needs": Loc.t("Needs: %s  ·  about %s of work  ·  %s") % [site, time, ", ".join(mats) if not mats.is_empty() else Loc.t("no materials")],
+			"fire": fire})
+	return cards
 
 func valley_name() -> String:
 	return Loc.t("Valley %d of %d") % [TerrainHeight.VALLEY_SEEDS.find(TerrainHeight.SEED) + 1, TerrainHeight.VALLEY_SEEDS.size()]

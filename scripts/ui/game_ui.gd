@@ -31,6 +31,9 @@ var _intel_tabs: Array = []
 var _intel_idx := 0
 var _intel_tabs_row: HBoxContainer
 var _intel_body: Label
+## 卡片页（情报 · 庇护所）：正文下面一张张图文卡片；和正文一起在滚动区里。
+var _intel_cards: VBoxContainer
+var _intel_scroll: ScrollContainer
 var _shelter_card: PanelContainer
 var _shelter_title: Label
 var _shelter_line: Label
@@ -367,19 +370,30 @@ func toggle_intel(tab_key: String = "") -> void:
 		_intel_body.name = "IntelBody"
 		_intel_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_intel_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		if TouchMode.enabled:
-			# 手机上一页放不下：正文可以用手指拖动
-			var sc := ScrollContainer.new()
-			sc.custom_minimum_size = Vector2(900, 330)
-			sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-			_intel_body.custom_minimum_size = Vector2(880, 0)
-			_intel_body.mouse_filter = Control.MOUSE_FILTER_PASS
-			_intel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			sc.add_child(_intel_body)
-			v.add_child(sc)
-		else:
-			v.add_child(_intel_body)
-			v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close"), 13, AMBER))
+		# 正文 + 卡片放在滚动区里：手机上用手指拖，桌面上用滚轮（庇护所卡片一页放不下）
+		var sc := ScrollContainer.new()
+		sc.name = "IntelScroll"
+		sc.custom_minimum_size = Vector2(900, 330) if TouchMode.enabled else Vector2(960, 500)
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_intel_scroll = sc
+		var content := VBoxContainer.new()
+		content.add_theme_constant_override("separation", 14)
+		content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		content.mouse_filter = Control.MOUSE_FILTER_PASS
+		_intel_body.custom_minimum_size = Vector2(880 if TouchMode.enabled else 940, 0)
+		_intel_body.mouse_filter = Control.MOUSE_FILTER_PASS
+		_intel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		content.add_child(_intel_body)
+		_intel_cards = VBoxContainer.new()
+		_intel_cards.name = "IntelCards"
+		_intel_cards.add_theme_constant_override("separation", 10)
+		_intel_cards.mouse_filter = Control.MOUSE_FILTER_PASS
+		content.add_child(_intel_cards)
+		sc.add_child(content)
+		v.add_child(sc)
+		if not TouchMode.enabled:
+			v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close") + "      " + Loc.t("[Wheel] scroll"), 13, AMBER))
 		get_child(0).add_child(_intel)
 	_intel.visible = true
 	_render_intel()
@@ -399,6 +413,70 @@ func _render_intel() -> void:
 		var t := String(_intel_tabs[i]["title"])
 		_intel_tabs_row.add_child(_label(("[ %s ]" % t) if cur else t, 17 if cur else 15, AMBER if cur else MUTED))
 	_intel_body.text = String(_intel_tabs[_intel_idx]["body"]) if _intel_idx < _intel_tabs.size() else ""
+	for c in _intel_cards.get_children():
+		_intel_cards.remove_child(c)
+		c.queue_free()
+	if _intel_idx < _intel_tabs.size():
+		for cd in _intel_tabs[_intel_idx].get("cards", []):
+			_intel_cards.add_child(_shelter_card_ui(cd))
+	_intel_scroll.scroll_vertical = 0
+
+## 一张庇护所卡片：左边剖面图（怎么回事）+ 外观图（地图上长什么样），右边名字、你会不会、说明、条件、火。
+## 还没学会的整张卡变暗。cd = GameDirector.shelter_cards() 的一项。
+func _shelter_card_ui(cd: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "ShelterCard_%s" % String(cd["id"])
+	var st := StyleBoxFlat.new()
+	var accent: Color = Color(0.55, 0.9, 0.6) if String(cd["state"]) == "known" else (AMBER if String(cd["state"]) == "new" else MUTED)
+	st.bg_color = Color(1, 1, 1, 0.04)
+	st.border_color = Color(accent, 0.6)
+	st.border_width_left = 3
+	st.set_corner_radius_all(6)
+	st.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", st)
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel.add_child(row)
+	var pics := VBoxContainer.new()
+	pics.add_theme_constant_override("separation", 4)
+	pics.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	pics.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(pics)
+	for key in ["cut", "out"]:
+		var path := "res://assets/ui/shelters/%s_%s.webp" % [String(cd["id"]), key]
+		if not ResourceLoader.exists(path):
+			continue
+		var tr := TextureRect.new()
+		tr.texture = load(path)
+		tr.custom_minimum_size = Vector2(256, 144)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		tr.mouse_filter = Control.MOUSE_FILTER_PASS
+		pics.add_child(tr)
+	var txt := VBoxContainer.new()
+	txt.add_theme_constant_override("separation", 4)
+	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	txt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	txt.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(txt)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	head.add_child(_label(String(cd["name"]), 18, CREAM))
+	head.add_child(_label(String(cd["status"]), 14, accent))
+	txt.add_child(head)
+	for k in [["about", 14, CREAM], ["needs", 13, MUTED], ["fire", 13, MUTED]]:
+		var l := _label(String(cd[k[0]]), k[1], k[2])
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(540 if TouchMode.enabled else 620, 0)
+		l.mouse_filter = Control.MOUSE_FILTER_PASS
+		txt.add_child(l)
+	if String(cd["state"]) == "locked":
+		panel.modulate = Color(1, 1, 1, 0.55)
+	return panel
 
 ## 野外手册内容（[H] 打开情报面板的这一页）。
 static func field_guide_text() -> String:

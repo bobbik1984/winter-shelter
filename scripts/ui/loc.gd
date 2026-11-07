@@ -375,6 +375,7 @@ const ZH := {
 	"caribou hides": "驯鹿皮",
 	"Hold [Space] to fast-forward": "按住 [Space] 快进",
 	"[W] Wake up": "[W] 醒来",
+	"[Wheel] scroll": "[滚轮] 翻看",
 	"open in free play": "自由模式里都能用",
 	"you know it": "你已经会了",
 	"new on this level": "这一关新学",
