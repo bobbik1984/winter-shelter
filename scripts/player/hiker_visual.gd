@@ -21,7 +21,7 @@ var _mat_hole: StandardMaterial3D
 
 const GLB := "res://assets/models/char_survivor.glb"
 ## Walk 动作原速下的前进速度（m/s），build_hiker.py 构建时打印的 WALK_MPS。
-const WALK_MPS := 1.64
+const WALK_MPS := 1.45
 
 var _anim: AnimationPlayer
 ## 体感表现（VISUAL_LANGUAGE §3）：呼出的白汽频率 + 寒颤幅度，随体温变化。

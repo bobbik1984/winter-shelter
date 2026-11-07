@@ -8,7 +8,7 @@ knee pads and gaiters, leather boots with soles, mitts with thumbs; red expediti
 front pocket, compression straps, shoulder straps and hip belt, a strapped shovel blade and a
 rolled sleeping pad; black/white banded avalanche probe in the right hand.
 Rigid skinning: every part is weighted 100 % to one bone (robust, no weight painting).
-Actions: Idle-loop, Walk-loop (v3 gait: planted stance, knees bend backward), Probe, Dig-loop, Chop-loop.  Character faces -Y in Blender (= +Z in Godot).
+Actions: Idle-loop, Walk-loop (v4 gait: planted stance, soft knee under the pack, visible knee lift), Probe, Dig-loop, Chop-loop.  Character faces -Y in Blender (= +Z in Godot).
 """
 import bpy, bmesh, math, sys
 from mathutils import Vector, Matrix
@@ -323,15 +323,22 @@ def idle(f):
     pb["upper_arm.L"].rotation_euler = (0, 0, R(6))
     pb["upper_arm.R"].rotation_euler = (0, 0, R(-6))
 
-# 步态（v3）：24 帧一步态周期（0.8 s）。支撑相 60 %：脚踩住不动（大腿匀速后摆，sin 空间线性）；
+# 步态（v4，见 _leg）：24 帧一步态周期（0.8 s）。支撑相 60 %：脚踩住不动（大腿匀速后摆，sin 空间线性）；
 # 摆动相 40 %：膝盖往后弯（正 X = 屈膝，之前写反了，膝盖往前折、靴子往前踢）。
 # 骨盆高度按两条腿里较长的那条算，脚始终落在地面上（双脚着地时最低、单脚支撑中段最高）。
 WALK_FRAMES = 24
 THIGH, SHIN = 0.42, 0.42
 TH_FWD, TH_BACK, STANCE = -27.0, 23.0, 0.6
 
+def _gauss(p, c, w):
+    d = abs(p - c)
+    d = min(d, 1.0 - d)   # 循环相位，首尾接得上
+    return math.exp(-(d / w) ** 2)
+
 def _leg(p):
-    """一条腿在步态相位 p（0 = 脚跟着地）的 (大腿角, 屈膝角)，度；大腿正 = 向后。"""
+    """一条腿在步态相位 p（0 = 脚跟着地）的 (大腿角, 屈膝角)，度；大腿正 = 向后。
+    v4：背着包，支撑腿膝盖一直微屈（~10°）；摆动腿抬膝明显（峰值 ~80°），大腿往前送到头时膝盖还弯着，
+    落地前才伸直——游戏镜头从斜后上方看，这一段是看得见的（v3 的屈膝只在腿在身后时出现，被背包挡住，看着像直腿）。"""
     p %= 1.0
     if p < STANCE:
         a = math.sin(R(TH_FWD)) + (math.sin(R(TH_BACK)) - math.sin(R(TH_FWD))) * (p / STANCE)
@@ -339,8 +346,8 @@ def _leg(p):
     else:
         u = (p - STANCE) / (1.0 - STANCE)
         e = 0.5 - 0.5 * math.cos(u * math.pi)
-        th = TH_BACK + (TH_FWD - TH_BACK) * e
-    k = 3.0 + 12.0 * math.exp(-((p - 0.12) / 0.08) ** 2) + 55.0 * math.exp(-((p - 0.74) / 0.12) ** 2)
+        th = TH_BACK + (TH_FWD - TH_BACK) * e - 9.0 * math.sin(u * math.pi) * u   # 往前送过头一点再落下
+    k = 10.0 + 6.0 * _gauss(p, 0.12, 0.08) + 70.0 * _gauss(p, 0.80, 0.12)
     return th, k
 
 def _extent(th, k):

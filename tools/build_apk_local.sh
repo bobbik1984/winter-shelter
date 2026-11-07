@@ -4,7 +4,8 @@
 # 然后：tools/deploy_apk.sh build/android/winter-shelter-<sha>-TESTKEY.apk
 # 需要：Godot 4.3 + Android 导出模板、java、apksigner（Debian 的 android-sdk 包即可）。
 # 不改你的编辑器设置：用临时配置目录指向 Java / SDK；SDK 里缺的 adb 用占位脚本（导出用不到它）。
-# 签名用一次性测试密钥（30 天）：正式密钥的包不能覆盖安装它，需要先卸载。
+# 签名用本机固定的测试密钥（~/.local/share/winter-shelter/apk-test.p12）：本机测试包之间能覆盖安装；
+# 正式密钥的包不能覆盖它，需要先卸载。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
@@ -29,10 +30,16 @@ rm -f build/android/unsigned.apk
 XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" build/android/unsigned.apk 2>&1 | grep -E "ERROR" || true
 [ -s build/android/unsigned.apk ] || { echo "export failed" >&2; exit 1; }
 
-keytool -genkeypair -keystore "$tmp/k.p12" -storetype PKCS12 -alias test -storepass testtest -keypass testtest \
-  -dname "CN=Throwaway test key" -keyalg RSA -keysize 2048 -validity 30 >/dev/null 2>&1
+# 测试密钥固定存在本机（不进仓库）：以后的本机测试包能直接覆盖安装，存档保留
+KEY="${APK_TEST_KEY:-$HOME/.local/share/winter-shelter/apk-test.p12}"
+if [ ! -f "$KEY" ]; then
+  mkdir -p "$(dirname "$KEY")"
+  keytool -genkeypair -keystore "$KEY" -storetype PKCS12 -alias test -storepass testtest -keypass testtest \
+    -dname "CN=Snow Shelter local test key" -keyalg RSA -keysize 2048 -validity 3650 >/dev/null 2>&1
+  echo "created test key $KEY"
+fi
 out="build/android/winter-shelter-$sha-TESTKEY.apk"
-apksigner sign --ks "$tmp/k.p12" --ks-type PKCS12 --ks-key-alias test --ks-pass pass:testtest --key-pass pass:testtest \
+apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias test --ks-pass pass:testtest --key-pass pass:testtest \
   --out "$out" build/android/unsigned.apk
 apksigner verify "$out"
 rm -f build/android/unsigned.apk
