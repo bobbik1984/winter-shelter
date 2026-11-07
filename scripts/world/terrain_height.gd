@@ -269,5 +269,12 @@ static func lee_factor_at(x: float, z: float) -> float:
 	var lee := clampf((hw - h) / 1.8, -1.2, 1.4)
 	return clampf(lee / 1.4, 0.0, 1.0)
 
+## 上风方向（约 6 m）地面比这里高出多少米（≥ 0）：挡风统一规则的地形部分。
+static func lee_depth_at(x: float, z: float) -> float:
+	var m := to_map(x, z)
+	var i := _grid_coord(m.x)
+	var j := _grid_coord(m.y)
+	return maxf(_height_from_grid(maxf(0.0, i - 3.0), j) - _height_from_grid(i, j), 0.0)
+
 static func is_deep_snow(x: float, z: float) -> bool:
 	return snow_depth_at(x, z) >= 1.5

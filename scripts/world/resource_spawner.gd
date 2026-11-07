@@ -225,13 +225,13 @@ func _spawn_rootball(p: Vector2, i: int) -> void:
 	body.add_child(cs)
 
 ## 最近的天然挡风物距离。
-## 树根盘挡风度（有方向，见 GameRules.windbreak_shelter）。
-static func windbreak_shelter(tree: SceneTree, pos: Vector3, blow: Vector3, radius: float = 3.5) -> float:
-	var pts: Array = []
+## 树根盘作为挡风物（GameRules.barrier_shelter）：竖着的根盘约 2.8 m 高、3 m 宽、很薄。
+static func windbreak_barriers(tree: SceneTree) -> Array:
+	var out: Array = []
 	for n in tree.get_nodes_in_group("windbreaks"):
 		var w := n as Node3D
-		pts.append(Vector2(w.global_position.x, w.global_position.z))
-	return GameRules.windbreak_shelter(pts, Vector2(pos.x, pos.z), Vector2(blow.x, blow.z), radius)
+		out.append({"pos": Vector2(w.global_position.x, w.global_position.z), "h": 2.8, "r": 0.35, "w": 1.5})
+	return out
 
 static func nearest_windbreak_distance(tree: SceneTree, pos: Vector3) -> float:
 	var best := INF

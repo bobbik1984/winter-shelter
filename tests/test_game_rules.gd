@@ -40,15 +40,26 @@ func run() -> Dictionary:
 	_check(GameRules.fire_check(4, 2, 0.2, false, false, t)["ok"], "背风、材料齐全应能点燃")
 	_check(not GameRules.fire_check(4, 2, t.fire_blowout_dot + 0.05, false, false, t)["ok"], "白天吹灭阈值须与 NightSimulator 一致")
 	_check(GameRules.fire_exposure(0.2, 1.0) < GameRules.fire_exposure(0.2, 0.0), "挡风物降低暴露")
-	# 第二次评审：树根盘只挡下风一侧
-	var wbp: Array = [Vector2(0, 0)]
+	# 挡风统一规则：实心挡风物只挡下风一侧，风影约 3 倍高；矮的护得住火、护不住人
 	var blow := Vector2(1, 0)
-	_check(GameRules.windbreak_shelter(wbp, Vector2(1.5, 0), blow, 3.5) > 0.5, "树根盘正下风 1.5 m：挡得住")
-	_check(GameRules.windbreak_shelter(wbp, Vector2(-1.5, 0), blow, 3.5) == 0.0, "树根盘迎风一侧：挡不住")
-	_check(GameRules.windbreak_shelter(wbp, Vector2(0, 1.5), blow, 3.5) < GameRules.windbreak_shelter(wbp, Vector2(1.5, 0), blow, 3.5), "侧面比正下风挡得少")
-	_check(GameRules.windbreak_shelter(wbp, Vector2(5, 0), blow, 3.5) == 0.0, "离太远挡不住")
-	_check(GameRules.fire_exposure(0.0, GameRules.windbreak_shelter(wbp, Vector2(1.2, 0), blow, 3.5)) <= t.fire_blowout_dot, "开阔地上，紧贴树根盘下风一侧能生火（不被吹灭）")
-	_check(GameRules.fire_exposure(0.0, GameRules.windbreak_shelter(wbp, Vector2(-1.2, 0), blow, 3.5)) > t.fire_blowout_dot, "开阔地上，树根盘迎风一侧会被吹灭")
+	var rb := {"pos": Vector2.ZERO, "h": 2.8, "r": 0.35, "w": 1.5}
+	var hb := t.wind_body_height_m
+	var hf := t.wind_fire_height_m
+	_check(GameRules.barrier_shelter(rb, Vector2(1.5, 0), blow, hb, t) > 0.8, "树根盘正下风 1.5 m：人也挡得住")
+	_check(GameRules.barrier_shelter(rb, Vector2(-1.5, 0), blow, hf, t) == 0.0, "树根盘迎风一侧：挡不住")
+	_check(GameRules.barrier_shelter(rb, Vector2(0.5, 1.8), blow, hf, t) < GameRules.barrier_shelter(rb, Vector2(1.5, 0), blow, hf, t), "侧面比正下风挡得少")
+	_check(GameRules.barrier_shelter(rb, Vector2(4.0, 0), blow, hf, t) < GameRules.barrier_shelter(rb, Vector2(1.5, 0), blow, hf, t), "离得越远挡得越少")
+	_check(GameRules.barrier_shelter(rb, Vector2(10, 0), blow, hf, t) == 0.0, "风影以外挡不住")
+	_check(1.0 - GameRules.barrier_shelter(rb, Vector2(1.2, 0), blow, hf, t) <= t.fire_blowout_dot, "开阔地上，紧贴树根盘下风一侧能生火（不被吹灭）")
+	_check(1.0 - GameRules.barrier_shelter(rb, Vector2(-1.2, 0), blow, hf, t) > t.fire_blowout_dot, "开阔地上，树根盘迎风一侧会被吹灭")
+	var low := {"pos": Vector2.ZERO, "h": 0.8, "r": 0.6, "w": 0.8}
+	_check(1.0 - GameRules.barrier_shelter(low, Vector2(1.2, 0), blow, hf, t) <= t.fire_blowout_dot, "矮石头下风：火点得着")
+	_check(GameRules.barrier_shelter(low, Vector2(1.2, 0), blow, hb, t) < 0.6 * GameRules.barrier_shelter(low, Vector2(1.2, 0), blow, hf, t), "矮石头下风：站着的人只挡住一部分")
+	_check(1.0 - GameRules.tree_shelter(1.0, t) > t.fire_blowout_dot, "光靠树林（透风）挡不住火")
+	_check(GameRules.terrain_shelter(3.0, hb, t) > GameRules.terrain_shelter(1.0, hb, t) and GameRules.terrain_shelter(3.0, hb, t) > GameRules.tree_shelter(1.0, t), "高差越大越挡风，深洼地比树林有效")
+	_check(GameRules.terrain_shelter(1.0, hf, t) > GameRules.terrain_shelter(1.0, hb, t), "同一个洼地，贴地的火比站着的人更避风")
+	var both := GameRules.combine_shelter([0.5, 0.5])
+	_check(both > 0.5 and both < 1.0 and GameRules.combine_shelter([1.0, 0.3]) == 1.0, "几层挡风叠加更好，但不超过 1")
 
 	# 提示（V3）
 	_check(GameRules.tip_for(50.0, 6.0, 90.0, false, false, t).contains("lengthening"), "日落前 50 分钟应提示影子变长")
@@ -96,13 +107,9 @@ func run() -> Dictionary:
 	_check(inv.spend({"wood": 2, "bark": 1}) == false and inv.wood == 3, "材料不足时 spend 不扣任何东西")
 	inv.add("bark", 1)
 	_check(inv.spend({"wood": 2, "bark": 1}) and inv.wood == 1 and inv.bark == 0, "材料足够时扣除")
-	# S7：自己的庇护所下风侧挡风
-	var os := Vector2.ZERO
-	var ob := Vector2(1, 0)
-	_check(GameRules.own_shelter_lee(os, Vector2(3, 0), ob, 4.5) == 1.0, "正下风侧：挡风")
-	_check(GameRules.own_shelter_lee(os, Vector2(-3, 0), ob, 4.5) == 0.0, "迎风侧：不挡")
-	_check(GameRules.own_shelter_lee(os, Vector2(0, 3), ob, 4.5) == 0.0, "正侧面：不挡")
-	_check(GameRules.own_shelter_lee(os, Vector2(6, 0), ob, 4.5) == 0.0, "太远：不挡")
+	# S7：自己的庇护所随阶段长高，越高挡得越远
+	_check(GameRules.shelter_wall_height("Quinzhee", 1, 5) == 0.0 and GameRules.shelter_wall_height("Quinzhee", 5, 5) > GameRules.shelter_wall_height("Quinzhee", 2, 5), "第 2 阶起挡风，越建越高")
+	_check(GameRules.shelter_wall_height("SnowTrench", 5, 5) < GameRules.shelter_wall_height("Quinzhee", 5, 5), "雪沟的墙比雪屋矮")
 	# D16 / B4：背包上限 + 工地材料堆
 	inv.wood = 0
 	inv.max_wood = 4

@@ -44,33 +44,55 @@ static func entrance_wind_angle(entrance_dir: Vector3, wind_from: Vector3) -> fl
 
 ## 火位 / 人的迎风暴露 0（背风 / 有挡风物）..1（完全迎风）。
 ## tree_cover 0..1：附近林木挡风（Read the Land：林子里风小）。
-## 暴露度 0..1。windbreak = 树根盘的挡风度 0..1（有方向：只有下风一侧被挡住，见 windbreak_shelter）。
+## 暴露度 0..1。（旧的加法规则，只剩夜里倒棚火塘还在用；白天和其它夜间输入走 wind_shelter 统一规则）
 static func fire_exposure(lee_factor: float, windbreak: float, tree_cover: float = 0.0) -> float:
 	return clampf(1.0 - lee_factor - 0.75 * clampf(windbreak, 0.0, 1.0) - 0.5 * clampf(tree_cover, 0.0, 1.0), 0.0, 1.0)
 
-## 树根盘对 p 点的挡风度 0..1（第二次评审：以前 3.5 m 内一律算挡风，正对风的一侧也算——火照样被吹灭，规则和"去树根背风处"的提示对不上）。
-## 只挡下风一侧：p 在树根盘的正下风方 = 1，侧面逐渐减弱，迎风面 = 0；越靠近越挡得住。
-static func windbreak_shelter(windbreak_points: Array, p: Vector2, blow: Vector2, radius: float) -> float:
-	var best := 0.0
-	var b := blow.normalized()
-	for w in windbreak_points:
-		var off: Vector2 = p - (w as Vector2)
-		var d := off.length()
-		if d >= radius:
-			continue
-		var side := 1.0 if d < 0.3 else off.normalized().dot(b)
-		var s := smoothstep(-0.1, 0.6, side) * (1.0 - pow(d / radius, 2.0))
-		best = maxf(best, s)
-	return clampf(best, 0.0, 1.0)
+## ---- 挡风统一规则：风声、体温、生火都读它（只是高度不同：人 ~1.5 m，火 ~0.3 m）----
+## 一个实心挡风物（岩石 / 树根盘 / 自己的雪墙）对 p 点、离地 h 米处的挡风度 0..1。
+## b = {"pos": Vector2 中心, "h": 高 m, "r": 顺风方向的半厚 m, "w": 横向半宽 m}
+## 只挡下风一侧：风影长 ≈ 高 × wind_shadow_per_height，前 1/4 最强，往后渐弱；越往后越宽一点。
+## 比 h 矮的东西只挡住一部分（矮石头护得住火，护不住站着的人）。
+static func barrier_shelter(b: Dictionary, p: Vector2, blow: Vector2, h: float, t: Tuning) -> float:
+	var bl := blow.normalized()
+	var off: Vector2 = p - (b["pos"] as Vector2)
+	var r := float(b.get("r", 0.5))
+	var ahead := off.dot(bl)
+	if ahead < -r:
+		return 0.0   # 在迎风那一面
+	var along := maxf(ahead - r, 0.0)
+	var height := float(b.get("h", 1.0))
+	var shadow := maxf(t.wind_shadow_per_height * height, 0.5)
+	var f_along := 1.0 - smoothstep(0.25 * shadow, shadow, along)
+	var lat := absf(off.x * bl.y - off.y * bl.x)
+	var w := float(b.get("w", 0.5)) + along * 0.15
+	var f_lat := 1.0 - smoothstep(w * 0.7, w + 0.6, lat)
+	var cover := clampf(height / maxf(h, 0.05), 0.0, 1.0)
+	return t.wind_solid_max * cover * f_along * f_lat
 
+## 地形挡风：depth_m = 上风方向地面比这里高出多少米（洼地、背风坡、崖脚）。高差越大越有效。
+static func terrain_shelter(depth_m: float, h: float, t: Tuning) -> float:
+	return t.wind_terrain_max * clampf(depth_m / maxf(h + t.wind_terrain_extra_m, 0.1), 0.0, 1.0)
 
-## 自己的庇护所对 p 点的挡风度：紧贴下风侧（±60°、outer 米内）= 1，其它地方 = 0。
-## 雪墙 / 雪丘 / 棚子是一整面墙，比一个树根盘挡得住；在开阔平地上这是唯一能点火烘干的地方（S7）。
-static func own_shelter_lee(site: Vector2, p: Vector2, blow: Vector2, outer: float) -> float:
-	var off := p - site
-	if off.length() > outer or off.length() < 0.01:
+## 树林挡风：透风，最多挡掉 wind_tree_max；树比人和火都高，不看高度。
+static func tree_shelter(cover: float, t: Tuning) -> float:
+	return t.wind_tree_max * clampf(cover, 0.0, 1.0)
+
+## 几层挡风叠加：每一层挡掉剩下的风的一部分，叠起来更好，但永远到不了 1 以上。
+static func combine_shelter(parts: Array) -> float:
+	var left := 1.0
+	for s in parts:
+		left *= 1.0 - clampf(float(s), 0.0, 1.0)
+	return 1.0 - left
+
+## 自己的庇护所完工时的挡风高度（m），按阶段比例长高；第 2 阶起算（S7）。
+const SHELTER_WALL_H := {"RaisedCave": 1.6, "BasicCave": 1.5, "Quinzhee": 1.8, "SnowTrench": 0.9,
+	"TreeWell": 1.0, "LeanTo": 1.5, "RockOverhang": 1.2, "FallenLog": 0.9}
+
+static func shelter_wall_height(preset: String, stage: int, stages_max: int) -> float:
+	if stage < 2:
 		return 0.0
-	return 1.0 if off.normalized().dot(blow.normalized()) >= 0.5 else 0.0
+	return float(SHELTER_WALL_H.get(preset, 1.0)) * float(stage) / float(maxi(stages_max, 1))
 
 ## 林木挡风度：半径 r 内的树数量折算 0..1（每棵约 0.15，封顶 1）。
 static func tree_cover(points: PackedVector2Array, p: Vector2, r: float) -> float:
@@ -94,7 +116,7 @@ static func fire_check(wood: int, bark: int, exposure: float, under_canopy: bool
 		return {"ok": false, "reason": Loc.t("Fire put out by snow falling from the branches above. Move out from under the tree.")}
 	# 与 NightSimulator 同一条规则：暴露度超过 fire_blowout_dot 火就会被吹灭（白天 / 夜里一致）
 	if exposure > t.fire_blowout_dot:
-		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Go right behind a root plate on its downwind side, or into a leeward hollow. Your finished walls shelter the downwind side too.")}
+		return {"ok": false, "reason": Loc.t("The wind blew the flame out. Get low behind something solid, on its downwind side: a rock, a root plate or your own walls. A deep hollow works too; trees alone let too much wind through.")}
 	return {"ok": true, "reason": Loc.t("Fire lit.")}
 
 

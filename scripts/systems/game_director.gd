@@ -1020,10 +1020,8 @@ func _inside_site() -> bool:
 
 func _warmth_inputs() -> Dictionary:
 	var pos := player.global_position
-	var lee := SnowField.lee_factor_at(pos.x, pos.z)
-	var cover := _tree_cover(pos)
-	var wb := ResourceSpawner.windbreak_shelter(get_tree(), pos, wind.get_blow_direction_3d(), 3.0)
-	var windbreak := maxf(1.0 - GameRules.fire_exposure(lee, wb, cover), 0.0)
+	# 挡风统一规则，按人的高度算：风声、风雪、体温流失都用这一个数
+	var windbreak := wind_shelter_at(pos, tuning.wind_body_height_m)
 	var level := site.shelter_level() if _inside_site() else 0
 	var fire := 0.0
 	for f in get_tree().get_nodes_in_group("campfires"):
@@ -1831,8 +1829,7 @@ func _sheltered_fire_spot(from: Vector3) -> Vector3:
 			for ang in [0.0, 25.0, -25.0, 50.0, -50.0]:
 				var p: Vector3 = c + blow.rotated(Vector3.UP, deg_to_rad(ang)) * float(dist)
 				p.y = TerrainHeight.height_at(p.x, p.z)
-				var exposure := GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z),
-					ResourceSpawner.windbreak_shelter(get_tree(), p, blow), _tree_cover(p))
+				var exposure := fire_exposure_at(p)
 				if exposure <= tuning.fire_blowout_dot and not _under_canopy(p):
 					var d := p.distance_to(from)
 					if d < bd:
@@ -1874,23 +1871,43 @@ func _tick_fire_hold(delta: float) -> void:
 		player.controls_enabled = true
 		_try_fire()
 
-## p 点的挡风度：树根盘、岩体的下风侧，或者悬崖脚（同一条规则，都只挡下风一侧）。
-func _windbreak_at(p: Vector3) -> float:
+## 挡风统一规则：p 点、离地 h 米处挡掉了多少风（0..1）。风声、风雪、体温流失按人的高度，生火按火的高度。
+## 地形（洼地 / 背风坡 / 崖脚：上风方向高出越多越好）、实心挡风物（岩石、树根盘、自己的雪墙：只挡下风一侧，
+## 风影长约 3 倍高，比 h 矮的只挡一部分）、树林（透风，最多挡一半不到），三层叠加。
+func wind_shelter_at(p: Vector3, h: float) -> float:
+	return GameRules.combine_shelter(wind_shelter_parts(p, h).values())
+
+## 各层分开（调试 / 测试 / 提示用）：{"terrain", "solid", "trees"}。
+func wind_shelter_parts(p: Vector3, h: float) -> Dictionary:
 	var blow := wind.get_blow_direction_3d()
-	var wb := ResourceSpawner.windbreak_shelter(get_tree(), p, blow)
-	wb = maxf(wb, GameRules.windbreak_shelter(Array(LandFeatures.rocks), Vector2(p.x, p.z), Vector2(blow.x, blow.z), tuning.rock_max_dist_m))
-	if LandFeatures.cliff_upwind(p.x, p.z, wind.get_wind_direction_3d(), tuning.rock_cliff_run_m, tuning.rock_cliff_rise_m):
-		wb = 1.0
-	# S7：你自己堆起来的雪丘 / 雪墙 / 棚子也挡风（开阔平地上否则哪里都点不着火，挖雪湿透了就没法烘干）
-	if site != null and site.stage() >= 2:
-		wb = maxf(wb, GameRules.own_shelter_lee(Vector2(site.global_position.x, site.global_position.z), Vector2(p.x, p.z), Vector2(blow.x, blow.z), site.footprint_radius() + tuning.shelter_fire_lee_m))
-	return wb
+	var b2 := Vector2(blow.x, blow.z)
+	var q := Vector2(p.x, p.z)
+	var up := p + wind.get_wind_direction_3d().normalized() * tuning.rock_cliff_run_m
+	var depth := maxf(TerrainHeight.lee_depth_at(p.x, p.z), TerrainHeight.height_at(up.x, up.z) - TerrainHeight.height_at(p.x, p.z))
+	var solid := 0.0
+	for b in _wind_barriers():
+		solid = maxf(solid, GameRules.barrier_shelter(b, q, b2, h, tuning))
+	return {"terrain": GameRules.terrain_shelter(depth, h, tuning), "solid": solid,
+		"trees": GameRules.tree_shelter(_tree_cover(p), tuning)}
+
+func _wind_barriers() -> Array:
+	var out: Array = ResourceSpawner.windbreak_barriers(get_tree())
+	out.append_array(LandFeatures.wind_rocks)
+	# S7：你自己堆起来的雪丘 / 雪墙 / 棚子也挡风，随阶段长高（开阔平地上否则哪里都点不着火，挖雪湿透了就没法烘干）
+	if site != null:
+		var wh := GameRules.shelter_wall_height(site.preset_id, site.stage(), ShelterBuilder.STAGES_MAX)
+		if wh > 0.0:
+			var fr := site.footprint_radius()
+			out.append({"pos": Vector2(site.global_position.x, site.global_position.z), "h": wh, "r": fr * 0.8, "w": fr})
+	return out
+
+## 火在 p 点的迎风暴露 0..1（= 1 − 火高度处的挡风度）；超过 fire_blowout_dot 火就被吹灭（白天 / 夜里一致）。
+func fire_exposure_at(p: Vector3) -> float:
+	return 1.0 - wind_shelter_at(p, tuning.wind_fire_height_m)
 
 ## 在 p 点生火能否成功（与 _try_fire 同一套规则：背风 / 树根挡风 / 林木、树冠落雪、雪庇护所内禁火、材料）。
 func fire_check_at(p: Vector3) -> Dictionary:
-	var lee := SnowField.lee_factor_at(p.x, p.z)
-	var wb := _windbreak_at(p)
-	var exposure := GameRules.fire_exposure(lee, wb, _tree_cover(p))
+	var exposure := fire_exposure_at(p)
 	# 判定的是火的位置，不是人站在哪（站在雪沟旁边往外生火是可以的）
 	var inside_snow := site != null and site.is_snow_shelter() and site.stage() >= 1 \
 		and Vector2(p.x - site.global_position.x, p.z - site.global_position.z).length() < tuning.shelter_inside_radius_m
@@ -2100,7 +2117,7 @@ func _add_campfire_to_night(input: Dictionary) -> void:
 	input["campfire_near"] = true
 	input["firewood_logs"] = float(inventory.wood + (site.pile.amount("wood") if site != null else 0))
 	input["fire_minutes_left"] = best.fuel_minutes if best.lit else 0.0
-	input["fire_exposure"] = GameRules.fire_exposure(SnowField.lee_factor_at(p.x, p.z), _windbreak_at(p), _tree_cover(p))
+	input["fire_exposure"] = fire_exposure_at(p)
 
 func night_input() -> Dictionary:
 	var input: Dictionary

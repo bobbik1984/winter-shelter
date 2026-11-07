@@ -366,7 +366,7 @@ const ZH := {
 	"No shovel: a snow cave dug by hand takes about %d min; a tree well under a big spruce took about %d. The old spruces with a hollow at their base were the shelter.": "没有雪铲：徒手挖雪洞要约 %d 分钟；大云杉下的树井只要约 %d 分钟。树根处有浅坑的老云杉，就是现成的庇护所。",
 	"You're in it · [N] rest when ready": "你就在里面 · 准备好就 [N] 休息",
 	"Your layers are wet and no longer warm — dry them by a fire [F]: right behind a root plate on its downwind side, away from spruce branches.": "保暖层湿透了，不再保暖——去火边烘干 [F]：紧贴树根盘的下风一侧生火，别在云杉树枝下面。",
-	"The wind blew the flame out. Go right behind a root plate on its downwind side, or into a leeward hollow. Your finished walls shelter the downwind side too.": "风把火苗吹灭了。去树根盘紧贴下风的一侧，或者找个背风的凹处。你建好的墙，下风一侧也能挡风。",
+	"The wind blew the flame out. Get low behind something solid, on its downwind side: a rock, a root plate or your own walls. A deep hollow works too; trees alone let too much wind through.": "风把火苗吹灭了。贴低躲到实心的东西下风一侧：岩石、树根盘或者你自己的墙。够深的洼地也行；光靠树林挡不住，风会透过来。",
 	"Sheltered fire spot": "避风的生火处",
 	"Out of the wind, no branches above · [F] here": "挡得住风、头上没有树枝 · 在这里按 [F]",
 	"To finish the shelter you still need: %s": "要完工还缺：%s",

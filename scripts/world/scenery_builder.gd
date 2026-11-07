@@ -247,11 +247,11 @@ func _build_clusters() -> void:
 			# 每个林团第一块是够高的岩体（约 2 m）：S5 岩檐能躲在它后面；其余是矮石块
 			if rock_idx == 0:
 				LandFeatures.rocks.append(Vector2(p.x, p.z))
-			_rock_outcrop(
-				p,
-				Vector3(0.8 + float(rock_idx) * 0.25, (0.55 + float(cluster_idx % 3) * 0.12) * (2.0 if rock_idx == 0 else 1.0), 0.95),
-				float(cluster_idx) * 31.0 + float(rock_idx) * 47.0
-			)
+			var rs := Vector3(0.8 + float(rock_idx) * 0.25, (0.55 + float(cluster_idx % 3) * 0.12) * (2.0 if rock_idx == 0 else 1.0), 0.95)
+			_rock_outcrop(p, rs, float(cluster_idx) * 31.0 + float(rock_idx) * 47.0)
+			# 挡风：岩顶约在 1.45 × 纵向缩放处（见 _rock_outcrop 的雪帽）；高的挡得住人，矮的只挡得住火
+			var rw := maxf(rs.x, rs.z)
+			LandFeatures.wind_rocks.append({"pos": Vector2(p.x, p.z), "h": rs.y * 1.45, "r": rw * 0.8, "w": rw})
 
 		var grass_count := 4 + cluster_idx % 3
 		for grass_idx in range(grass_count):

@@ -260,7 +260,7 @@ func _build_focus_part(m, d, p) -> void:
 	check(d.callouts.has_callout("my_shelter") and is_equal_approx(d.callouts._entries["my_shelter"]["world"].y, ep.y), "the ring sits at the real opening, on the ground")
 	# S7：自己的庇护所下风侧也挡风（开阔地上要能点火烘干）；迎风侧不算
 	var bl: Vector3 = d.wind.get_blow_direction_3d()
-	var lee_w: float = d._windbreak_at(d.site.global_position + bl * 2.6)
+	var lee_w: float = d.wind_shelter_at(d.site.global_position + bl * 2.6, d.tuning.wind_fire_height_m)
 	# 材料不足：不扣料、不推进、面板写明
 	d._on_interaction_completed(d.site.interactable, d.site.interactable.trigger())
 	check(d.site.stage() == 2, "stage 2 done, the next stage needs bedding")
@@ -271,7 +271,7 @@ func _build_focus_part(m, d, p) -> void:
 	var in_msg := String(d.fire_check_at(d.site.global_position)["reason"])
 	p.global_position = saved_pos
 	check(not inside_msg.contains("inside a snow shelter") and in_msg.contains("inside a snow shelter"), "the no-fire rule checks where the fire goes, not where you stand")
-	check(d._windbreak_at(d.site.global_position + bl * 2.6) > lee_w and d._windbreak_at(d.site.global_position + bl * 2.6) > d._windbreak_at(d.site.global_position - bl * 2.6), "your own walls shelter a fire on the downwind side, not the upwind side")
+	check(d.wind_shelter_at(d.site.global_position + bl * 2.6, d.tuning.wind_fire_height_m) > lee_w and d.wind_shelter_at(d.site.global_position + bl * 2.6, d.tuning.wind_fire_height_m) > d.wind_shelter_at(d.site.global_position - bl * 2.6, d.tuning.wind_fire_height_m), "your own walls shelter a fire on the downwind side, not the upwind side")
 	d.inventory.bedding = 0
 	d.site.pile.stock["bedding"] = 0
 	var wood0: int = d.site.pile.total("wood", d.inventory)

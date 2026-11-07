@@ -6,10 +6,13 @@ extends RefCounted
 
 static var rocks: PackedVector2Array = PackedVector2Array()
 static var logs: PackedVector2Array = PackedVector2Array()
+## 所有岩石（高的和矮的）作为挡风物：{pos, h, r, w}，见 GameRules.barrier_shelter。
+static var wind_rocks: Array = []
 
 static func reset() -> void:
 	rocks = PackedVector2Array()
 	logs = PackedVector2Array()
+	wind_rocks = []
 
 ## 最近的点与距离；没有时距离为 INF。
 static func nearest(points: PackedVector2Array, p: Vector2) -> Dictionary:

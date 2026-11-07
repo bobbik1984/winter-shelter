@@ -697,8 +697,26 @@ extends Resource
 @export var build_focus_complete_seconds: float = 1.6
 ## 角色淡出 / 恢复时长（秒）[GAME]。
 @export var build_focus_ghost_seconds: float = 0.3
-## 自己的庇护所下风侧多远内算挡风（从工地边缘算，米）[TUNE]。
+## 自己的庇护所下风侧多远内算挡风（从工地边缘算，米）[TUNE]。（旧规则，挡风统一规则后不再使用）
 @export var shelter_fire_lee_m: float = 2.5
+
+@export_group("Wind shelter")
+## 挡风统一规则（GameRules.wind_shelter_parts）：风声、白天体温流失、能不能点火都读同一个挡风度，
+## 只是"在多高处"不同——人站着约 1.5 m，火约 0.3 m。矮石头挡得住火，挡不住站着的人。
+## 地形（洼地 / 崖脚）：上风方向地面比这里高出的米数 ÷ (高度 + 这个余量) → 0..1 [GAME]
+@export var wind_terrain_extra_m: float = 1.0
+## 地形最多挡掉多少风（高差够大最有效）[GAME]
+@export var wind_terrain_max: float = 0.9
+## 实心挡风物（岩石、树根盘、自己的雪墙）最多挡掉多少风 [GAME]
+@export var wind_solid_max: float = 0.9
+## 实心挡风物背后的风影长度 = 高度 × 这个倍数（米）[GAME]
+@export var wind_shadow_per_height: float = 3.0
+## 树林（透风）最多挡掉多少风 [GAME]
+@export var wind_tree_max: float = 0.45
+## 人（风声、体温）按多高算 [GAME]
+@export var wind_body_height_m: float = 1.5
+## 火按多高算 [GAME]
+@export var wind_fire_height_m: float = 0.3
 ## 特写时把角色画在工地旁边（只改外观）：离工地边缘多远（米）[TUNE]。
 @export var build_focus_figure_gap_m: float = 1.0
 ## 万一画在旁边还是挡住工地（比如地形特殊）：半透明程度，不再完全消失 [TUNE]。
