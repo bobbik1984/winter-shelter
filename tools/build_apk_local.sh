@@ -13,7 +13,7 @@ git diff --quiet HEAD -- . || sha="$sha-dirty"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"; git checkout -q -- build_info.txt 2>/dev/null || true' EXIT
 
 jh=$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")
-bt=$(ls -d /usr/lib/android-sdk/build-tools/* "${ANDROID_HOME:-/nonexistent}"/build-tools/* 2>/dev/null | tail -n1)
+bt=$(ls -d /usr/lib/android-sdk/build-tools/* "${ANDROID_HOME:-/nonexistent}"/build-tools/* 2>/dev/null | tail -n1 || true)
 [ -n "$bt" ] || { echo "no Android build-tools found" >&2; exit 1; }
 mkdir -p "$tmp/sdk/platform-tools" "$tmp/sdk/build-tools" "$tmp/cfg/godot"
 ln -s "$bt" "$tmp/sdk/build-tools/$(basename "$bt")"
