@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 本机打 Android 测试包（GitHub 的构建产物从这边下载太慢、经常断时用）。
-# 用法：tools/build_apk_local.sh   → build/android/winter-shelter-<sha>-TESTKEY.apk
-# 然后：tools/deploy_apk.sh build/android/winter-shelter-<sha>-TESTKEY.apk
+# 用法：tools/build_apk_local.sh   → build/android/winter-shelter-<sha>.apk（正式密钥）或 …-TESTKEY.apk
+# 然后：tools/deploy_apk.sh build/android/winter-shelter-<sha>.apk
 # 需要：Godot 4.3 + Android 导出模板、java、apksigner（Debian 的 android-sdk 包即可）。
 # 不改你的编辑器设置：用临时配置目录指向 Java / SDK；SDK 里缺的 adb 用占位脚本（导出用不到它）。
-# 签名用本机固定的测试密钥（~/.local/share/winter-shelter/apk-test.p12）：本机测试包之间能覆盖安装；
-# 正式密钥的包不能覆盖它，需要先卸载。
+# 签名：有正式密钥的密码文件就用正式密钥（见下面），否则用本机固定的测试密钥（~/.local/share/winter-shelter/apk-test.p12）。
+# 两把密钥的包不能互相覆盖安装，换密钥时要先卸载一次。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
@@ -30,16 +30,33 @@ rm -f build/android/unsigned.apk
 XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" build/android/unsigned.apk 2>&1 | grep -E "ERROR" || true
 [ -s build/android/unsigned.apk ] || { echo "export failed" >&2; exit 1; }
 
-# 测试密钥固定存在本机（不进仓库）：以后的本机测试包能直接覆盖安装，存档保留
-KEY="${APK_TEST_KEY:-$HOME/.local/share/winter-shelter/apk-test.p12}"
-if [ ! -f "$KEY" ]; then
-  mkdir -p "$(dirname "$KEY")"
-  keytool -genkeypair -keystore "$KEY" -storetype PKCS12 -alias test -storepass testtest -keypass testtest \
-    -dname "CN=Snow Shelter local test key" -keyalg RSA -keysize 2048 -validity 3650 >/dev/null 2>&1
-  echo "created test key $KEY"
+# 签名：有正式密钥就用正式密钥（和 bob 的 APK 同一把，Actions 打的包也用它），否则用本机测试密钥。
+# 正式密钥：APK_KEYSTORE（默认 ~/credentials/bobbik-release.p12）+ 密码文件 APK_KEY_PASS_FILE
+# （默认 ~/.config/winter-shelter/keystore-pass，只有自己能读）。密码只经文件传给 keytool / apksigner，不进命令行、不打印。
+REL="${APK_KEYSTORE:-$HOME/credentials/bobbik-release.p12}"
+PASSF="${APK_KEY_PASS_FILE:-$HOME/.config/winter-shelter/keystore-pass}"
+if [ -f "$REL" ] && [ -f "$PASSF" ]; then
+  KEY="$REL"
+  alias_=$(keytool -list -v -keystore "$KEY" -storetype PKCS12 -storepass:file "$PASSF" 2>/dev/null | sed -n 's/^Alias name: //p' | head -n1)
+  [ -n "$alias_" ] || { echo "cannot open $KEY with the password in $PASSF" >&2; exit 1; }
+  ks_pass="file:$PASSF"
+  suffix=""
+  echo "signing with release key $(basename "$KEY")"
+else
+  KEY="${APK_TEST_KEY:-$HOME/.local/share/winter-shelter/apk-test.p12}"
+  if [ ! -f "$KEY" ]; then
+    mkdir -p "$(dirname "$KEY")"
+    keytool -genkeypair -keystore "$KEY" -storetype PKCS12 -alias test -storepass testtest -keypass testtest \
+      -dname "CN=Snow Shelter local test key" -keyalg RSA -keysize 2048 -validity 3650 >/dev/null 2>&1
+    echo "created test key $KEY"
+  fi
+  alias_=test
+  ks_pass="pass:testtest"
+  suffix="-TESTKEY"
+  echo "no release key password file ($PASSF): signing with the local TEST key"
 fi
-out="build/android/winter-shelter-$sha-TESTKEY.apk"
-apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias test --ks-pass pass:testtest --key-pass pass:testtest \
+out="build/android/winter-shelter-$sha$suffix.apk"
+apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias "$alias_" --ks-pass "$ks_pass" --key-pass "$ks_pass" \
   --out "$out" build/android/unsigned.apk
 apksigner verify "$out"
 rm -f build/android/unsigned.apk
