@@ -14,8 +14,7 @@ const LOG := Color(0.27, 0.23, 0.20)
 ## 干草（偏冷的稻草色；以前三处各写一个更黄的颜色）。
 const DRY_GRASS := Color(0.62, 0.52, 0.32)
 
-## 洞内剖面的光线很暗，同一批颜色整体提亮一点才读得出来，色相不变（乘以同一个系数）。
-const INTERIOR_LIFT := 1.9
-const SPRUCE_IN := Color(0.0665, 0.209, 0.133)
-const WOOD_IN := Color(0.33, 0.308, 0.286)
-const GRASS_IN := Color(0.62, 0.52, 0.32)
+## 洞内剖面（程序化那几种，顶点色按 sRGB 直接显示、不受光）用的同色相显示值；
+## 有 Blender 模型的那几种在 tools/blender/build_shelters.py 的 COLORS 里按同样的色相烘进顶点色。
+const SPRUCE_IN := Color(0.11, 0.19, 0.15)
+const WOOD_IN := Color(0.35, 0.31, 0.28)
