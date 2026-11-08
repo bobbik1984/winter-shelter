@@ -65,18 +65,18 @@ func set_section(on: bool, point: Vector3, normal: Vector3, radius: float) -> vo
 
 func _make_materials() -> void:
 	add_to_group("occlusion_fade")
-	_mat_snag = _snow_mat(Color(0.32, 0.30, 0.28), 0.25)
+	_mat_snag = _snow_mat(EnvPalette.DEAD_WOOD, 0.25)
 	_mat_snag.set_shader_parameter("occlusion_fade", true)
 	_mat_snag.set_shader_parameter("rim_amount", 0.45)
-	_mat_log = _snow_mat(Color(0.20, 0.15, 0.10), 0.55)
+	_mat_log = _snow_mat(EnvPalette.LOG, 0.55)
 	_mat_root = _snow_mat(Color(0.24, 0.18, 0.13), 0.35)
 	_mat_root.set_shader_parameter("occlusion_fade", true)   # 翻倒的树根盘有 3 m 高，会挡住走到它后面的玩家
-	_mat_bough = _snow_mat(Color(0.20, 0.46, 0.22), 0.16)
+	_mat_bough = _snow_mat(EnvPalette.SPRUCE, 0.3)
 	_mat_birch = StandardMaterial3D.new()
 	_mat_birch.vertex_color_use_as_albedo = true
 	_mat_birch.roughness = 0.9
 	_mat_grass = StandardMaterial3D.new()
-	_mat_grass.albedo_color = Color(0.74, 0.60, 0.33)
+	_mat_grass.albedo_color = EnvPalette.DRY_GRASS
 	_mat_grass.roughness = 0.95
 
 func _snow_mat(base: Color, amount: float) -> ShaderMaterial:
@@ -212,10 +212,15 @@ func _spawn_rootball(p: Vector2, i: int) -> void:
 	LandFeatures.logs.append(p)   # 翻倒的树干也是现成的脊梁
 	var root := _root("Rootball", p)
 	root.add_to_group("windbreaks")
-	# 树根盘面朝西（迎风），倒伏树干朝东躺下：背风侧（东）形成避风凹窝
-	_mesh(root, PropMeshes.rootball(120 + i), _mat_root, 0.0)
+	# 树根盘迎着风，倒伏树干顺风躺下：背风侧形成避风凹窝（挡风规则就按这个方向算）。
+	# 朝向 = 当前风向（随地图旋转）± 40°：真实风倒木大体顺风，但不会根根平行；
+	# 以前固定朝 +X，旋转过的地图上根盘和树干都对不上风。
+	var blow := (load("res://resources/default_wind.tres") as WindData).get_blow_direction_3d()
+	var yaw := atan2(-blow.z, blow.x) + deg_to_rad((TerrainHeight.hash2(i, 17, 139) - 0.5) * 80.0)
+	_mesh(root, PropMeshes.rootball(120 + i), _mat_root, yaw)
 	# 树根盘（竖立圆盘）碰撞：薄盒
 	var body := StaticBody3D.new()
+	body.rotation.y = yaw
 	root.add_child(body)
 	var cs := CollisionShape3D.new()
 	var box := BoxShape3D.new()

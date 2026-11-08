@@ -64,6 +64,7 @@ func _ready() -> void:
 	_scatter_spruce(blow)
 	_scatter_snags()
 	_scatter_rocks()
+	_scatter_ground_props()
 	_place_outcrops()
 	_build_colliders()
 
@@ -199,7 +200,7 @@ func _scatter_spruce(blow: Vector3) -> void:
 			spruce_points.append(Vector2(x, z))
 			if s >= _old_min_scale():
 				OldSpruces.add(Vector2(x, z))
-	var mat := _material(Color(0.035, 0.11, 0.07), 0.56)
+	var mat := _material(EnvPalette.SPRUCE, 0.56)
 	_enable_fade(mat)
 	mat.set_shader_parameter("sway_amount", 1.0)
 	mat.set_shader_parameter("wind_dir", Vector2(blow.x, blow.z))
@@ -227,11 +228,85 @@ func _scatter_snags() -> void:
 		buckets[k % SNAG_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.2, z)))
 		snag_points.append(Vector2(x, z))
 		placed += 1
-	var mat := _material(Color(0.30, 0.28, 0.26), 0.25, 0.10)
+	var mat := _material(EnvPalette.DEAD_WOOD, 0.25, 0.10)
 	mat.set_shader_parameter("rim_amount", 0.45)
 	_enable_fade(mat)
 	for v in range(SNAG_VARIANTS):
 		_add_multimesh("Snag%d" % v, PropMeshes.snag(40 + v), mat, buckets[v], true)
+
+
+## 地面杂物（2026-11-09 用户反馈：倒木总朝一个方向、别的东西太少）：
+## 随机朝向的倒木（也是倒木庇护所的现成脊梁，登记进 LandFeatures.logs）、树桩、枯灌木。
+## 都是分块 MultiMesh，没有碰撞（和落雪的灌丛一样只是视觉层）；位置按哈希，同一张地图每次一样。
+@export var fallen_trunk_count: int = 14
+@export var stump_count: int = 26
+@export var shrub_count: int = 60
+## 倒木的朝向（弧度，绕 Y；测试读它：headless 下读不回 MultiMesh 的变换）。
+var fallen_trunk_yaws: PackedFloat32Array = PackedFloat32Array()
+
+func _scatter_ground_props() -> void:
+	var trunk_b: Array = [[], [], []]
+	var stump_b: Array = [[], [], []]
+	var shrub_b: Array = [[], [], [], []]
+	var trunk_mat := _material(EnvPalette.LOG, 0.42, 0.14)
+	trunk_mat.set_shader_parameter("rim_amount", 0.4)
+	_enable_fade(trunk_mat)
+	var shrub_mat := _material(Color(0.34, 0.26, 0.19), 0.22, 0.1)
+	_enable_fade(shrub_mat)
+	var placed := 0
+	var k := 0
+	while placed < fallen_trunk_count and k < fallen_trunk_count * 40:
+		k += 1
+		var x := (TerrainHeight.hash2(k, 31, seed_idx * 31) - 0.5) * half_extent * 2.0
+		var z := (TerrainHeight.hash2(k, 33, seed_idx * 31) - 0.5) * half_extent * 2.0
+		if _blocked(x, z, 2.5) or TerrainHeight.slope_at(x, z) > 24.0:
+			continue
+		var sc := 0.85 + TerrainHeight.hash2(k, 35, 37) * 0.4
+		var yaw := TerrainHeight.hash2(k, 37, 37) * TAU   # 完全随机朝向
+		var basis := Basis(Vector3.UP, yaw) * Basis.from_euler(Vector3(0.0, 0.0, (TerrainHeight.hash2(k, 39, 37) - 0.5) * 0.1))
+		basis = basis.scaled(Vector3.ONE * sc)
+		trunk_b[k % 3].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.12, z)))
+		LandFeatures.logs.append(Vector2(x, z))
+		fallen_trunk_yaws.append(yaw)
+		placed += 1
+	placed = 0
+	k = 0
+	while placed < stump_count and k < stump_count * 40:
+		k += 1
+		var x := (TerrainHeight.hash2(k, 41, seed_idx * 37) - 0.5) * half_extent * 2.0
+		var z := (TerrainHeight.hash2(k, 43, seed_idx * 37) - 0.5) * half_extent * 2.0
+		if _blocked(x, z, 1.2):
+			continue
+		# 树桩多在林缘 / 林窗
+		var dens := TerrainHeight.fbm(x * 0.04 - 7.0, z * 0.04 + 3.0, seed_idx * 5, 3)
+		if absf(dens - density_threshold) > 0.14:
+			continue
+		var sc := 0.8 + TerrainHeight.hash2(k, 45, 41) * 0.5
+		var basis := Basis(Vector3.UP, TerrainHeight.hash2(k, 47, 41) * TAU).scaled(Vector3.ONE * sc)
+		stump_b[k % 3].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z), z)))
+		placed += 1
+	placed = 0
+	k = 0
+	while placed < shrub_count and k < shrub_count * 40:
+		k += 1
+		var x := (TerrainHeight.hash2(k, 51, seed_idx * 41) - 0.5) * half_extent * 2.0
+		var z := (TerrainHeight.hash2(k, 53, seed_idx * 41) - 0.5) * half_extent * 2.0
+		if _blocked(x, z, 0.8):
+			continue
+		# 灌木成丛、长在雪浅的地方（风吹得薄、枝条露在雪外面）
+		var depth := TerrainHeight.snow_depth_at(x, z)
+		var patch := TerrainHeight.fbm(x * 0.09 + 21.0, z * 0.09 - 9.0, seed_idx * 3, 2)
+		if depth > 1.1 or patch < 0.52:
+			continue
+		var sc := 0.7 + TerrainHeight.hash2(k, 55, 43) * 0.7
+		var basis := Basis(Vector3.UP, TerrainHeight.hash2(k, 57, 43) * TAU).scaled(Vector3.ONE * sc)
+		shrub_b[k % 4].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - 0.05, z)))
+		placed += 1
+	for v in range(3):
+		_add_multimesh("FallenTrunk%d" % v, PropMeshes.fallen_trunk(170 + v * 7), trunk_mat, trunk_b[v], true)
+		_add_multimesh("Stump%d" % v, PropMeshes.stump(180 + v * 5), trunk_mat, stump_b[v], true)
+	for v in range(4):
+		_add_multimesh("Shrub%d" % v, PropMeshes.shrub(190 + v * 3), shrub_mat, shrub_b[v], false)
 
 
 func _scatter_rocks() -> void:

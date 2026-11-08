@@ -76,7 +76,7 @@ func _make_materials() -> void:
 	_mat_rock = _fade_material(Color(0.12, 0.13, 0.16), 0.0)
 	_mat_rock.set_shader_parameter("rim_amount", 0.35)
 	_mat_rock_snow = _fade_material(Color(0.86, 0.90, 0.98), 1.0)
-	_mat_grass = _make_material(Color(0.68, 0.56, 0.32), 0.94)
+	_mat_grass = _make_material(EnvPalette.DRY_GRASS, 0.94)
 	_mat_footprint = _make_material(Color(0.42, 0.49, 0.60), 0.92)
 	_mat_peak_rock = _make_material(Color(0.28, 0.34, 0.46), 0.98)
 	_mat_peak_snow = _make_material(Color(0.70, 0.81, 0.95), 0.78)

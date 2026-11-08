@@ -61,7 +61,7 @@ func _build_diorama_trees() -> void:
 	var wind_dir := wind.get_blow_direction_3d() if wind else Vector3.RIGHT
 	var mat := ShaderMaterial.new()
 	mat.shader = SNOW_COVER_SHADER
-	mat.set_shader_parameter("base_color", Color(0.07, 0.17, 0.20))
+	mat.set_shader_parameter("base_color", EnvPalette.SPRUCE)
 	mat.set_shader_parameter("snow_amount", 0.78)
 	var specs := [
 		{"pos": Vector2(-3.7, -2.25), "scale": 0.30, "seed": 1},

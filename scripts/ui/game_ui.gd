@@ -14,6 +14,13 @@ var _prompt_label: Label
 var _progress: ProgressBar
 var _tray: Label
 var _objective: Label
+## 「第一步」清单：每个里程碑一行，做完打勾，当前这一步高亮（参考图里的 First Steps）。
+var _steps_box: VBoxContainer
+var _step_labels: Array[Label] = []
+var _steps_text := ""
+## 背包格子：小色块 + 数量，满了变琥珀色（参考图里的格子背包，不画物品图）。
+var _slot_box: HBoxContainer
+var _slot_labels: Array[Label] = []
 var _toast: Label
 var _toast_t := 0.0
 var _build_card: PanelContainer
@@ -104,9 +111,32 @@ func _ready() -> void:
 	if TouchMode.enabled:
 		_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_objective.custom_minimum_size = Vector2(380, 0)
+	# 清单在提示句上面：先看"我在哪一步"，下面才是这一步具体怎么做
+	_steps_box = VBoxContainer.new()
+	_steps_box.name = "FirstSteps"
+	_steps_box.add_theme_constant_override("separation", 1)
+	tv.add_child(_steps_box)
 	tv.add_child(_objective)
 	_tray = _label("", 13, CREAM)
+	_tray.visible = false   # 旧的文字托盘，由下面的格子取代（留着给测试 / 兼容）
 	tv.add_child(_tray)
+	_slot_box = HBoxContainer.new()
+	_slot_box.name = "PackSlots"
+	_slot_box.add_theme_constant_override("separation", 14)
+	tv.add_child(_slot_box)
+	for c in [Color(0.55, 0.36, 0.2), Color(0.93, 0.92, 0.88), Color(0.78, 0.66, 0.36)]:
+		var chip := HBoxContainer.new()
+		chip.add_theme_constant_override("separation", 5)
+		var sw := ColorRect.new()
+		sw.color = c
+		sw.custom_minimum_size = Vector2(14, 14)
+		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(sw)
+		var lb := _label("", 14, CREAM)
+		chip.add_child(lb)
+		_slot_labels.append(lb)
+		_slot_box.add_child(chip)
 
 	# 消息（顶部居中）
 	_toast = _label("", 17, CREAM)
@@ -195,6 +225,50 @@ func place_prompt(anchor: Vector2) -> void:
 
 func set_inventory(wood: int, bark: int, bedding: int, max_wood: int = 4, max_bedding: int = 4) -> void:
 	_tray.text = Loc.t("Dry wood  %d/%d     Birch bark  %d     Bedding  %d/%d") % [wood, max_wood, bark, bedding, max_bedding]
+	if _slot_labels.size() < 3:
+		return
+	var vals := [[Loc.t("Wood"), wood, max_wood], [Loc.t("Bark"), bark, -1], [Loc.t("Bedding"), bedding, max_bedding]]
+	for i in 3:
+		var v: Array = vals[i]
+		var full: bool = int(v[2]) > 0 and int(v[1]) >= int(v[2])
+		_slot_labels[i].text = ("%s %d/%d" % [v[0], v[1], v[2]]) if int(v[2]) > 0 else ("%s %d" % [v[0], v[1]])
+		_slot_labels[i].add_theme_color_override("font_color", AMBER if full else CREAM)
+		if full:
+			_slot_labels[i].text += " " + Loc.t("full")
+
+## 「第一步」清单：steps = [{label, done}]，第一个没做完的是当前步。触屏只画一行进度（✓✓○○○ 2/5），省地方。
+func set_steps(steps: Array) -> void:
+	var key := str(steps)
+	if key == _steps_text:
+		return
+	_steps_text = key
+	var cur := -1
+	var done_n := 0
+	for i in steps.size():
+		if bool(steps[i]["done"]):
+			done_n += 1
+		elif cur < 0:
+			cur = i
+	if TouchMode.enabled:
+		for c in _step_labels:
+			c.queue_free()
+		_step_labels.clear()
+		var marks := ""
+		for st in steps:
+			marks += "✓" if bool(st["done"]) else "○"
+		var l := _label("%s  %d/%d  %s" % [marks, done_n, steps.size(), String(steps[cur]["label"]) if cur >= 0 else ""], 13, MUTED)
+		_steps_box.add_child(l)
+		_step_labels.append(l)
+		return
+	while _step_labels.size() < steps.size():
+		var l := _label("", 13, MUTED)
+		_steps_box.add_child(l)
+		_step_labels.append(l)
+	for i in steps.size():
+		var done := bool(steps[i]["done"])
+		var l := _step_labels[i]
+		l.text = ("✓ " if done else ("▸ " if i == cur else "○ ")) + String(steps[i]["label"])
+		l.add_theme_color_override("font_color", Color(0.55, 0.85, 0.6) if done else (AMBER if i == cur else MUTED))
 
 func set_objective(text: String) -> void:
 	_objective.text = "▸ " + text

@@ -10,10 +10,10 @@ extends Node3D
 const SNOW_OUT := Color(0.86, 0.91, 0.98)
 const SNOW_CUT := Color(0.97, 0.98, 1.0)
 const SNOW_IN := Color(0.50, 0.63, 0.84)
-const THATCH := Color(0.20, 0.36, 0.22)
+const THATCH := EnvPalette.SPRUCE_IN
 const ROCK := Color(0.42, 0.43, 0.48)
-const WOOD := Color(0.36, 0.25, 0.15)
-const BOUGH := Color(0.17, 0.33, 0.19)
+const WOOD := EnvPalette.WOOD_IN
+const BOUGH := EnvPalette.SPRUCE_IN
 const BAG := Color(0.58, 0.20, 0.13)
 const PIT := Color(0.27, 0.38, 0.60)
 

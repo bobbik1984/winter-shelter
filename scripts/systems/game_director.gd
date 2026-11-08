@@ -19,6 +19,8 @@ var inventory: Inventory
 var interaction: InteractionController
 var build: BuildMode
 var spawner: ResourceSpawner
+## 雪兔和乌鸦（纯视觉，玩家走近就跑 / 飞走）。
+var wildlife: Wildlife
 var ui: GameUI
 var callouts: WorldCallouts
 ## D16 建造特写（CORE_GAMEPLAY §12）。
@@ -128,6 +130,11 @@ func _ready() -> void:
 	add_child(interaction)
 	interaction.completed.connect(_on_interaction_completed)
 	interaction.blocked.connect(func(_it: Interactable, reason: String) -> void: ui.toast(reason))
+
+	wildlife = Wildlife.new()
+	wildlife.name = "Wildlife"
+	wildlife.player = player
+	main.add_child(wildlife)
 
 	spawner = ResourceSpawner.new()
 	spawner.name = "Resources"
@@ -998,6 +1005,8 @@ func _process(delta: float) -> void:
 			for n in get_tree().get_nodes_in_group("deferred_particles"):
 				(n as GPUParticles3D).emitting = true
 	_sleep_confirm_t = maxf(0.0, _sleep_confirm_t - delta)
+	if wildlife != null:
+		wildlife.visible = state == State.PLAYING or state == State.BRIEFING
 	match state:
 		State.PLAYING:
 			_tick_playing(delta)
@@ -1090,7 +1099,9 @@ func _tick_playing(delta: float) -> void:
 	if _compass:
 		_compass.set_sun(atm.sun_azimuth_deg, atm.sun_elevation_deg)
 	audio.wind_strength = clampf(atm.wind_kmh / 40.0, 0.2, 1.4)
-	ui.set_objective(GameRules.next_objective(_objective_ctx(), tuning))
+	var octx := _objective_ctx()
+	ui.set_objective(GameRules.next_objective(octx, tuning))
+	ui.set_steps(first_steps(octx))
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = atm.snowfall
 	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - atm.sun_elevation_deg) / 4.0, 0.0, 1.0))
@@ -1105,6 +1116,33 @@ func _tick_playing(delta: float) -> void:
 	# 天黑后宽限期结束 → 强制入夜
 	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:
 		_sleep(true)
+
+## 「第一步」清单（参考图 First Steps）：每一步由真实的游戏事件打勾，做完不会再取消（锁存），
+## 第一个没做完的是当前步；具体怎么做仍由下面那句提示（GameRules.next_objective）说。
+var _steps_latched := {}
+
+func first_steps(ctx: Dictionary) -> Array:
+	if bool(ctx.get("probed", false)):
+		_steps_latched["probe"] = true
+	if bool(ctx.get("has_site", false)):
+		_steps_latched["site"] = true
+		if String(ctx.get("missing", "")) == "" or bool(ctx.get("complete", false)):
+			_steps_latched["gather"] = true
+	if bool(ctx.get("complete", false)):
+		_steps_latched["build"] = true
+	for f in get_tree().get_nodes_in_group("campfires"):
+		if (f as Campfire).lit:
+			_steps_latched["fire"] = true
+	var stage := int(ctx.get("stage", 0))
+	var build_label := Loc.t("Build the shelter (%d/%d)") % [stage, ShelterBuilder.STAGES_MAX] if bool(ctx.get("has_site", false)) else Loc.t("Build the shelter")
+	return [
+		{"label": Loc.t("Probe the snow depth"), "done": _steps_latched.has("probe")},
+		{"label": Loc.t("Mark a shelter site [B]"), "done": _steps_latched.has("site")},
+		{"label": Loc.t("Gather materials for the next stage"), "done": _steps_latched.has("gather")},
+		{"label": build_label, "done": _steps_latched.has("build")},
+		{"label": Loc.t("Light a fire [F]"), "done": _steps_latched.has("fire")},
+		{"label": Loc.t("Rest [N]"), "done": false},
+	]
 
 func _objective_ctx() -> Dictionary:
 	var ctx := {"probed": _probe_count > 0, "best_depth": _best_depth, "has_site": site != null,

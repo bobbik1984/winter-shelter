@@ -64,8 +64,8 @@ func _ready() -> void:
 	global_position.y = TerrainHeight.height_at(global_position.x, global_position.z)
 	rotation.y = atan2(entrance_dir.x, entrance_dir.z)
 	_snow = _snow_mat(Color(0.86, 0.90, 0.97), 1.0)
-	_wood = _snow_mat(Color(0.30, 0.22, 0.14), 0.3)
-	_bough = _snow_mat(Color(0.07, 0.20, 0.12), 0.35)
+	_wood = _snow_mat(EnvPalette.DEAD_WOOD, 0.3)
+	_bough = _snow_mat(EnvPalette.SPRUCE, 0.35)
 	_dark = StandardMaterial3D.new()
 	_dark.albedo_color = Color(0.05, 0.07, 0.12)
 	_dark.roughness = 1.0
@@ -185,10 +185,112 @@ func _refresh() -> void:
 		_model_visual(s)
 	else:
 		_legacy_visual(s)
+	if s >= 1:
+		_ground_blend(s)
 	if s == 0:
 		# 工地标桩：四根小木桩 + 入口方向
 		for c in [Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
 			_cyl(c * 1.1 + Vector3(0, 0.35, 0), 0.04, 0.7, _wood)
+
+## 地面过渡（2026-11-09 用户反馈：庇护所像一个放在雪面上的盒子）：
+## ① 一圈起伏的雪裙，里侧抬高盖住模型底边、外侧没入地面，边缘用地形高度逐点贴合（坡上也不悬空）；
+## ② 几团被踩出来 / 堆出来的雪块撒在周围；③ 入口前一片被踩实、发暗的雪。
+## 全是一个小网格 + 一个 MultiMesh（共 3 次绘制），不随画质档位变化。
+func _site_ground_y(local: Vector3) -> float:
+	var w := to_global(Vector3(local.x, 0.0, local.z))
+	return TerrainHeight.height_at(w.x, w.z) - global_position.y
+
+func _ground_blend(s: int) -> void:
+	var fr := footprint_radius()
+	var seg := 30
+	var inner := fr * 0.7
+	var outer := fr + 0.5 + 0.1 * float(s)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pin: Array[Vector3] = []
+	var pout: Array[Vector3] = []
+	for i in seg:
+		var a := TAU * float(i) / float(seg)
+		var d := Vector3(sin(a), 0.0, cos(a))
+		var n1 := TerrainHeight.hash2(i, s + 3, 311)
+		var n2 := TerrainHeight.hash2(i, s + 3, 313)
+		# 入口一侧（+Z）雪裙收窄，免得堵住门；背面和侧面厚一点
+		var door := smoothstep(0.55, 1.0, d.z)
+		var ro := outer * (0.86 + 0.34 * n1) * (1.0 - 0.35 * door)
+		var a_in := d * inner
+		var a_out := d * ro
+		a_in.y = _site_ground_y(a_in) + 0.14 + 0.12 * n2 * (1.0 - door)
+		a_out.y = _site_ground_y(a_out) - 0.06
+		pin.append(a_in)
+		pout.append(a_out)
+	for i in seg:
+		var j := (i + 1) % seg
+		st.add_vertex(pin[i]); st.add_vertex(pout[j]); st.add_vertex(pout[i])
+		st.add_vertex(pin[i]); st.add_vertex(pin[j]); st.add_vertex(pout[j])
+	st.generate_normals()
+	var skirt := MeshInstance3D.new()
+	skirt.name = "GroundSkirt"
+	skirt.mesh = st.commit()
+	skirt.material_override = _snow
+	skirt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_visual.add_child(skirt)
+	# 雪块
+	var clump := SphereMesh.new()
+	clump.radius = 1.0
+	clump.height = 2.0
+	clump.radial_segments = 6
+	clump.rings = 3
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = clump
+	var count := 8 + s
+	mm.instance_count = count
+	for i in count:
+		var a := TAU * (float(i) + TerrainHeight.hash2(i, 5, 317)) / float(count)
+		var d := Vector3(sin(a), 0.0, cos(a))
+		if d.z > 0.75:
+			a += 0.9   # 别堆在门口
+			d = Vector3(sin(a), 0.0, cos(a))
+		var r := outer * (0.8 + 0.5 * TerrainHeight.hash2(i, 7, 319))
+		var pos := d * r
+		pos.y = _site_ground_y(pos)
+		var sc := 0.14 + 0.2 * TerrainHeight.hash2(i, 9, 323)
+		var b := Basis(Vector3.UP, TerrainHeight.hash2(i, 11, 329) * TAU).scaled(Vector3(sc * 1.5, sc * 0.55, sc * 1.2))
+		mm.set_instance_transform(i, Transform3D(b, pos + Vector3(0, sc * 0.15, 0)))
+	var clumps := MultiMeshInstance3D.new()
+	clumps.name = "SnowClumps"
+	clumps.multimesh = mm
+	clumps.material_override = _snow
+	clumps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_visual.add_child(clumps)
+	# 入口前被踩实的雪（半透明发暗的一片，随地形起伏）
+	if s >= 2:
+		var door_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) + 0.5 if _has_model else 1.9
+		var pst := SurfaceTool.new()
+		pst.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var ring: Array[Vector3] = []
+		for i in 16:
+			var a := TAU * float(i) / 16.0
+			var rr := 1.15 * (0.85 + 0.3 * TerrainHeight.hash2(i, 13, 331))
+			var v := Vector3(sin(a) * rr * 1.25, 0.0, door_z + cos(a) * rr)
+			v.y = _site_ground_y(v) + 0.06
+			ring.append(v)
+		var ctr := Vector3(0.0, 0.0, door_z)
+		ctr.y = _site_ground_y(ctr) + 0.07
+		for i in 16:
+			pst.add_vertex(ctr); pst.add_vertex(ring[(i + 1) % 16]); pst.add_vertex(ring[i])
+		pst.generate_normals()
+		var trod := MeshInstance3D.new()
+		trod.name = "TroddenSnow"
+		trod.mesh = pst.commit()
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.46, 0.52, 0.68, 0.5)
+		tm.roughness = 1.0
+		tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		trod.material_override = tm
+		trod.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_visual.add_child(trod)
 
 ## 模型外观：按阶段显示部件，材质换成游戏里的雪 / 木头 / 枝条，完工后入口亮灯（倒棚生火）。
 func _model_visual(s: int) -> void:
@@ -242,7 +344,7 @@ func _model_material(name_: String) -> Material:
 		metal.metallic = 0.4
 		metal.roughness = 0.45
 		var grass := StandardMaterial3D.new()
-		grass.albedo_color = Color(0.62, 0.52, 0.28)
+		grass.albedo_color = EnvPalette.DRY_GRASS
 		grass.roughness = 0.95
 		_model_mats = {"Snow": _snow, "SnowIn": inner, "Dark": _dark, "Bough": _bough, "Wood": _wood, "Glow": _glow,
 			"Rock": _snow_mat(Color(0.33, 0.34, 0.38), 0.45), "Metal": metal, "Grass": grass}

@@ -34,8 +34,12 @@ step "input smoke test"
 win --path . -s res://tools/input_smoke_test.gd -- --weather=clear 2>&1 | grep -E "^(PASS|FAIL)|^RESULT" | tee /tmp/ws_ci_smoke.log | grep -E "FAIL|RESULT"
 grep -q "RESULT PASS" /tmp/ws_ci_smoke.log || fail=1
 
+step "wildlife and scenery variety"
+win --path . -s res://tools/wildlife_test.gd 2>&1 | grep -E "^(PASS|FAIL)|^RESULT" | tee /tmp/ws_ci_wildlife.log | grep -E "FAIL|RESULT"
+grep -q "RESULT PASS" /tmp/ws_ci_wildlife.log || fail=1
+
 if [ "${1:-}" != "--quick" ]; then
-  step "balance bots"
+step "balance bots"
   for s in deep_stick trench treewell leanto_full quinzhee rock fallen wind none; do
     line=$(win --path . -s res://tools/playtest_bot.gd -- --s=$s --weather=clear 2>&1 | grep -E "^depth|PLACE FAILED")
     echo "$line"

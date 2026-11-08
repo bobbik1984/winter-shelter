@@ -105,8 +105,71 @@ static func rootball(seed_idx: int) -> ArrayMesh:
 		st.add_vertex(c - f); st.add_vertex(p1 - f); st.add_vertex(p0 - f)
 		_frustum(st, p0 - f, 0.18, p0 + f, 0.18, 4)
 		_frustum(st, p0, 0.07, p0 + (p0 - c).normalized() * 0.6 + Vector3(0, -0.2, 0), 0.01, 3)
-	# 倒伏树干
-	_frustum(st, Vector3(0.2, 0.55, 0), 0.42, Vector3(7.5, 0.35, 0.4), 0.2, 8)
+	# 倒伏树干：长短不一、微微弯曲，沿途几根断枝桩（以前每棵都是同一根直棍，朝向也固定）
+	var tl := 5.2 + TerrainHeight.hash2(seed_idx, 3, 131) * 3.6
+	var bend := (TerrainHeight.hash2(seed_idx, 4, 131) - 0.5) * 1.4
+	var mid := Vector3(tl * 0.5, 0.5, bend)
+	var tip := Vector3(tl, 0.33, bend * 0.4 + (TerrainHeight.hash2(seed_idx, 5, 131) - 0.5) * 0.8)
+	_frustum(st, Vector3(0.2, 0.55, 0), 0.42, mid, 0.3, 8)
+	_frustum(st, mid, 0.3, tip, 0.18, 8)
+	for b in range(3 + int(TerrainHeight.hash2(seed_idx, 6, 131) * 3.0)):
+		var t := lerpf(0.3, 0.9, TerrainHeight.hash2(seed_idx, b, 133))
+		var base := mid.lerp(tip, (t - 0.5) * 2.0) if t > 0.5 else Vector3(0.2, 0.55, 0).lerp(mid, t * 2.0)
+		var side := 1.0 if TerrainHeight.hash2(seed_idx, b, 135) > 0.5 else -1.0
+		_frustum(st, base, 0.07, base + Vector3(0.25, 0.35, side * (0.5 + 0.4 * TerrainHeight.hash2(seed_idx, b, 137))), 0.02, 4)
+	st.generate_normals()
+	return st.commit()
+
+
+## 倒伏的大树干（装饰 + 倒木庇护所的现成脊梁）：原点在中点，沿 +X；放置时随机朝向、微微陷进雪里。
+static func fallen_trunk(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var l := 3.6 + TerrainHeight.hash2(seed_idx, 2, 141) * 2.6
+	var r0 := 0.3 + TerrainHeight.hash2(seed_idx, 3, 141) * 0.12
+	var sag := (TerrainHeight.hash2(seed_idx, 4, 141) - 0.5) * 0.5
+	var a := Vector3(-l * 0.5, 0.3, 0)
+	var m := Vector3(0, 0.26, sag)
+	var b := Vector3(l * 0.5, 0.3, sag * 0.3)
+	_frustum(st, a, r0, m, r0 * 0.88, 7)
+	_frustum(st, m, r0 * 0.88, b, r0 * 0.7, 7)
+	for k in range(2 + int(TerrainHeight.hash2(seed_idx, 5, 141) * 3.0)):
+		var t := lerpf(0.1, 0.9, TerrainHeight.hash2(seed_idx, k, 143))
+		var base := a.lerp(m, t * 2.0) if t < 0.5 else m.lerp(b, (t - 0.5) * 2.0)
+		var side := 1.0 if TerrainHeight.hash2(seed_idx, k, 145) > 0.5 else -1.0
+		_frustum(st, base + Vector3(0, r0 * 0.6, 0), 0.06, base + Vector3(0.2, 0.55, side * (0.3 + 0.5 * TerrainHeight.hash2(seed_idx, k, 147))), 0.015, 4)
+	st.generate_normals()
+	return st.commit()
+
+
+## 树桩：矮而粗，顶部歪斜（砍断 / 折断）。原点在底面中心。
+static func stump(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var h := 0.45 + TerrainHeight.hash2(seed_idx, 2, 151) * 0.5
+	var r := 0.28 + TerrainHeight.hash2(seed_idx, 3, 151) * 0.16
+	_frustum(st, Vector3(0, -0.1, 0), r * 1.25, Vector3(0.04, h, 0.03), r * 0.82, 8)
+	_frustum(st, Vector3(0.04, h, 0.03), r * 0.82, Vector3(0.1, h + 0.14, 0.06), r * 0.45, 5)
+	st.generate_normals()
+	return st.commit()
+
+
+## 枯灌木：一簇细而弯的枝条，从贴地处向外向上散开。原点在根部，约 0.8 m 高。
+static func shrub(seed_idx: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 12 + int(TerrainHeight.hash2(seed_idx, 1, 161) * 6.0)
+	for k in range(n):
+		var ang := TerrainHeight.hash2(seed_idx, k, 163) * TAU
+		var spread := 0.15 + TerrainHeight.hash2(seed_idx, k, 165) * 0.55
+		var h := 0.45 + TerrainHeight.hash2(seed_idx, k, 167) * 0.5
+		var out := Vector3(cos(ang), 0.0, sin(ang))
+		var mid := out * spread * 0.5 + Vector3(0, h * 0.6, 0)
+		var tip := out * spread + Vector3(0, h, 0)
+		_frustum(st, Vector3(0, -0.05, 0), 0.022, mid, 0.014, 3)
+		_frustum(st, mid, 0.014, tip, 0.004, 3)
+		if k % 3 == 0:
+			_frustum(st, mid, 0.01, mid + out.rotated(Vector3.UP, 0.9) * 0.18 + Vector3(0, 0.12, 0), 0.003, 3)
 	st.generate_normals()
 	return st.commit()
 
