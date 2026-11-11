@@ -53,6 +53,14 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		elif min_axis == "heat":
 			lesson = Loc.t("The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.") % [
 				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
+	if preset == "Tent":
+		if min_axis == "heat":
+			lesson = Loc.t("A tent loses heat through the canvas and floor. To keep the fire pan alive for %.0f h you need about %d logs inside; stack them during the day.") % [
+				t.night_duration_hours, int(ceil(t.night_duration_hours / t.tent_fire_hours_per_log))]
+		elif min_axis == "insulation" or min_axis == "isolation":
+			lesson = Loc.t("Lay the grass bed and sleep in the bag: a tent alone is only windbreak, not warmth.")
+		elif min_axis == "structure":
+			lesson = Loc.t("Finish pegging and sealing the tent before dark; an unfinished tent is just fabric in the wind.")
 	elif min_axis == "heat" and NightSimulator.wet_fraction(float(input.get("dampness", 0.0)), t) > 0.5:
 		lesson = Loc.t("Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.")
 	elif min_axis == "air" and bool(input.get("vent_snow_clogged", false)):
@@ -130,13 +138,20 @@ static func _label(key: String) -> String:
 static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: Tuning, report_scores: Dictionary = {}) -> String:
 	var is_snow := preset in NightSimulator.SNOW_TYPES
 	var lean := preset in NightSimulator.FRAME_TYPES
-	var none := not (is_snow or lean)
+	var tent := preset == "Tent"
+	var none := not (is_snow or lean or tent)
 	var angle := float(i.get("wind_angle_diff", 90.0))
 	var completion := float(i.get("completion_ratio", 0.0))
 	match key:
 		"site":
 			if none:
 				return "No shelter — exposed to the %d km/h wind all night." % int(float(i.get("wind_speed_kmh", t.wind_speed_kmh)))
+			if tent:
+				if angle < 60.0:
+					return "The tent door faced into the wind (%d°): the fabric flapped and drafts cut through all night." % int(angle)
+				if angle < 120.0:
+					return "The tent door was side-on to the wind (%d°); gusts pressed the fabric in now and then." % int(angle)
+				return "The tent door was leeward (%d°); the fabric blocked the worst of the wind." % int(angle)
 			if angle < 60.0:
 				return "The entrance faced into the wind (%d°): drafts and drifting snow all night." % int(angle)
 			if angle < 120.0:
@@ -145,6 +160,10 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 		"structure":
 			if none:
 				return "Nothing was built."
+			if tent:
+				if completion < 0.999:
+					return "Only %d%% of the tent was up — the door or pegging was unfinished." % int(completion * 100.0)
+				return "Tent pitched, pegged and sealed; canvas has no snow body or reflector wall to hold heat."
 			if bool(d.get("invalid_snow_depth", false)):
 				return "The snow here (%.1f m) was too shallow for this shelter." % float(i.get("snow_depth_meters", 0.0))
 			if completion < 0.999:
@@ -164,6 +183,8 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 		"isolation":
 			if lean:
 				return "An open shelter can't trap cold air; bedding and fire had to make up for it."
+			if tent:
+				return "No cold-air pit: the grass bed and sleeping bag kept you off the ground, but the tent floor still conducts cold."
 			if none:
 				return "You slept in the coldest air, right on the ground."
 			if preset == "TreeWell":
@@ -176,6 +197,8 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 				return "A cold-air pit, but the bed wasn't raised — cold air still reached you."
 			return "Your bed was level with the entrance, where the cold air pools."
 		"air":
+			if tent:
+				return "The chimney kept the air fresh; it also carried some heat straight out."
 			if preset == "TreeWell":
 				return "The bough roof breathes — no vent needed, nothing to clog."
 			if not is_snow:
@@ -187,7 +210,14 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 			return "The vent kept the air fresh."
 		"heat":
 			var s := ""
-			if is_snow:
+			if tent:
+				if not bool(i.get("fire_lit", false)):
+					s = "No fire in the pan: the tent only broke the wind, so you kept losing heat all night."
+				elif bool(d.get("fire_reaches_dawn", false)):
+					s = "The small fire pan burned until dawn (%.0f h of wood); the tent still lost heat, just more slowly." % float(d.get("fuel_hours", 0.0))
+				else:
+					s = "The fire pan ran out around %s; without that small heat the tent cooled for the rest of the night." % String(d.get("fire_out_clock", "midnight"))
+			elif is_snow:
 				var depth := float(i.get("snow_depth_meters", 0.0))
 				var heat_score := float(report_scores.get("heat", 100.0))
 				s = "Body heat and %.1f m of snow kept you warm; no fire inside — correct." % depth

@@ -79,6 +79,10 @@ func enter() -> void:
 	_update_site()
 	var rec := _builder.recommend_preset_for_site(depth, slope, near_windbreak)
 	preset_id = rec if rec != "None" else "LeanTo"
+	# 帐篷局：没有雪洞选项，直接拿帐篷；否则推荐雪洞后 fallback 会把它留在“坡太缓”的无效状态。
+	if "Tent" in available and available.size() == 1:
+		preset_id = "Tent"
+		_update_site()
 	# 站在老云杉旁且会做树井 → 推荐树井（S5：条件就在眼前）
 	if "TreeWell" in available and float(OldSpruces.nearest(Vector2(player.global_position.x, player.global_position.z))["distance"]) <= tuning.tree_well_max_trunk_dist_m + 1.5:
 		preset_id = "TreeWell"

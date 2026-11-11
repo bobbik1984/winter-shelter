@@ -35,6 +35,9 @@ static var map_index: int = 0
 static var game_seed: int = 0
 ## 本局抽取（见 roll_for）。
 static var roll: Dictionary = {}
+## 2026-11-12 用户方向：自带帐篷 + 睡袋的轻装。背在背上时不能带柴、走得慢；
+## 支起帐篷后恢复负重。不是“学会的庇护所”，只在本局生效。
+static var tent_kit: bool = false
 
 static func active() -> bool:
 	return level != null
@@ -103,6 +106,9 @@ static func target_presets() -> PackedStringArray:
 
 ## 建造面板可用的庇护所 = 已学会 ∪ 本章引入（按 BuildMode.PRESETS 顺序）。不在关卡模式时全部可用。
 static func available_presets(learned: PackedStringArray) -> PackedStringArray:
+	if tent_kit:
+		# 帐篷局只允许搭帐篷：如果还能建雪洞，雪洞永远更暖，帐篷就没有存在意义。
+		return PackedStringArray(["Tent"])
 	if not active():
 		return PackedStringArray(BuildMode.PRESETS)
 	var out := PackedStringArray()
@@ -112,7 +118,12 @@ static func available_presets(learned: PackedStringArray) -> PackedStringArray:
 	return out
 
 ## 本局装备。不在关卡模式时 = 旧默认（雪铲 + 保暖层，无防潮垫，空背包）。
+## 帐篷局：没有雪铲，只有轻的垫层 / 桦皮；木材上限为 0，帐篷支好后由 GameDirector 恢复。
 static func gear() -> Dictionary:
+	if tent_kit:
+		return {"shovel": false, "pot": true, "layer": level.has_extra_layer if active() else true,
+			"pad": true, "hides": level.has_hides if active() else false, "wood": 0, "bark": 2, "bedding": 0,
+			"tent": true, "bag": true}
 	if not active():
 		return {"shovel": true, "pot": true, "layer": true, "pad": false, "hides": false, "wood": 0, "bark": 0, "bedding": 0}
 	return {"shovel": level.has_shovel, "pot": level.has_pot, "layer": level.has_extra_layer, "pad": level.has_sleeping_pad,
@@ -123,6 +134,7 @@ static func reset() -> void:
 	level = null
 	stage = 1
 	map_index = 0
+	tent_kit = false
 	game_seed = 0
 	roll = {}
 	apply_world()

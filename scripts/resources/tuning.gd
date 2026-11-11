@@ -673,6 +673,38 @@ extends Resource
 @export var max_wood: int = 4
 @export var max_bedding: int = 4
 
+# -----------------------------------------------------------------------------
+# 帐篷套装（2026-11-12 用户方向）：自带帐篷 + 睡袋 + 小火盆/烟囱。
+# 背帐篷时不能带柴、走得慢、不能建雪庇护所；支起后恢复负重。
+# -----------------------------------------------------------------------------
+@export_group("Tent Kit")
+## [TUNE] 背帐篷时的移动速度倍率（0.72 = 慢 28%）。
+@export var tent_carry_speed_factor: float = 0.72
+## [TUNE] 帐篷支起后可携带的木材上限（背帐篷时为 0）。
+@export var tent_max_wood_pitched: int = 4
+## [TUNE] 帐篷里柴堆上限（根）。火盆从柴堆扣。
+@export var tent_stock_wood_max: int = 8
+## [TUNE] 帐篷基础保温；比雪洞和倒棚都低。
+@export var tent_base_thermal: float = 0.36
+## [TUNE] 帐篷结构：能挡风，但没有雪体/反射墙。
+@export var tent_base_structure: float = 0.60
+## [TUNE] 帐篷与地面的隔离（睡袋 + 草甸），低于雪洞高床。
+@export var tent_isolation_base: float = 0.42
+## [TUNE] 烟囱通风：不缺氧，但不算雪洞的密闭空气。
+@export var tent_air_score: float = 0.92
+## [TUNE] 小火盆的额外 Heat；远低于倒棚反射火。
+@export var tent_fire_bonus: float = 0.20
+## [TUNE] 火盆每根柴可烧的小时数（比倒棚低，热量也小）。
+@export var tent_fire_hours_per_log: float = 1.5
+## [TUNE] 火盆取暖半径（m）。
+@export var tent_fire_warm_radius_m: float = 1.2
+## [TUNE] 帐篷搭设总工时（5 阶，现实分钟）。
+@export var tent_build_minutes: float = 30.0
+## [TUNE] 帐篷地面最大坡度（度）。
+@export var tent_max_slope_deg: float = 12.0
+## [TUNE] 帐篷第 1 阶需要的草甸垫层（帐篷必须铺草再睡）。
+@export var tent_bedding_required: int = 2
+
 @export_group("Building")
 ## [GAME] 每个施工阶段按住交互键的现实秒数（按住时游戏时间按工时跳进）。
 @export var stage_hold_seconds: float = 2.4

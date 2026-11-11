@@ -47,6 +47,8 @@ var full_day := false
 var _in_shelter := false
 var _shelter_tween: Tween
 var gear: Dictionary = {"shovel": true, "pot": true, "layer": true, "pad": false, "hides": false, "wood": 0, "bark": 0, "bedding": 0}
+## 2026-11-12 帐篷套装：背包里还背着帐篷。第 2 阶（支起帐篷）后恢复木材负重与速度。
+var _tent_packed := false
 ## 一天的时间线（报告里回顾时间花在哪）：事件 -> 时刻字符串。
 var _timeline: Array = []
 
@@ -113,13 +115,16 @@ func _ready() -> void:
 	wind = load("res://resources/default_wind.tres") as WindData
 
 	inventory = Inventory.new()
-	inventory.max_wood = tuning.max_wood
-	inventory.max_bedding = tuning.max_bedding
 	gear = LevelState.gear()
+	_tent_packed = bool(gear.get("tent", false))
+	inventory.max_wood = 0 if _tent_packed else tuning.max_wood
+	inventory.max_bedding = tuning.max_bedding
 	inventory.has_extra_clothing = bool(gear["layer"])
 	inventory.wood = int(gear["wood"])
 	inventory.bark = int(gear["bark"])
 	inventory.bedding = int(gear["bedding"])
+	# 帐篷背在背上：慢；放下后恢复。PlayerController 只读这个倍率。
+	player.speed_factor = tuning.tent_carry_speed_factor if _tent_packed else 1.0
 	add_child(inventory)
 	inventory.changed.connect(_on_inventory_changed)
 	_on_inventory_changed.call_deferred()   # 开局自带的材料（S6）也要显示在托盘里
@@ -562,6 +567,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				weather.advance_minutes(0.0)
 				_last_minutes = weather.current_time_minutes
 				start_game()
+			elif k == KEY_T:
+				_toggle_tent_kit()
 			elif k == KEY_LEFT or k == KEY_RIGHT:
 				_switch_chapter(-1 if k == KEY_LEFT else 1)
 			elif k == KEY_UP or k == KEY_DOWN:
@@ -649,10 +656,14 @@ func _update_hint() -> void:
 ## 简报页装备一行（S6）。
 func _gear_text() -> String:
 	var items: Array[String] = []
-	match GameRules.dig_tool(gear):
-		"shovel": items.append(Loc.t("snow shovel"))
-		"pot": items.append(Loc.t("NO shovel — dig with your pot, %dx slower") % int(round(tuning.no_shovel_dig_factor)))
-		_: items.append(Loc.t("NO shovel or pot — dig by hand, %dx slower and wetter") % int(round(tuning.bare_hands_dig_factor)))
+	if bool(gear.get("tent", false)):
+		items.append(Loc.t("tent + sleeping bag"))
+		items.append(Loc.t("small fire pan + chimney (no shovel)"))
+	else:
+		match GameRules.dig_tool(gear):
+			"shovel": items.append(Loc.t("snow shovel"))
+			"pot": items.append(Loc.t("NO shovel — dig with your pot, %dx slower") % int(round(tuning.no_shovel_dig_factor)))
+			_: items.append(Loc.t("NO shovel or pot — dig by hand, %dx slower and wetter") % int(round(tuning.bare_hands_dig_factor)))
 	items.append(Loc.t("extra warm layer") if bool(gear["layer"]) else Loc.t("NO extra layer"))
 	if bool(gear["pad"]):
 		items.append(Loc.t("sleeping pad"))
@@ -1383,6 +1394,41 @@ func _on_inventory_changed() -> void:
 	if prints:
 		prints.heavy = inventory.wood >= inventory.max_wood
 
+## 帐篷支起 / 收起时的负重变化：背在背上不能带柴、走得慢；支起后恢复。
+func _set_tent_packed(packed: bool) -> void:
+	_tent_packed = packed
+	if inventory == null:
+		return
+	inventory.max_wood = 0 if packed else tuning.tent_max_wood_pitched
+	player.speed_factor = tuning.tent_carry_speed_factor if packed else 1.0
+	_on_inventory_changed()
+	if ui == null:
+		return
+	if packed:
+		ui.toast(Loc.t("Tent on your back — no firewood, slower. Pitch it before you gather wood."), 5.0)
+	else:
+		ui.toast(Loc.t("Tent is up. You can carry wood now — stack it inside for the fire pan."), 5.0)
+
+## 简报页 [T]：在标准雪铲装备 / 帐篷套装之间切换。
+func _toggle_tent_kit() -> void:
+	if state != State.BRIEFING:
+		return
+	LevelState.tent_kit = not LevelState.tent_kit
+	gear = LevelState.gear()
+	_tent_packed = bool(gear.get("tent", false))
+	inventory.max_wood = 0 if _tent_packed else tuning.max_wood
+	inventory.max_bedding = tuning.max_bedding
+	inventory.has_extra_clothing = bool(gear["layer"])
+	inventory.wood = int(gear["wood"])
+	inventory.bark = int(gear["bark"])
+	inventory.bedding = int(gear["bedding"])
+	player.speed_factor = tuning.tent_carry_speed_factor if _tent_packed else 1.0
+	_on_inventory_changed()
+	ui.set_tent_kit(LevelState.tent_kit)
+	ui.set_intel(_intel_tabs())
+	ui.toast(Loc.t("Tent kit: no shovel, no firewood on the back, slower; pitch it to carry wood.") if LevelState.tent_kit
+		else Loc.t("Shovel kit: normal gear."), 4.0)
+
 # ------------------------------------------------------------------ 建造（T2.4–T2.6）
 
 func _enter_build() -> void:
@@ -1760,7 +1806,7 @@ func _update_focus_panel() -> void:
 
 ## 走进去：换成切开的剖面（对标 north star 的 SHELTER DESIGN），人躺在里面。规则不变，体温本来就按"人在不在里面"算；时间照走。
 func _enter_shelter() -> void:
-	if _in_shelter or site == null or not site.is_complete():
+	if _in_shelter or site == null or not site.is_complete() or not site.can_enter():
 		return
 	_in_shelter = true
 	_shelter_transition(func() -> void:
@@ -1876,6 +1922,10 @@ func _needs_vent_stick() -> bool:
 		and not site.vent_stick and weather.atmosphere.snowfall > 0.05
 
 func _site_prompt() -> String:
+	if site != null and site.is_complete() and site.preset_id == "Tent":
+		if inventory.wood > 0 or inventory.bedding > 0:
+			return Loc.t("Stack what you're carrying here (fire logs, extra bedding)")
+		return Loc.t("Tent is ready. [N] rest.")
 	if _needs_vent_stick():
 		return Loc.t("Push a stick through the vent (1 wood) — keeps it clear in falling snow")
 	if site != null and site.is_complete() and (inventory.wood > 0 or inventory.bedding > 0):
@@ -1918,6 +1968,11 @@ func _on_build_stage() -> Dictionary:
 		site.vent_stick = true
 		return {"ok": true, "minutes": 3.0, "msg": Loc.t("Stick in the vent: you can poke it clear during the night.")}
 	if site.is_complete():
+		if site.preset_id == "Tent":
+			if inventory.wood > 0 or inventory.bedding > 0:
+				_unload_to_site()
+				return {"ok": true, "minutes": 1.0, "msg": ""}
+			return {"ok": true, "minutes": 0.0, "msg": Loc.t("Tent is ready. [N] rest.")}
 		if inventory.wood > 0 or inventory.bedding > 0:
 			_unload_to_site()
 			return {"ok": true, "minutes": 1.0, "msg": ""}
@@ -1945,6 +2000,8 @@ func _on_build_stage() -> Dictionary:
 		# 阶段完成时才点燃（工时已流逝）；之后由玩家 [F] 添柴维持
 		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
 		_attach_fire_interactable(site.fire)
+	if site.preset_id == "Tent" and site.stage() >= 2 and _tent_packed:
+		_set_tent_packed(false)
 	minutes = 0.0
 	var msg := Loc.t("Stage %d/5 done — %s") % [int(r["stage"]), Loc.t(String(r["stage_title"]))]
 	SessionLog.log_event("stage", weather.clock_string(), {"stage": site.stage()})
@@ -2304,6 +2361,21 @@ func night_input() -> Dictionary:
 			# 火塘在棚口前：按挡风统一规则算火所在的位置——棚子自己的墙在下风一侧护着它（入口迎风就护不住）
 			var fp: Vector3 = site.fire.global_position if site.fire != null else sp
 			input["fire_exposure"] = fire_exposure_at(fp)
+		if site.preset_id == "Tent":
+			# 帐篷：烟囱在第 3 阶装好；睡袋在第 4 阶铺好；柴堆在帐篷里（不是背包）。
+			input["has_vent"] = site.stage() >= 3
+			input["vent_count"] = 1 if site.stage() >= 3 else 0
+			input["vent_snow_clogged"] = false
+			input["bedding_quality"] = 1.0 if site.stage() >= 4 else (0.55 if site.stage() >= 1 else 0.15)
+			input["tent_bag"] = site.stage() >= 4
+			var logs_t := mini(int(site.pile.total("wood", inventory)), int(tuning.tent_stock_wood_max))
+			var lit_t := site.fire != null and site.fire.lit
+			input["fire_lit"] = lit_t
+			input["fire_held"] = lit_t
+			input["firewood_logs"] = float(logs_t)
+			input["fuel_hours"] = float(logs_t) * tuning.tent_fire_hours_per_log
+			input["fire_exposure"] = 0.0
+			input["has_reflector_wall"] = false
 	_add_campfire_to_night(input)
 	input["starting_warmth"] = warmth.body_warmth
 	input["prewarmed"] = prewarmed
@@ -2313,6 +2385,9 @@ func night_input() -> Dictionary:
 	var spare_bedding := inventory.bedding + (site.pile.amount("bedding") if site != null else 0)
 	input["bedding_quality"] = GameRules.ground_insulation(float(input.get("bedding_quality", 0.0)) > 0.5, spare_bedding,
 		bool(gear["pad"]), bool(gear.get("hides", false)), tuning)
+	if site != null and site.preset_id == "Tent":
+		# 帐篷的睡袋第 4 阶才铺；草甸第 1 阶铺。不能靠背包里的 pad 提前算满。
+		input["bedding_quality"] = 1.0 if site.stage() >= 4 else (0.55 if site.stage() >= 1 else 0.15)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()
 	# 夜晚到明天日出为止（早睡要熬更久）；日落前那段还没到夜间气温

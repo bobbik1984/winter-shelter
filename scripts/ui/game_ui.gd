@@ -28,6 +28,7 @@ var _build_title: Label
 var _build_reason: Label
 var _build_info: Label
 var _briefing: Control
+var _briefing_loadout: Label
 var _fade: ColorRect
 var _report: Control
 var _report_box: VBoxContainer
@@ -340,6 +341,16 @@ func show_build(visible_: bool, title: String = "", reason: String = "", ok: boo
 func set_fade(a: float) -> void:
 	_fade.color.a = a
 
+func _tent_kit_line() -> String:
+	if LevelState.tent_kit:
+		return Loc.t("[T] Tent kit ON — slower, no firewood on your back")
+	return Loc.t("[T] Tent kit OFF — standard shovel kit")
+
+## 简报页切换装备时即时更新显示（不重建整个简报）。
+func set_tent_kit(_on: bool) -> void:
+	if _briefing_loadout != null:
+		_briefing_loadout.text = _tent_kit_line()
+
 func show_briefing(on: bool, forecast: String = "", intro: String = "", level: Dictionary = {}) -> void:
 	if on and _briefing == null:
 		_briefing = _make_briefing(forecast, intro, level)
@@ -387,6 +398,9 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 	left.add_child(_label(Loc.t("SNOW SHELTER"), 38 if TouchMode.enabled else 48, CREAM))
 	left.add_child(_label(Loc.t("C H A L L E N G E"), 16, MUTED))
 	left.add_child(_label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 13, AMBER))
+	_briefing_loadout = _label(_tent_kit_line(), 13, Color(0.72, 0.86, 1.0))
+	_briefing_loadout.name = "BriefingLoadout"
+	left.add_child(_briefing_loadout)
 	left.add_child(HSeparator.new())
 	if not level.is_empty():
 		_chip_row(left, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")

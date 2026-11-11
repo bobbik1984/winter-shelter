@@ -22,6 +22,8 @@ var working: bool = false
 ## 劳作动画："Dig"（挖雪 / 施工 / 采集）或 "Chop"（砍柴）。
 var work_anim: String = "Dig"
 var current_speed: float = 0.0
+## 背帐篷时由 GameDirector 设为 <1；支起帐篷后恢复 1.0。只影响移动，不改地形/规则。
+var speed_factor: float = 1.0
 var _probe_t: float = 0.0
 
 func _ready() -> void:
@@ -72,7 +74,7 @@ func _physics_process(delta: float) -> void:
 		var ahead := p + dir * 0.6
 		var rise := SnowField.height_at(ahead.x, ahead.z) - SnowField.height_at(p.x, p.z)
 		var uphill := rad_to_deg(atan(maxf(rise, 0.0) / 0.6))
-		current_speed = GameRules.move_speed(tuning.move_speed_mps, uphill, SnowField.snow_at(p.x, p.z), tuning)
+		current_speed = GameRules.move_speed(tuning.move_speed_mps, uphill, SnowField.snow_at(p.x, p.z), tuning) * speed_factor
 		velocity.x = dir.x * current_speed
 		velocity.z = dir.z * current_speed
 		if visual_node:

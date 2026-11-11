@@ -10,7 +10,7 @@ const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
 const MODEL_DIR := "res://assets/models/shelters/"
 ## 入口离中心多远（米，和模型一致：标记、走出庇护所的落点都用它）。
 const ENTRANCE_DIST := {"RaisedCave": 2.3, "BasicCave": 2.3, "Quinzhee": 2.3, "SnowTrench": 1.1, "LeanTo": 1.0,
-	"TreeWell": 2.3, "RockOverhang": 1.7, "FallenLog": 2.2}
+	"TreeWell": 2.3, "RockOverhang": 1.7, "FallenLog": 2.2, "Tent": 1.5}
 
 
 var builder: ShelterBuilder
@@ -44,6 +44,8 @@ var _dark: StandardMaterial3D
 var _wood: ShaderMaterial
 var _bough: ShaderMaterial
 var _glow: StandardMaterial3D
+var _tent_mat: StandardMaterial3D
+var _bag_mat: StandardMaterial3D
 var _model_mats := {}
 var _has_model := false
 
@@ -74,6 +76,16 @@ func _ready() -> void:
 	_glow.emission_enabled = true
 	_glow.emission = Color(1.0, 0.55, 0.18)
 	_glow.emission_energy_multiplier = 2.5
+	# 帐篷布：低饱和的苔绿帆布，和云杉 / 雪面同一套冷色环境里不刺眼。
+	_tent_mat = StandardMaterial3D.new()
+	_tent_mat.albedo_color = Color(0.46, 0.54, 0.44)
+	_tent_mat.roughness = 0.95
+	_tent_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# 帐篷布在低角度阳光下容易整块变黑；用不受光的浅帆布色，仍然保留轮廓和雪地对比。
+	_tent_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_bag_mat = StandardMaterial3D.new()
+	_bag_mat.albedo_color = Color(0.55, 0.32, 0.20)
+	_bag_mat.roughness = 0.9
 	interactable = Interactable.new()
 	interactable.kind = "shelter"
 	interactable.ring_radius = 1.6
@@ -109,6 +121,7 @@ func entrance_point() -> Vector3:
 		"Quinzhee": dist = 2.2
 		"RockOverhang": dist = 1.1
 		"FallenLog": dist = 0.9
+		"Tent": dist = 1.45
 	var p := global_position + entrance_dir * dist
 	return Vector3(p.x, SnowField.height_at(p.x, p.z) + 0.12, p.z)
 
@@ -367,6 +380,8 @@ func _legacy_visual(s: int) -> void:
 			_rock_visual(s)
 		"FallenLog":
 			_fallen_visual(s)
+		"Tent":
+			_tent_visual(s)
 
 func _sphere(pos: Vector3, r: float, scale_v: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -524,8 +539,14 @@ func _build_interior(s: int) -> void:
 		l.position = Vector3(-0.45, 0.6, -1.5)
 		_interior.add_child(l)
 
+## 帐篷没有雪洞剖面；完工后只提供 N 休息 / 外观查看，不进入“雪洞内部”视图。
+func can_enter() -> bool:
+	return preset_id != "Tent"
+
 ## "进入庇护所"剖面：平常的外观藏起来，换成切开的那一半。返回剖面相机。
 func set_interior_view(on: bool) -> Camera3D:
+	if preset_id == "Tent":
+		return null
 	if on and _interior_view == null:
 		_interior_view = ShelterInterior.new()
 		add_child(_interior_view)
@@ -606,7 +627,49 @@ func _process(_delta: float) -> void:
 		_entrance_light.light_energy = lerpf(1.4, 3.2, clampf((6.0 - elev) / 8.0, 0.0, 1.0))
 
 ## S5 树井外观（工地中心 = 树干）：树干周围挖开的浅坑、修剪后的低枝、枝条地板、补顶的枝条裙、封门。
-## 雪堆屋：雪丘一阶阶长高；插着当厚度标记的木棍；掏空后才有洞口。本节点入口 = +Z。
+## 2026-11-12 帐篷套装：草甸 → 帐篷壳 → 火盆/烟囱 → 睡袋 → 压边。
+## 帐篷布用低饱和苔绿；火盆是独立 Campfire，柴从工地堆扣。
+func _tent_visual(s: int) -> void:
+	if s <= 0:
+		return
+	# 1 阶：草甸 / 地面隔热（即使还没支帐篷，也已经铺好）
+	_box(Vector3(0, 0.025, -0.1), Vector3(2.1, 0.05, 2.4), _bough)
+	if s >= 2:
+		# 帐篷本体：三棱柱 + 两端门帘；沿 Z 轴是脊线。
+		var pm := PrismMesh.new()
+		pm.size = Vector3(2.6, 1.45, 2.9)
+		var shell := MeshInstance3D.new()
+		shell.mesh = pm
+		shell.material_override = _tent_mat
+		shell.position = Vector3(0, 0.72, -0.05)
+		_visual.add_child(shell)
+		# 入口暗帘（+Z 端）
+		_box(Vector3(0, 0.34, 1.38), Vector3(0.85, 0.6, 0.04), _dark)
+		# 两根脊杆 + 四根短地钉
+		for x in [-1.15, 1.15]:
+			_cyl(Vector3(x, 0.0, 0.0), 0.025, 1.5, _wood)
+		for p in [Vector3(-1.35, 0.02, 1.35), Vector3(1.35, 0.02, 1.35), Vector3(-1.35, 0.02, -1.35), Vector3(1.35, 0.02, -1.35)]:
+			_cyl(p, 0.018, 0.18, _wood)
+	if s >= 3:
+		# 小火盆 + 烟囱（在帐篷内部靠入口，不挡睡袋）
+		var pan := _cyl(Vector3(0.72, 0.12, 0.45), 0.16, 0.08, _dark)
+		pan.scale = Vector3(1.0, 1.0, 0.85)
+		_cyl(Vector3(0.72, 0.44, 0.45), 0.035, 1.15, _dark)
+		if fire == null:
+			fire = Campfire.new()
+			fire.name = "TentFirePan"
+			fire.position = Vector3(0.72, 0.12, 0.45)
+			fire.warm_radius = OldSpruces.tuning().tent_fire_warm_radius_m
+			add_child(fire)
+	if s >= 4:
+		# 睡袋 / 防潮垫：必须铺在草甸上
+		_box(Vector3(-0.45, 0.10, -0.15), Vector3(0.78, 0.14, 1.85), _bag_mat)
+	if s >= 5:
+		# 门帘压边 + 帐篷里的柴堆
+		_box(Vector3(0, 0.06, 1.58), Vector3(1.15, 0.08, 0.18), _tent_mat)
+		refresh_pile()
+
+## 雪堆屋：雪丘一阶阶长高；插着当标记的木棍；掏空后才有洞口。本节点入口 = +Z。
 func _quinzhee_visual(s: int) -> void:
 	if s <= 0:
 		return

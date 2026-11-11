@@ -170,6 +170,28 @@ static func create_all_presets() -> Dictionary:
 	rock.stage_shelter_levels = PackedInt32Array([0, 1, 1, 2, 2])
 	rock.stage_wind_muffle = PackedFloat32Array([0.3, 0.4, 0.4, 0.6, 0.65])
 
+	# 2026-11-12 帐篷套装（用户方向）：自带帐篷 + 睡袋 + 火盆/烟囱。
+	# 不是雪庇护所；不需要雪深，只需要平地；第 1 阶必须铺草甸，第 4 阶铺睡袋。
+	var tent := ShelterPreset.new()
+	tent.preset_id = "Tent"
+	tent.display_name = "Tent + Sleeping Bag"
+	tent.min_snow_depth = 0.0
+	tent.allows_open_fire = true
+	tent.build_minutes_total = 30.0
+	tent.wood_cost = 0
+	tent.bedding_cost = 2
+	tent.stage_costs = [{"bedding": 2}, {}, {}, {}, {}]
+	tent.stage_weights = [0.28, 0.30, 0.18, 0.14, 0.10]
+	tent.stage_titles = PackedStringArray([
+		"1. Clear the ground and lay a grass bed",
+		"2. Pitch the tent and peg the windward side",
+		"3. Set the small fire pan and chimney",
+		"4. Roll out the sleeping bag",
+		"5. Seal the door and stack firewood inside",
+	])
+	tent.stage_shelter_levels = PackedInt32Array([1, 1, 1, 2, 2])
+	tent.stage_wind_muffle = PackedFloat32Array([0.35, 0.5, 0.55, 0.58, 0.62])
+
 	# S5 倒木斜棚：倒木当脊梁，枝条搭顶。没有根盘那样的风墙和反射面。
 	var fallen := ShelterPreset.new()
 	fallen.preset_id = "FallenLog"
@@ -199,10 +221,17 @@ static func create_all_presets() -> Dictionary:
 		"BasicCave": basic,
 		"SnowTrench": trench,
 		"LeanTo": leanto,
+		"Tent": tent,
 	}
 
 
 func validate_site(snow_depth: float, slope_deg: float, near_windbreak: bool = false) -> Dictionary:
+	if preset_id == "Tent":
+		# 帐篷不挑雪深，但要相对平地；雪太薄也能搭（草甸 + 睡袋是地面隔热）。
+		var max_slope := OldSpruces.tuning().tent_max_slope_deg
+		if slope_deg > max_slope:
+			return {"ok": false, "reason": Loc.t("Too steep for a tent (%d° > %d°): find flatter ground") % [int(round(slope_deg)), int(round(max_slope))]}
+		return {"ok": true, "reason": Loc.t("Site suitable for %s") % Loc.t(display_name)}
 	if preset_id == "TreeWell":
 		# 树井的"深度"是周围的开阔积雪（BuildMode 已对准最近的老云杉并取树干周围雪深）
 		var need := OldSpruces.tuning().tree_well_min_snow_m

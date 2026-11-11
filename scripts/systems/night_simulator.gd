@@ -54,6 +54,7 @@ const PRESET_TREE_WELL := "TreeWell"
 const PRESET_QUINZHEE := "Quinzhee"
 const PRESET_ROCK := "RockOverhang"
 const PRESET_FALLEN := "FallenLog"
+const PRESET_TENT := "Tent"
 const PRESET_NONE := "None"
 ## 雪做的庇护所（挖雪、受潮、里面不能生火）。
 const SNOW_TYPES := ["RaisedCave", "BasicCave", "SnowTrench", "TreeWell", "Quinzhee"]
@@ -82,6 +83,7 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 	var known_preset: bool = bool(resolved.get("known", true))
 	var is_snow := _is_snow_shelter(shelter_type)
 	var is_lean_to := shelter_type in FRAME_TYPES
+	var is_tent := shelter_type == PRESET_TENT
 
 	var wind_angle_diff := clampf(_input_float(input, "wind_angle_diff", 180.0), 0.0, 180.0)
 	var wind_speed := maxf(_input_float(input, "wind_speed_kmh", t.wind_speed_kmh), 0.0)
@@ -157,6 +159,10 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 			+ t.lean_to_brace_weight * brace_ratio
 		) + t.structure_wood_bonus * brace_ratio - slope_penalty
 		structure = clampf(structure, 0.0, 1.0)
+	elif is_tent:
+		# 帐篷没有雪深/顶厚；结构只看完工与坡度。风由 Site 轴承担。
+		structure = t.tent_base_structure * (0.72 * completion + 0.28 * clampf(1.0 - slope_ratio, 0.0, 1.0))
+		structure = clampf(structure, 0.0, 1.0)
 	else:
 		var min_depth := _preset_min_depth(shelter_type, t)
 
@@ -216,6 +222,8 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		isolation = t.rock_isolation_base
 	elif shelter_type == PRESET_FALLEN:
 		isolation = t.fallen_log_isolation_base
+	elif shelter_type == PRESET_TENT:
+		isolation = t.tent_isolation_base
 	if is_snow:
 		if has_cold_pit:
 			isolation += t.isolation_cold_pit_bonus
@@ -228,6 +236,9 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 	if shelter_type == PRESET_TREE_WELL:
 		# 枝条屋顶透气：不需要通风管，也不会被夜雪堵死
 		air = t.tree_well_air_score
+	elif is_tent:
+		# 帐篷有烟囱：有通风，但不是雪洞的密闭空气。
+		air = t.tent_air_score
 	elif is_snow:
 		if vent_count <= 0:
 			air = t.air_no_vent_score
@@ -282,6 +293,17 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 		) * t.heat_chill_penalty
 		if prewarmed:
 			heat += t.prewarm_heat_bonus
+	elif is_tent:
+		# 小火盆 + 烟囱：只有柴能烧到天亮才持续供热；热量远低于倒棚反射火。
+		var burn_ratio_t := clampf(fuel_hours / night_hours, 0.0, 1.0)
+		if fire_lit:
+			fire_burn_hours = minf(fuel_hours, night_hours)
+			fire_reaches_dawn = fuel_hours >= night_hours
+			heat = t.tent_base_thermal + t.tent_fire_bonus * burn_ratio_t
+			if not fire_reaches_dawn:
+				fire_out_clock = _format_clock(t.night_minutes + int(round(fuel_hours * 60.0)))
+		else:
+			heat = t.tent_base_thermal
 	elif is_lean_to:
 		var burn_ratio := clampf(fuel_hours / night_hours, 0.0, 1.0)
 		if fire_lit:
@@ -388,7 +410,7 @@ static func evaluate(input: Dictionary, tuning: Tuning) -> Dictionary:
 	))
 	notes.append(_air_note(shelter_type, vent_count, vent_clogged, is_snow))
 	notes.append(_heat_note(
-		is_snow, is_lean_to, fire_lit, effective_fire_held,
+		is_snow, is_lean_to, is_tent, fire_lit, effective_fire_held,
 		fire_exposure, fuel_hours, night_hours, fire_reaches_dawn, fire_out_clock,
 		fire_ignored, prewarmed, has_reflector_wall, snow_depth, t
 	))
@@ -478,6 +500,8 @@ static func _structure_note(
 			return "未知庇护所类型按 None 结算，没有承重结构，直接暴露在风雪中。"
 		return "未选择庇护所（None），没有承重结构，直接暴露在风雪中。"
 
+	if shelter_type == PRESET_TENT:
+		return "帐篷完工度 %.0f%%，靠地钉和压边挡风；帆布没有雪体或反射墙，保温上限明显低于雪洞。" % (completion * 100.0)
 	if shelter_type == PRESET_LEAN_TO:
 		var lean_note := "木架完工度 %.0f%%、支撑木 %d 根，棚背与骨架%s。" % [
 			completion * 100.0,
@@ -551,6 +575,8 @@ static func _isolation_note(
 		return "沟底平铺，缺少冷热分层，冷空气整夜贴着睡垫。"
 	if shelter_type == PRESET_LEAN_TO:
 		return "开放结构没有冷气池；靠背风地势、垫层与火抵消地面冷空气。"
+	if shelter_type == PRESET_TENT:
+		return "帐篷没有冷气池；草甸 + 睡袋把身体和地面隔开，但帐篷底布仍会传冷。"
 	return "没有任何隔离，地面冷空气直接包裹身体。"
 
 
@@ -562,6 +588,8 @@ static func _air_note(
 ) -> String:
 	if shelter_type == PRESET_TREE_WELL:
 		return "云杉枝条屋顶透气，不需要通风管，CO₂ 不会积聚。"
+	if shelter_type == PRESET_TENT:
+		return "帐篷有烟囱换气，不存在雪洞那种 CO₂ 积聚；烟囱也会带走一点热。"
 	if not is_snow and shelter_type != PRESET_NONE:
 		return "开放结构通风充分，不存在 CO₂ 积聚问题。"
 	if shelter_type == PRESET_NONE:
@@ -580,6 +608,7 @@ static func _air_note(
 static func _heat_note(
 	is_snow: bool,
 	is_lean_to: bool,
+	is_tent: bool,
 	fire_lit: bool,
 	effective_fire_held: bool,
 	fire_exposure: float,
@@ -603,6 +632,15 @@ static func _heat_note(
 				t.prewarm_heat_bonus * 100.0
 			)
 		return "积雪 %.2f m 的雪体提供主要保温；洞内不生火，整夜仅靠体温与垫层。" % snow_depth
+
+	if is_tent:
+		if not fire_lit:
+			return "火盆没有生火，帐篷只靠帆布、草甸和睡袋挡风；仍然比露天慢一些失温，但没有热源。"
+		if fuel_hours <= 0.0:
+			return "火盆没有柴了，火熄了；帐篷后半夜只靠睡袋和草甸。"
+		if fire_reaches_dawn:
+			return "小火盆烧了 %.1f h，勉强撑到天亮：帐篷比雪洞冷，热也留不住太多。" % fuel_hours
+		return "小火盆只够烧 %.1f h，约 %s 熄火；帐篷不是保温房，后半夜温度继续下降。" % [fuel_hours, fire_out_clock]
 
 	if is_lean_to:
 		if not fire_lit:
@@ -660,6 +698,8 @@ static func _resolve_preset(raw: String) -> Dictionary:
 		return {"type": PRESET_ROCK, "known": true}
 	if key == "fallenlog":
 		return {"type": PRESET_FALLEN, "known": true}
+	if key == "tent":
+		return {"type": PRESET_TENT, "known": true}
 	if key == "" or key == "none" or key == "no_shelter":
 		return {"type": PRESET_NONE, "known": true}
 	return {"type": PRESET_NONE, "known": false}
@@ -685,6 +725,8 @@ static func _preset_label(shelter_type: String) -> String:
 		return "岩檐"
 	if shelter_type == PRESET_FALLEN:
 		return "倒木斜棚"
+	if shelter_type == PRESET_TENT:
+		return "帐篷"
 	return "None"
 
 
@@ -741,6 +783,8 @@ static func _preset_base_thermal(shelter_type: String, t: Tuning) -> float:
 		return t.rock_base_thermal
 	if shelter_type == PRESET_FALLEN:
 		return t.fallen_log_base_thermal
+	if shelter_type == PRESET_TENT:
+		return t.tent_base_thermal
 	return 0.0
 
 
@@ -761,6 +805,8 @@ static func _preset_base_structure(shelter_type: String, t: Tuning) -> float:
 		return t.rock_base_structure
 	if shelter_type == PRESET_FALLEN:
 		return t.fallen_log_base_structure
+	if shelter_type == PRESET_TENT:
+		return t.tent_base_structure
 	return 0.0
 
 
@@ -781,6 +827,8 @@ static func _preset_volume(shelter_type: String, t: Tuning) -> float:
 		return t.rock_volume_m3
 	if shelter_type == PRESET_FALLEN:
 		return t.fallen_log_volume_m3
+	if shelter_type == PRESET_TENT:
+		return 2.2
 	return 0.0
 
 

@@ -78,6 +78,7 @@ static func buttons_for(ctx: Dictionary) -> Array:
 			b.append(_key("map", Loc.t("New map"), KEY_N, "bar"))
 			b.append(_key("lang", "中文 / EN", KEY_L, "bar"))
 			b.append(_key("intel", Loc.t("Intel"), KEY_I, "bar"))
+			b.append(_key("tent", Loc.t("Tent kit"), KEY_T, "bar"))
 			if bool(ctx.get("free_play", false)):
 				b.append(_key("full_day", Loc.t("Full day"), KEY_2, "bar"))
 			b.append(_key("begin", Loc.t("Begin"), KEY_ENTER, "bar", true))
