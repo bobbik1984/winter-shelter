@@ -94,7 +94,12 @@ void fragment() {
 	float n = vnoise(w_pos * noise_scale) - 0.5;
 	float threshold = mix(1.0, -0.25, snow_amount);
 	float cover = smoothstep(threshold, threshold + snow_softness, up + n * noise_strength);
-	vec3 col = mix(base_color.rgb, snow_color.rgb, cover);
+	// 复用单次噪声 n 给木头、树枝、岩石加细微肌理明暗，并在积雪与基底交界处加一层薄霜冷边（零额外纹理/噪声开销）
+	vec3 base_shaded = base_color.rgb * (0.94 + 0.14 * (n + 0.5)) * mix(0.86, 1.04, clamp(up * 0.5 + 0.5, 0.0, 1.0));
+	vec3 snow_shaded = snow_color.rgb + vec3(-0.02, -0.005, 0.025) * (1.0 - clamp(up, 0.0, 1.0)) + n * 0.035;
+	float frost_rim = smoothstep(threshold - 0.14, threshold + 0.02, up + n * noise_strength) * (1.0 - cover);
+	vec3 col = mix(base_shaded, snow_shaded, cover);
+	col = mix(col, vec3(0.68, 0.78, 0.92), frost_rim * 0.24);
 	ALBEDO = col;
 	ROUGHNESS = mix(base_roughness, 0.74, cover);
 	SPECULAR = mix(0.12, 0.3, cover);

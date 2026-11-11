@@ -910,9 +910,13 @@ func shelter_cards() -> Array:
 			mats.append(Loc.t("%d dry wood") % wood)
 		if bedding > 0:
 			mats.append(Loc.t("%d bedding") % bedding)
+		var mat_text := ", ".join(mats) if not mats.is_empty() else Loc.t("no materials")
 		cards.append({"id": p, "name": String(names.get(p, p)), "status": status, "state": state,
 			"about": Loc.t(SHELTER_ABOUT[p]),
-			"needs": Loc.t("Needs: %s  ·  about %s of work  ·  %s") % [site, time, ", ".join(mats) if not mats.is_empty() else Loc.t("no materials")],
+			"site": site,
+			"time": time,
+			"mats": mat_text,
+			"needs": Loc.t("Needs: %s  ·  about %s of work  ·  %s") % [site, time, mat_text],
 			"fire": fire})
 	return cards
 

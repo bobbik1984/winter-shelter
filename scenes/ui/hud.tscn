@@ -7,15 +7,23 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/shelter_cutaway_panel.tscn" id="5_cutaway_panel"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
-bg_color = Color(0.08, 0.1, 0.14, 0.75)
-corner_radius_top_left = 6
+bg_color = Color(0.035, 0.052, 0.082, 0.90)
+border_width_left = 3
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.62, 0.78, 0.96, 0.75)
+corner_radius_top_left = 4
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 8
+shadow_offset = Vector2(0, 3)
 content_margin_left = 16.0
-content_margin_top = 14.0
+content_margin_top = 12.0
 content_margin_right = 16.0
-content_margin_bottom = 14.0
+content_margin_bottom = 12.0
 
 [node name="HUD" type="CanvasLayer"]
 

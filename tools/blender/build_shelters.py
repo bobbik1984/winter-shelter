@@ -619,16 +619,19 @@ def bake(objs, candle, occluder):
                 if key not in cache:
                     cache[key] = _light(bvh, p + n * 0.012, n, dirs, candle)
                 if glow:
-                    c = Vector((1.0, 0.8, 0.5))
+                    c = Vector((1.0, 0.82, 0.52))
                 elif is_cut:
-                    k = 0.9 + 0.1 * min(max(p.y / 2.0, 0.0), 1.0)
+                    k = 0.92 + 0.08 * min(max(p.y / 2.0, 0.0), 1.0)
                     c = base * k
                     if candle is not None:
                         d = (Vector(candle) - p).length
-                        c += Vector((0.12, 0.05, -0.02)) * max(0.0, 1.0 - d / 2.2)
+                        c += Vector((0.14, 0.06, -0.02)) * max(0.0, 1.0 - d / 2.4)
                 else:
                     sky, warm = cache[key]
-                    c = Vector((base.x * sky, base.y * sky, base.z * sky)) + warm * (base + Vector((0.4, 0.3, 0.2))) * 0.5
+                    # 面向剖面相机（+X 偏上）的轮廓漫反射补光：让树枝、圆木、岩壁和床铺在剖面里层次分明，不会糊成纯黑
+                    cam_fill = max(0.0, n.dot(Vector((0.80, 0.45, 0.38)).normalized())) * 0.36
+                    eff_sky = sky + cam_fill
+                    c = Vector((base.x * eff_sky, base.y * eff_sky, base.z * eff_sky)) + warm * (base + Vector((0.42, 0.31, 0.20))) * 0.55
                 col.data[li].color = (min(c.x, 1.0), min(c.y, 1.0), min(c.z, 1.0), 1.0)
         me.color_attributes.active_color = col
 

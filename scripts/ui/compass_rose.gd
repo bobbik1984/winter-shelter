@@ -3,10 +3,10 @@ extends Control
 ## 右下角风向罗盘：随相机偏航旋转的 N/E/S/W，指针指向风的去向（下风）。
 ## 世界约定：-Z = 北，+X = 东。
 
-const RING_BG := Color(0.04, 0.07, 0.11, 0.72)
-const RING_LINE := Color(0.78, 0.72, 0.58, 0.70)
-const LABEL := Color(0.94, 0.90, 0.80, 0.95)
-const NEEDLE := Color(1.0, 0.55, 0.12, 1.0)
+const RING_BG := Color(0.032, 0.052, 0.088, 0.84)
+const RING_LINE := Color(0.84, 0.78, 0.64, 0.80)
+const LABEL := Color(0.96, 0.92, 0.82, 0.96)
+const NEEDLE := Color(1.0, 0.58, 0.16, 1.0)
 
 var _yaw := INF
 var _blow := Vector3.RIGHT

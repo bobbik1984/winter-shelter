@@ -1,12 +1,12 @@
 extends SceneTree
 ## 情报 · 庇护所卡片的配图：每种庇护所完工后的外观 + 剖面，各一张，相机按庇护所实际大小取景。
 ## 必须窗口模式：godot --path . --resolution 1280x720 -s res://tools/shelter_cards.gd -- [--out=assets/ui/shelters] [--only=TreeWell]
-## 输出 <id>_out.webp / <id>_cut.webp（480×270，有损 WebP，每张约 15–25 KB）。模型改了就重跑。
+## 输出 <id>_out.webp / <id>_cut.webp（640×360，WebP，每张约 20–32 KB）。模型改了就重跑。
 ## 树井只出剖面（从外面看就是一棵树的树冠）。
 
 const PRESETS := ["RaisedCave", "BasicCave", "SnowTrench", "LeanTo", "TreeWell", "Quinzhee", "RockOverhang", "FallenLog"]
-const W := 480
-const H := 270
+const W := 640
+const H := 360
 
 var out_dir := "res://assets/ui/shelters"
 var only: PackedStringArray = []
@@ -35,10 +35,10 @@ func _shot(name_: String, zoom: float = 1.0) -> void:
 	if zoom > 1.0:
 		var cw := int(img.get_width() / zoom)
 		var ch := int(img.get_height() / zoom)
-		img = img.get_region(Rect2i((img.get_width() - cw) / 2, (img.get_height() - ch) / 2 - int(img.get_height() * 0.03), cw, ch))
+		img = img.get_region(Rect2i((img.get_width() - cw) / 2, (img.get_height() - ch) / 2 - int(img.get_height() * 0.025), cw, ch))
 	img.resize(W, H, Image.INTERPOLATE_LANCZOS)
 	var path := ProjectSettings.globalize_path(out_dir.path_join(name_ + ".webp"))
-	img.save_webp(path, true, 0.82)
+	img.save_webp(path, true, 0.86)
 	print("CARD ", path)
 
 ## 庇护所所有可见网格的包围盒（世界坐标）。
@@ -48,6 +48,8 @@ func _bounds(site: Node3D) -> AABB:
 	for n in site.find_children("*", "MeshInstance3D", true, false):
 		var vi := n as MeshInstance3D
 		if not vi.is_visible_in_tree() or vi.mesh == null:
+			continue
+		if vi.name in ["GroundSkirt", "TroddenSnow"]:
 			continue
 		var b := vi.global_transform * vi.get_aabb()
 		if b.size.length() > 12.0:
@@ -103,9 +105,10 @@ func _run() -> void:
 	d = main_n.get_node("GameDirector")
 	d.start_game()
 	await _frames(20)
-	d.weather.current_time_minutes = 12.5 * 60.0
+	# 黄金午后斜阳（14:10）：金光与冰蓝阴影对比饱满，比正午干瘪白光更有体积感
+	d.weather.current_time_minutes = 14.15 * 60.0
+	d.weather.advance_minutes(0.0)
 	d.player.controls_enabled = false
-	d.player.visual_node.visible = false
 	d._set_figure_particles(false)
 	var rig = d.rig
 	var spawn: Vector3 = d.player.global_position
@@ -113,55 +116,95 @@ func _run() -> void:
 	for preset in PRESETS:
 		if not only.is_empty() and not (preset in only):
 			continue
-		for n in root.find_children("*", "CanvasLayer", true, false):
-			(n as CanvasLayer).visible = false
 		var pos: Vector3 = open
-		if preset == "TreeWell":
-			var t: Dictionary = OldSpruces.nearest(Vector2(open.x, open.z))
-			pos = Vector3(t["point"].x, TerrainHeight.height_at(t["point"].x, t["point"].y), t["point"].y)
-		var cam_dir: Vector3 = rig.global_transform.basis.z
-		cam_dir.y = 0.0
-		var door := cam_dir.normalized().rotated(Vector3.UP, deg_to_rad(-35.0))
-		var site := ShelterSite.new()
-		site.name = "CardSite"
-		site.setup(preset, door, 2.6, 0.0, preset in ["RockOverhang", "FallenLog"])
-		site.position = pos
-		main_n.add_child(site)
-		d.site = site
-		while site.stage() < 5:
-			site.advance()
-		d.player.global_position = pos + Vector3(30, 0, 30)
-		var cam := Camera3D.new()
-		cam.fov = 34.0
-		main_n.add_child(cam)
-		await _frames(20)
-		var box := _bounds(site)
-		print(preset, " bounds ", box.size)
-		# 外观：从入口一侧斜前方看（看得见门），35° 俯角
-		if preset == "TreeWell":
-			# 树井从外面看就是一棵老云杉的树冠，坑在枝条底下看不见：卡片只用剖面图
-			pass
-		else:
-			_aim(cam, box, door.rotated(Vector3.UP, deg_to_rad(30.0)), 32.0, 0.95)
-			cam.make_current()
-			await _frames(25)
-			await _shot(preset + "_out")
-		# 剖面：和游戏里进洞一样切开（切面法线 = 工地 +X），从切开的那一侧看进去
-		d.player.global_position = pos
-		d._enter_shelter()
-		await _frames(60)
-		d.player.visual_node.visible = false
-		# 剖面：用游戏里进洞时那台相机（玩家看到的就是这个画面），裁中间
-		for n in root.find_children("*", "CanvasLayer", true, false):
-			(n as CanvasLayer).visible = false
-		await _frames(30)
-		await _shot(preset + "_cut", 1.55)
-		d._leave_shelter()
-		await _frames(30)
-		d.rig.clear_focus()
-		d._update_section(false)
-		cam.queue_free()
-		d.site = null
-		site.queue_free()
-		await _frames(10)
+		await _card_for(preset, pos, rig)
 	quit(0)
+
+func _card_for(preset: String, pos: Vector3, rig: Node3D) -> void:
+	for n in root.find_children("*", "CanvasLayer", true, false):
+		(n as CanvasLayer).visible = false
+	var cam_dir: Vector3 = rig.global_transform.basis.z
+	cam_dir.y = 0.0
+	var door := cam_dir.normalized().rotated(Vector3.UP, deg_to_rad(-35.0))
+	var site := ShelterSite.new()
+	site.name = "CardSite"
+	site.setup(preset, door, 2.6, 0.0, preset in ["RockOverhang", "FallenLog"])
+	site.position = pos
+	main_n.add_child(site)
+	d.site = site
+	while site.stage() < 5:
+		site.advance()
+	# 放一点余料在门口堆上，让外观工地显得真实有生活气息
+	site.pile.stock["wood"] = 2
+	site.pile.stock["bedding"] = 1
+	site.refresh_pile()
+	# 开放庇护所点燃反射篝火，烘托暖光（隐藏游戏里的地面范围提示黄圈，卡片里只展示火堆和火光）
+	var temp_fire: Campfire = null
+	if site.fire != null:
+		site.fire.global_position.y = TerrainHeight.height_at(site.fire.global_position.x, site.fire.global_position.z)
+		site.fire.ignite(90.0)
+		if site.fire._circle != null:
+			site.fire._circle.visible = false
+	elif preset in ["RockOverhang", "FallenLog"]:
+		temp_fire = Campfire.new()
+		var fpos := pos + door * 1.85
+		fpos.y = TerrainHeight.height_at(fpos.x, fpos.z)
+		temp_fire.position = fpos
+		main_n.add_child(temp_fire)
+		temp_fire.ignite(90.0)
+		if temp_fire._circle != null:
+			temp_fire._circle.visible = false
+	d.player.visual_node.visible = false
+	d.player.global_position = pos + Vector3(30, 0, 30)
+	var cam := Camera3D.new()
+	cam.fov = 34.0
+	main_n.add_child(cam)
+	# 照亮背阴处细节的柔和暖侧补光
+	var key_light := DirectionalLight3D.new()
+	key_light.light_color = Color(1.0, 0.92, 0.80)
+	key_light.light_energy = 0.42
+	key_light.shadow_enabled = false
+	main_n.add_child(key_light)
+	await _frames(20)
+	var box := _bounds(site)
+	print(preset, " bounds ", box.size)
+	# 外观：从入口一侧斜前方看（看得见门和暖光），30° 俯角
+	if preset == "TreeWell":
+		pass
+	else:
+		_aim(cam, box, door.rotated(Vector3.UP, deg_to_rad(28.0)), 30.0, 0.88)
+		key_light.global_basis = cam.global_basis
+		cam.make_current()
+		await _frames(25)
+		await _shot(preset + "_out")
+	# 剖面：和游戏里进洞一样切开（切面法线 = 工地 +X），人真实躺在里面，展示比例与结构
+	if temp_fire != null:
+		temp_fire.visible = false
+	if site.fire != null:
+		site.fire.visible = false
+	if site._pile_root != null:
+		site._pile_root.visible = false
+	d.player.global_position = pos
+	d.player.visual_node.visible = true
+	d._enter_shelter()
+	await _frames(60)
+	d.player.visual_node.visible = true
+	var sec_cam := root.get_camera_3d()
+	if sec_cam:
+		key_light.global_basis = sec_cam.global_basis
+	for n in root.find_children("*", "CanvasLayer", true, false):
+		(n as CanvasLayer).visible = false
+	await _frames(30)
+	await _shot(preset + "_cut", 1.48)
+	d._leave_shelter()
+	await _frames(30)
+	d.rig.clear_focus()
+	d._update_section(false)
+	if temp_fire != null:
+		temp_fire.queue_free()
+	key_light.queue_free()
+	cam.queue_free()
+	d.site = null
+	site.queue_free()
+	await _frames(10)
+

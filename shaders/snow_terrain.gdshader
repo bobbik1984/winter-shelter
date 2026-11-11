@@ -71,6 +71,9 @@ void fragment() {
 	vec2 wind_uv = vec2(w_along * 0.28 + w_across * 0.14, w_across * 0.52 - w_along * 0.12);
 	float drift_n = low_quality ? vnoise(wind_uv * 1.6) * 0.8 + 0.1 : fbm(wind_uv);
 	float detail_n = low_quality ? vnoise(world_pos.xz * 1.35) : fbm(world_pos.xz * 1.35);
+	// 细尺度风吹涟漪（零额外采样开销，单次解析正弦调制）：让近景雪坡有细腻的风蚀条纹质感
+	float ripple_wave = sin(w_across * 4.2 + (drift_n - 0.5) * 5.2) * 0.5 + 0.5;
+	float sastrugi_ridge = smoothstep(0.28, 0.88, ripple_wave) * (0.45 + 0.55 * drift_n);
 
 	// 2. 微法线扰动：让雪面呈现真实的风积凹凸起伏，告别塑料平滑感
 	vec3 bumped_world_n = world_normal;
@@ -78,7 +81,9 @@ void fragment() {
 		float eps = 0.25;
 		float nx = fbm(wind_uv + vec2(eps, 0.0)) - drift_n;
 		float nz = fbm(wind_uv + vec2(0.0, eps)) - drift_n;
-		bumped_world_n = normalize(world_normal + vec3(-nx * 0.75, 0.0, -nz * 0.75));
+		float r_slope = cos(w_across * 4.2 + (drift_n - 0.5) * 5.2) * 0.11;
+		vec2 across_dir = vec2(-wb.y, wb.x);
+		bumped_world_n = normalize(world_normal + vec3(-nx * 0.78 - across_dir.x * r_slope, 0.0, -nz * 0.78 - across_dir.y * r_slope));
 		NORMAL = normalize((VIEW_MATRIX * vec4(bumped_world_n, 0.0)).xyz);
 	}
 
@@ -88,15 +93,20 @@ void fragment() {
 	float sun_face = clamp(dot(bumped_world_n, normalize(sun_dir + vec3(0.0, 0.55, 0.0))), 0.0, 1.0);
 	vec3 view_w = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	float forward_scatter = pow(clamp(dot(-view_w, sun_dir), 0.0, 1.0), 6.0);
+	float rim_grazing = pow(1.0 - clamp(dot(bumped_world_n, -view_w), 0.0, 1.0), 3.2);
 
 	// 3. 参考图冷暖色盘：受光面暖金奶油白，背风坡冰钴蓝，凹坑深群青
-	vec3 snow_sunlit = vec3(0.95, 0.90, 0.82);
-	vec3 snow_mid_cool = vec3(0.68, 0.80, 0.95);
-	vec3 snow_deep_drift = vec3(0.50, 0.66, 0.90);
+	vec3 snow_sunlit = vec3(0.96, 0.91, 0.83);
+	vec3 snow_mid_cool = vec3(0.67, 0.79, 0.95);
+	vec3 snow_deep_drift = vec3(0.49, 0.65, 0.89);
 
-	vec3 snow_col = mix(snow_mid_cool, snow_sunlit, smoothstep(0.10, 0.78, sun_face));
+	vec3 snow_col = mix(snow_mid_cool, snow_sunlit, smoothstep(0.08, 0.76, sun_face));
 	snow_col = mix(snow_col, snow_deep_drift, smoothstep(0.35, 0.92, snow_depth) * (1.0 - sun_face * 0.55));
-	snow_col += (drift_n - 0.5) * vec3(0.045, 0.050, 0.065);
+	snow_col += (drift_n - 0.5) * vec3(0.048, 0.052, 0.068);
+	// 风纹微阴阳：涟漪迎光脊略带暖奶油色、背光槽略沉冰蓝
+	snow_col += (sastrugi_ridge - 0.45) * mix(vec3(-0.025, -0.020, 0.015), vec3(0.032, 0.026, 0.012), sun_face);
+	// 掠射角粉雪微光（Velvet Rim）
+	snow_col += vec3(0.06, 0.07, 0.09) * rim_grazing * (0.4 + 0.6 * sun_face);
 
 	// 3b. 薄雪露地：雪越薄，地面（深褐土 / 帚石楠）与枯草越多地露出来，斑块由噪声决定。
 	//     让"这里雪很薄"不用探针也能看出来（第 3 / 4 关、风蚀脊顶）。

@@ -103,7 +103,10 @@ func _ready() -> void:
 		tray_card.position = Vector2(10, 134)   # 左下留给摇杆：放到体温卡下面
 	else:
 		tray_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		tray_card.position = Vector2(32, -140)
+		tray_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		tray_card.offset_left = 32.0
+		tray_card.offset_bottom = -64.0
+		tray_card.offset_top = -64.0
 	root.add_child(tray_card)
 	var tv := VBoxContainer.new()
 	tray_card.add_child(tv)
@@ -125,18 +128,32 @@ func _ready() -> void:
 	_slot_box.add_theme_constant_override("separation", 14)
 	tv.add_child(_slot_box)
 	for c in [Color(0.55, 0.36, 0.2), Color(0.93, 0.92, 0.88), Color(0.78, 0.66, 0.36)]:
+		var slot_panel := PanelContainer.new()
+		slot_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sps := StyleBoxFlat.new()
+		sps.bg_color = Color(1, 1, 1, 0.04)
+		sps.border_color = Color(1, 1, 1, 0.14)
+		sps.set_border_width_all(1)
+		sps.set_corner_radius_all(4)
+		sps.content_margin_left = 8
+		sps.content_margin_right = 8
+		sps.content_margin_top = 3
+		sps.content_margin_bottom = 3
+		slot_panel.add_theme_stylebox_override("panel", sps)
 		var chip := HBoxContainer.new()
-		chip.add_theme_constant_override("separation", 5)
+		chip.add_theme_constant_override("separation", 6)
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var sw := ColorRect.new()
 		sw.color = c
-		sw.custom_minimum_size = Vector2(14, 14)
+		sw.custom_minimum_size = Vector2(12, 12)
 		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		sw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.add_child(sw)
-		var lb := _label("", 14, CREAM)
+		var lb := _label("", 13, CREAM)
 		chip.add_child(lb)
 		_slot_labels.append(lb)
-		_slot_box.add_child(chip)
+		slot_panel.add_child(chip)
+		_slot_box.add_child(slot_panel)
 
 	# 消息（顶部居中）
 	_toast = _label("", 17, CREAM)
@@ -185,16 +202,41 @@ func _card(accent: Color) -> PanelContainer:
 	var p := PanelContainer.new()
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var s := StyleBoxFlat.new()
-	s.bg_color = INK
+	s.bg_color = Color(0.032, 0.048, 0.075, 0.91)
 	s.border_width_left = 3
-	s.border_color = accent
-	s.corner_radius_top_right = 4
-	s.corner_radius_bottom_right = 4
-	s.content_margin_left = 14
-	s.content_margin_right = 14
-	s.content_margin_top = 8
-	s.content_margin_bottom = 8
+	s.border_width_top = 1
+	s.border_width_right = 1
+	s.border_width_bottom = 1
+	s.border_color = Color(accent.r, accent.g, accent.b, 0.78)
+	s.corner_radius_top_left = 4
+	s.corner_radius_bottom_left = 4
+	s.corner_radius_top_right = 6
+	s.corner_radius_bottom_right = 6
+	s.shadow_color = Color(0, 0, 0, 0.36)
+	s.shadow_size = 8
+	s.shadow_offset = Vector2(0, 3)
+	s.content_margin_left = 15
+	s.content_margin_right = 15
+	s.content_margin_top = 10
+	s.content_margin_bottom = 10
 	p.add_theme_stylebox_override("panel", s)
+	return p
+
+func _pill(text: String, font_size: int, fg: Color, bg: Color, border: Color, pad_x: int = 8, pad_y: int = 3) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(4)
+	s.content_margin_left = pad_x
+	s.content_margin_right = pad_x
+	s.content_margin_top = pad_y
+	s.content_margin_bottom = pad_y
+	p.add_theme_stylebox_override("panel", s)
+	var l := _label(text, font_size, fg)
+	p.add_child(l)
 	return p
 
 func _label(text: String, size: int, color: Color) -> Label:
@@ -235,6 +277,12 @@ func set_inventory(wood: int, bark: int, bedding: int, max_wood: int = 4, max_be
 		_slot_labels[i].add_theme_color_override("font_color", AMBER if full else CREAM)
 		if full:
 			_slot_labels[i].text += " " + Loc.t("full")
+		if _slot_box and i < _slot_box.get_child_count() and _slot_box.get_child(i) is PanelContainer:
+			var sp := _slot_box.get_child(i) as PanelContainer
+			var sps := sp.get_theme_stylebox("panel") as StyleBoxFlat
+			if sps:
+				sps.border_color = AMBER if full else Color(1, 1, 1, 0.14)
+				sps.bg_color = Color(1.0, 0.62, 0.20, 0.14) if full else Color(1, 1, 1, 0.04)
 
 ## 「第一步」清单：steps = [{label, done}]，第一个没做完的是当前步。触屏只画一行进度（✓✓○○○ 2/5），省地方。
 func set_steps(steps: Array) -> void:
@@ -304,27 +352,41 @@ func show_briefing(on: bool, forecast: String = "", intro: String = "", level: D
 func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary = {}) -> Control:
 	var shade := ColorRect.new()
 	shade.name = "Briefing"
-	shade.color = Color(0.02, 0.035, 0.06, 0.82)
+	shade.color = Color(0.018, 0.030, 0.052, 0.78)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	if TouchMode.enabled:
 		center.offset_bottom = -76.0   # 底部是按钮
 	shade.add_child(center)
+	var board := _card(AMBER)
+	var bs := board.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	bs.bg_color = Color(0.025, 0.038, 0.062, 0.92)
+	bs.border_width_left = 4
+	bs.border_color = Color(1.0, 0.65, 0.24, 0.85)
+	bs.set_corner_radius_all(8)
+	bs.content_margin_left = 28 if TouchMode.enabled else 42
+	bs.content_margin_right = 28 if TouchMode.enabled else 42
+	bs.content_margin_top = 22 if TouchMode.enabled else 32
+	bs.content_margin_bottom = 22 if TouchMode.enabled else 30
+	bs.shadow_color = Color(0, 0, 0, 0.48)
+	bs.shadow_size = 16
+	board.add_theme_stylebox_override("panel", bs)
+	center.add_child(board)
 	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 26)
-	center.add_child(outer)
+	outer.add_theme_constant_override("separation", 22)
+	board.add_child(outer)
 	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 28 if TouchMode.enabled else 56)
+	cols.add_theme_constant_override("separation", 24 if TouchMode.enabled else 44)
 	outer.add_child(cols)
 	# 左栏：标题 + 章 / 阶选择
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(440 if TouchMode.enabled else 520, 0)
-	left.add_theme_constant_override("separation", 12)
+	left.custom_minimum_size = Vector2(430 if TouchMode.enabled else 500, 0)
+	left.add_theme_constant_override("separation", 10)
 	cols.add_child(left)
-	left.add_child(_label(Loc.t("SNOW SHELTER"), 38 if TouchMode.enabled else 52, CREAM))
-	left.add_child(_label(Loc.t("C H A L L E N G E"), 18, CREAM))
-	left.add_child(_label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 14, AMBER))
+	left.add_child(_label(Loc.t("SNOW SHELTER"), 38 if TouchMode.enabled else 48, CREAM))
+	left.add_child(_label(Loc.t("C H A L L E N G E"), 16, MUTED))
+	left.add_child(_label(Loc.t("FIND  ·  GATHER  ·  BUILD  ·  SURVIVE"), 13, AMBER))
 	left.add_child(HSeparator.new())
 	if not level.is_empty():
 		_chip_row(left, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")
@@ -338,33 +400,58 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 			var lh := _label(String(level["locked_hint"]), 13, Color(MUTED, 0.75))
 			lh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			left.add_child(lh)
+	cols.add_child(VSeparator.new())
 	# 右栏：这一阶是什么、条件、开始
+	var right_card := PanelContainer.new()
+	var rcs := StyleBoxFlat.new()
+	rcs.bg_color = Color(0.055, 0.080, 0.125, 0.55)
+	rcs.border_color = Color(0.62, 0.78, 0.95, 0.25)
+	rcs.set_border_width_all(1)
+	rcs.set_corner_radius_all(6)
+	rcs.set_content_margin_all(18)
+	right_card.add_theme_stylebox_override("panel", rcs)
+	right_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cols.add_child(right_card)
 	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(540 if TouchMode.enabled else 660, 0)
-	right.add_theme_constant_override("separation", 14)
+	right.custom_minimum_size = Vector2(500 if TouchMode.enabled else 580, 0)
+	right.add_theme_constant_override("separation", 12)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
-	cols.add_child(right)
-	var title := _label(String(level.get("title", Loc.t("Free play"))), 16, MUTED)
+	right_card.add_child(right)
+	var title := _label(String(level.get("title", Loc.t("Free play"))), 15, Color(0.68, 0.82, 0.98))
 	title.name = "LevelTitle"
 	right.add_child(title)
 	var lesson_text := String(level.get("lesson", "")) if not level.is_empty() else Loc.t("Read the land, find deep snow on the sheltered side, and build a shelter before dark.")
-	var lesson := _label(lesson_text, 24, CREAM)
+	var lesson := _label(lesson_text, 22, CREAM)
 	lesson.name = "LevelLesson"
 	lesson.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(lesson)
-	var cond := _label(String(level.get("conditions", intro.split("\n")[0])), 16, AMBER)
+	var cond_box := PanelContainer.new()
+	var cbs := StyleBoxFlat.new()
+	cbs.bg_color = Color(1.0, 0.62, 0.20, 0.12)
+	cbs.border_color = Color(1.0, 0.62, 0.20, 0.42)
+	cbs.border_width_left = 3
+	cbs.set_corner_radius_all(4)
+	cbs.content_margin_left = 10
+	cbs.content_margin_right = 10
+	cbs.content_margin_top = 6
+	cbs.content_margin_bottom = 6
+	cond_box.add_theme_stylebox_override("panel", cbs)
+	cond_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cond := _label(String(level.get("conditions", intro.split("\n")[0])), 15, AMBER)
 	cond.name = "LevelConditions"
 	cond.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right.add_child(cond)
+	cond_box.add_child(cond)
+	right.add_child(cond_box)
 	if forecast != "":
-		var fl := _label(forecast, 14, MUTED)
+		var fl := _label(forecast, 13, MUTED)
 		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		right.add_child(fl)
 	# 唯一主行动
-	var go := _label(Loc.t("ENTER  Begin          [I]  Intel: gear, shelters, map, controls"), 20, AMBER)
+	var go := _label(Loc.t("ENTER  Begin          [I]  Intel: gear, shelters, map, controls"), 18, AMBER)
 	go.name = "BriefingGo"
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if not TouchMode.enabled:
+		outer.add_child(HSeparator.new())
 		outer.add_child(go)
 	if not TouchMode.enabled and (level.is_empty() or bool(level.get("full_day_option", false))):
 		var alt := _label(Loc.t("[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)"), 13, MUTED)
@@ -375,18 +462,31 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 ## 章节行 + 阶行（D12 / D13）：当前高亮、未开放变暗。
 func _chip_row(v: VBoxContainer, head_text: String, chips: Array, prefix: String, row_name: String) -> void:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 6)
 	var head := _label(head_text, 13, MUTED)
-	head.custom_minimum_size = Vector2(150, 0)
+	head.custom_minimum_size = Vector2(142, 0)
 	row.add_child(head)
 	for chip in chips:
 		var cur := bool(chip["current"])
 		var open := bool(chip["unlocked"])
-		var text := ("[ %s ]" % chip["label"]) if cur else String(chip["label"])
+		var text := String(chip["label"])
 		var col := AMBER if cur else (CREAM if open else Color(MUTED, 0.35))
-		var l := _label(text, 19 if cur else 15, col)
+		var badge := PanelContainer.new()
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bs := StyleBoxFlat.new()
+		bs.bg_color = Color(1.0, 0.62, 0.20, 0.22) if cur else (Color(1, 1, 1, 0.06) if open else Color(1, 1, 1, 0.02))
+		bs.border_color = AMBER if cur else (Color(1, 1, 1, 0.18) if open else Color(1, 1, 1, 0.06))
+		bs.set_border_width_all(2 if cur else 1)
+		bs.set_corner_radius_all(4)
+		bs.content_margin_left = 7
+		bs.content_margin_right = 7
+		bs.content_margin_top = 2
+		bs.content_margin_bottom = 2
+		badge.add_theme_stylebox_override("panel", bs)
+		var l := _label(text, 15 if cur else 13, col)
 		l.name = "%s%s" % [prefix, chip["label"]]
-		row.add_child(l)
+		badge.add_child(l)
+		row.add_child(badge)
 	row.name = row_name
 	v.add_child(row)
 
@@ -425,7 +525,16 @@ func toggle_intel(tab_key: String = "") -> void:
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shade.add_child(center)
 		var card := _card(Color(0.62, 0.78, 0.95))
-		card.custom_minimum_size = Vector2(940, 400) if TouchMode.enabled else Vector2(1000, 600)
+		card.custom_minimum_size = Vector2(960, 410) if TouchMode.enabled else Vector2(1060, 620)
+		var cs := card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		cs.bg_color = Color(0.024, 0.036, 0.060, 0.95)
+		cs.border_width_left = 4
+		cs.set_corner_radius_all(8)
+		cs.content_margin_left = 20
+		cs.content_margin_right = 20
+		cs.content_margin_top = 16
+		cs.content_margin_bottom = 16
+		card.add_theme_stylebox_override("panel", cs)
 		if TouchMode.enabled:
 			center.offset_bottom = -76.0
 			center.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -437,17 +546,17 @@ func toggle_intel(tab_key: String = "") -> void:
 		v.add_theme_constant_override("separation", 12)
 		card.add_child(v)
 		_intel_tabs_row = HBoxContainer.new()
-		_intel_tabs_row.add_theme_constant_override("separation", 18)
+		_intel_tabs_row.add_theme_constant_override("separation", 8)
 		v.add_child(_intel_tabs_row)
 		v.add_child(HSeparator.new())
-		_intel_body = _label("", 16, CREAM)
+		_intel_body = _label("", 15, CREAM)
 		_intel_body.name = "IntelBody"
 		_intel_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_intel_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		# 正文 + 卡片放在滚动区里：手机上用手指拖，桌面上用滚轮（庇护所卡片一页放不下）
 		var sc := ScrollContainer.new()
 		sc.name = "IntelScroll"
-		sc.custom_minimum_size = Vector2(900, 330) if TouchMode.enabled else Vector2(960, 500)
+		sc.custom_minimum_size = Vector2(920, 330) if TouchMode.enabled else Vector2(1010, 505)
 		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		_intel_scroll = sc
@@ -455,18 +564,19 @@ func toggle_intel(tab_key: String = "") -> void:
 		content.add_theme_constant_override("separation", 14)
 		content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		content.mouse_filter = Control.MOUSE_FILTER_PASS
-		_intel_body.custom_minimum_size = Vector2(880 if TouchMode.enabled else 940, 0)
+		_intel_body.custom_minimum_size = Vector2(900 if TouchMode.enabled else 980, 0)
 		_intel_body.mouse_filter = Control.MOUSE_FILTER_PASS
 		_intel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		content.add_child(_intel_body)
 		_intel_cards = VBoxContainer.new()
 		_intel_cards.name = "IntelCards"
-		_intel_cards.add_theme_constant_override("separation", 10)
+		_intel_cards.add_theme_constant_override("separation", 12)
 		_intel_cards.mouse_filter = Control.MOUSE_FILTER_PASS
 		content.add_child(_intel_cards)
 		sc.add_child(content)
 		v.add_child(sc)
 		if not TouchMode.enabled:
+			v.add_child(HSeparator.new())
 			v.add_child(_label(Loc.t("[←] [→] or [Tab]  switch page      [I] / [H]  close") + "      " + Loc.t("[Wheel] scroll"), 13, AMBER))
 		get_child(0).add_child(_intel)
 	_intel.visible = true
@@ -485,7 +595,15 @@ func _render_intel() -> void:
 	for i in _intel_tabs.size():
 		var cur := i == _intel_idx
 		var t := String(_intel_tabs[i]["title"])
-		_intel_tabs_row.add_child(_label(("[ %s ]" % t) if cur else t, 17 if cur else 15, AMBER if cur else MUTED))
+		var tab_pill := _pill(
+			t,
+			15 if cur else 14,
+			AMBER if cur else MUTED,
+			Color(1.0, 0.62, 0.20, 0.18) if cur else Color(1, 1, 1, 0.04),
+			AMBER if cur else Color(1, 1, 1, 0.12),
+			12, 5
+		)
+		_intel_tabs_row.add_child(tab_pill)
 	_intel_body.text = String(_intel_tabs[_intel_idx]["body"]) if _intel_idx < _intel_tabs.size() else ""
 	for c in _intel_cards.get_children():
 		_intel_cards.remove_child(c)
@@ -495,61 +613,142 @@ func _render_intel() -> void:
 			_intel_cards.add_child(_shelter_card_ui(cd))
 	_intel_scroll.scroll_vertical = 0
 
-## 一张庇护所卡片：左边剖面图（怎么回事）+ 外观图（地图上长什么样），右边名字、你会不会、说明、条件、火。
-## 还没学会的整张卡变暗。cd = GameDirector.shelter_cards() 的一项。
+## 一张庇护所卡片：左边并排展示「内部剖面」+「地图外观」高清画框（带角标），右边展示名称、状态徽章、结构说明与四项关键规格表。
+## 还没学会的整张卡略压暗。cd = GameDirector.shelter_cards() 的一项。
 func _shelter_card_ui(cd: Dictionary) -> Control:
 	var panel := PanelContainer.new()
 	panel.name = "ShelterCard_%s" % String(cd["id"])
 	var st := StyleBoxFlat.new()
-	var accent: Color = Color(0.55, 0.9, 0.6) if String(cd["state"]) == "known" else (AMBER if String(cd["state"]) == "new" else MUTED)
-	st.bg_color = Color(1, 1, 1, 0.04)
-	st.border_color = Color(accent, 0.6)
-	st.border_width_left = 3
-	st.set_corner_radius_all(6)
-	st.set_content_margin_all(10)
+	var state := String(cd["state"])
+	var accent: Color = Color(0.52, 0.92, 0.62) if state == "known" else (AMBER if state == "new" else MUTED)
+	st.bg_color = Color(0.052, 0.075, 0.118, 0.90) if state != "locked" else Color(0.038, 0.052, 0.082, 0.72)
+	st.border_color = Color(accent.r, accent.g, accent.b, 0.75 if state != "locked" else 0.35)
+	st.border_width_left = 4
+	st.border_width_top = 1
+	st.border_width_right = 1
+	st.border_width_bottom = 1
+	st.set_corner_radius_all(7)
+	st.content_margin_left = 14
+	st.content_margin_right = 16
+	st.content_margin_top = 12
+	st.content_margin_bottom = 12
+	st.shadow_color = Color(0, 0, 0, 0.28)
+	st.shadow_size = 6
+	st.shadow_offset = Vector2(0, 2)
 	panel.add_theme_stylebox_override("panel", st)
 	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 16)
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	panel.add_child(row)
-	var pics := VBoxContainer.new()
-	pics.add_theme_constant_override("separation", 4)
-	pics.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# 左栏：并排高清视图框（树井只画剖面图，则单张放大）
+	var pics := HBoxContainer.new()
+	pics.add_theme_constant_override("separation", 8)
+	pics.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	pics.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(pics)
-	for key in ["cut", "out"]:
+	var has_out := ResourceLoader.exists("res://assets/ui/shelters/%s_out.webp" % String(cd["id"]))
+	var pic_size := Vector2(216, 122) if has_out else Vector2(440, 188)
+	if TouchMode.enabled:
+		pic_size = Vector2(188, 106) if has_out else Vector2(384, 164)
+	for pair in [["cut", Loc.t("CUTAWAY")], ["out", Loc.t("OUTSIDE")]]:
+		var key: String = pair[0]
+		var tag_txt: String = pair[1]
 		var path := "res://assets/ui/shelters/%s_%s.webp" % [String(cd["id"]), key]
 		if not ResourceLoader.exists(path):
 			continue
+		var frame := PanelContainer.new()
+		var fs := StyleBoxFlat.new()
+		fs.bg_color = Color(0.02, 0.03, 0.05, 1.0)
+		fs.border_color = Color(0.70, 0.82, 0.96, 0.28)
+		fs.set_border_width_all(1)
+		fs.set_corner_radius_all(4)
+		fs.set_content_margin_all(2)
+		frame.add_theme_stylebox_override("panel", fs)
+		frame.mouse_filter = Control.MOUSE_FILTER_PASS
+		var holder := Control.new()
+		holder.custom_minimum_size = pic_size
+		holder.mouse_filter = Control.MOUSE_FILTER_PASS
+		frame.add_child(holder)
 		var tr := TextureRect.new()
 		tr.texture = load(path)
-		tr.custom_minimum_size = Vector2(256, 144)
+		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		tr.mouse_filter = Control.MOUSE_FILTER_PASS
-		pics.add_child(tr)
+		holder.add_child(tr)
+		var badge := _pill(tag_txt, 10, CREAM, Color(0.02, 0.035, 0.06, 0.82), Color(1, 1, 1, 0.18), 6, 2)
+		badge.position = Vector2(6, 6)
+		holder.add_child(badge)
+		pics.add_child(frame)
+	# 右栏：标题 + 状态徽章 + 说明 + 规格小表
 	var txt := VBoxContainer.new()
-	txt.add_theme_constant_override("separation", 4)
+	txt.add_theme_constant_override("separation", 6)
 	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	txt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	txt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	txt.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(txt)
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
-	head.add_child(_label(String(cd["name"]), 18, CREAM))
-	head.add_child(_label(String(cd["status"]), 14, accent))
+	head.add_theme_constant_override("separation", 10)
+	var title_lb := _label(String(cd["name"]), 19, CREAM)
+	head.add_child(title_lb)
+	var status_pill := _pill(
+		String(cd["status"]).to_upper(),
+		11,
+		accent,
+		Color(accent.r, accent.g, accent.b, 0.16),
+		Color(accent.r, accent.g, accent.b, 0.55),
+		8, 2
+	)
+	status_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(status_pill)
 	txt.add_child(head)
-	for k in [["about", 14, CREAM], ["needs", 13, MUTED], ["fire", 13, MUTED]]:
-		var l := _label(String(cd[k[0]]), k[1], k[2])
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size = Vector2(540 if TouchMode.enabled else 620, 0)
-		l.mouse_filter = Control.MOUSE_FILTER_PASS
-		txt.add_child(l)
-	if String(cd["state"]) == "locked":
-		panel.modulate = Color(1, 1, 1, 0.55)
+	var about_lb := _label(String(cd["about"]), 14, CREAM)
+	about_lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	about_lb.custom_minimum_size = Vector2(460 if TouchMode.enabled else 510, 0)
+	about_lb.mouse_filter = Control.MOUSE_FILTER_PASS
+	txt.add_child(about_lb)
+	# 规格栏：选址 / 工时 / 材料 / 篝火
+	var specs := PanelContainer.new()
+	var sps := StyleBoxFlat.new()
+	sps.bg_color = Color(0.025, 0.038, 0.062, 0.65)
+	sps.border_color = Color(1, 1, 1, 0.08)
+	sps.set_border_width_all(1)
+	sps.set_corner_radius_all(4)
+	sps.content_margin_left = 10
+	sps.content_margin_right = 10
+	sps.content_margin_top = 6
+	sps.content_margin_bottom = 6
+	specs.add_theme_stylebox_override("panel", sps)
+	specs.mouse_filter = Control.MOUSE_FILTER_PASS
+	var sv := VBoxContainer.new()
+	sv.add_theme_constant_override("separation", 3)
+	sv.mouse_filter = Control.MOUSE_FILTER_PASS
+	specs.add_child(sv)
+	var site_str := String(cd.get("site", ""))
+	var time_str := String(cd.get("time", ""))
+	var mats_str := String(cd.get("mats", ""))
+	if site_str != "":
+		var r1 := _label("%s: %s   ·   %s: %s   ·   %s: %s" % [
+			Loc.t("SITE"), site_str, Loc.t("WORK TIME"), time_str, Loc.t("MATERIALS"), mats_str], 12, Color(0.82, 0.88, 0.96))
+		r1.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		r1.custom_minimum_size = Vector2(440 if TouchMode.enabled else 490, 0)
+		r1.mouse_filter = Control.MOUSE_FILTER_PASS
+		sv.add_child(r1)
+	else:
+		var l_needs := _label(String(cd["needs"]), 12, Color(0.82, 0.88, 0.96))
+		l_needs.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l_needs.custom_minimum_size = Vector2(440 if TouchMode.enabled else 490, 0)
+		l_needs.mouse_filter = Control.MOUSE_FILTER_PASS
+		sv.add_child(l_needs)
+	var l_fire := _label("%s: %s" % [Loc.t("FIRE"), String(cd["fire"])], 12, Color(0.96, 0.78, 0.52))
+	l_fire.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l_fire.custom_minimum_size = Vector2(440 if TouchMode.enabled else 490, 0)
+	l_fire.mouse_filter = Control.MOUSE_FILTER_PASS
+	sv.add_child(l_fire)
+	txt.add_child(specs)
+	if state == "locked":
+		panel.modulate = Color(0.82, 0.85, 0.90, 0.72)
 	return panel
 
 ## 野外手册内容（[H] 打开情报面板的这一页）。
@@ -723,17 +922,29 @@ func toggle_credits() -> void:
 func show_pause(on: bool) -> void:
 	if on and _pause == null:
 		var shade := ColorRect.new()
-		shade.color = Color(0.02, 0.035, 0.06, 0.75)
+		shade.color = Color(0.018, 0.030, 0.052, 0.78)
 		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 		var center := CenterContainer.new()
 		center.set_anchors_preset(Control.PRESET_FULL_RECT)
 		shade.add_child(center)
+		var card := _card(AMBER)
+		var cs := card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		cs.bg_color = Color(0.025, 0.038, 0.062, 0.94)
+		cs.border_width_left = 4
+		cs.set_corner_radius_all(8)
+		cs.content_margin_left = 36
+		cs.content_margin_right = 36
+		cs.content_margin_top = 26
+		cs.content_margin_bottom = 26
+		card.add_theme_stylebox_override("panel", cs)
+		center.add_child(card)
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 10)
-		center.add_child(v)
-		var t := _label(Loc.t("PAUSED"), 40, CREAM)
+		card.add_child(v)
+		var t := _label(Loc.t("PAUSED"), 36, CREAM)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t)
+		v.add_child(HSeparator.new())
 		var keys_lines := [] if TouchMode.enabled else [Loc.t("[Esc] resume      [R] restart      [Q] quit      [C] credits"),
 				"", Loc.t("[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink"),
 				Loc.t("[B] build mode — [Tab] type, [R] rotate entrance, [E] place"),
@@ -795,21 +1006,32 @@ func show_report(data: Dictionary, shelter_name: String) -> void:
 	if _report:
 		_report.queue_free()
 	var shade := ColorRect.new()
-	shade.color = Color(0.015, 0.025, 0.045, 0.94)
+	shade.color = Color(0.015, 0.025, 0.045, 0.90)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var v := VBoxContainer.new()
 	v.custom_minimum_size = Vector2(880, 0)
 	v.add_theme_constant_override("separation", 8)
+	var outcome := String(data["outcome"])
+	var oc := {"SAFE": Color(0.55, 0.95, 0.6), "COLD": Color(1.0, 0.78, 0.4)}.get(outcome, Color(1.0, 0.45, 0.38)) as Color
+	var board := _card(oc)
+	var bs := board.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	bs.bg_color = Color(0.024, 0.036, 0.060, 0.95)
+	bs.border_width_left = 4
+	bs.set_corner_radius_all(8)
+	bs.content_margin_left = 26 if TouchMode.enabled else 34
+	bs.content_margin_right = 26 if TouchMode.enabled else 34
+	bs.content_margin_top = 20 if TouchMode.enabled else 26
+	bs.content_margin_bottom = 20 if TouchMode.enabled else 24
+	board.add_theme_stylebox_override("panel", bs)
+	board.add_child(v)
 	if TouchMode.enabled:
-		_scroll_wrap(v, shade)
+		_scroll_wrap(board, shade)
 	else:
 		var center := CenterContainer.new()
 		center.set_anchors_preset(Control.PRESET_FULL_RECT)
 		shade.add_child(center)
-		center.add_child(v)
-	var outcome := String(data["outcome"])
-	var oc := {"SAFE": Color(0.55, 0.95, 0.6), "COLD": Color(1.0, 0.78, 0.4)}.get(outcome, Color(1.0, 0.45, 0.38)) as Color
-	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 14, MUTED))
+		center.add_child(board)
+	v.add_child(_label(Loc.t("NIGHT REPORT  ·  JAN 14 → 15"), 13, MUTED))
 	v.add_child(_label(String(data["title"]), 36, oc))
 	v.add_child(_label(Loc.t("Shelter: %s") % shelter_name, 14, MUTED))
 	if String(data.get("score_line", "")) != "":
