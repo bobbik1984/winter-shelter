@@ -27,7 +27,17 @@ mkdir -p build/android
 touch build/.gdignore
 echo "$sha-android" > build_info.txt
 rm -f build/android/unsigned.apk
-XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" build/android/unsigned.apk 2>&1 | grep -E "ERROR" || true
+# Godot 4.3 的已导出资源缓存可能保留旧 Resource 默认值；每次完整重导出。
+rm -rf .godot/exported
+if ! XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" build/android/unsigned.apk > "$tmp/export.log" 2>&1; then
+  tail -n 60 "$tmp/export.log" >&2
+  echo "Android export failed" >&2
+  exit 1
+fi
+if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$tmp/export.log"; then
+  echo "Android export reported errors" >&2
+  exit 1
+fi
 [ -s build/android/unsigned.apk ] || { echo "export failed" >&2; exit 1; }
 
 # 签名：有正式密钥就用正式密钥（和 bob 的 APK 同一把，Actions 打的包也用它），否则用本机测试密钥。

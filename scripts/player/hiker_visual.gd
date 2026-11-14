@@ -306,3 +306,22 @@ func _add_sphere(pos: Vector3, radius: float, material: StandardMaterial3D) -> M
 	mi.position = pos
 	add_child(mi)
 	return mi
+
+
+## 休息时卸下背包、垫卷与探针，避免大挂件盖住床铺/雪壁；离开后恢复。
+func set_resting(on: bool) -> void:
+	if _inst == null:
+		return
+	var hidden := StandardMaterial3D.new()
+	hidden.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	hidden.albedo_color = Color(0, 0, 0, 0)
+	for node in _inst.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var mat := mesh.mesh.surface_get_material(i)
+			if mat != null and mat.resource_name in ["Pack", "PackDark", "Pad", "ProbeWhite", "ProbeBlack"]:
+				mesh.set_surface_override_material(i, hidden if on else null)
+	for node in _logs + _bedding:
+		node.visible = not on

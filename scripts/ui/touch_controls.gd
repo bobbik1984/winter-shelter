@@ -271,6 +271,10 @@ func _release_all() -> void:
 	_touch.clear()
 	_end_stick()
 
+func _notification(what: int) -> void:
+	if _canvas != null and what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED]:
+		_release_all()
+
 ## 直接交给视口（走和键盘一样的 _unhandled_input）。延后一步，不在处理触摸事件的中途嵌套分发。
 func _key_event(k: Key, pressed: bool) -> void:
 	var e := InputEventKey.new()

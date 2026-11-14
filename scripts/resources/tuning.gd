@@ -1,6 +1,16 @@
 class_name Tuning
 extends Resource
 
+@export_group("Mobile Power")
+## [TUNE] 手机游玩 / 静态菜单 / 后台的帧率预算，不改变物理步长或游戏时间倍率。
+@export var mobile_play_fps: int = 30
+@export var mobile_menu_fps: int = 15
+@export var mobile_background_fps: int = 5
+## [TUNE] 手机三档的 3D 渲染高度；UI 仍按原始屏幕分辨率绘制。
+@export var mobile_render_heights: Vector3i = Vector3i(480, 600, 720)
+## [TUNE] 手机阴影图集，保留太阳阴影与昼夜方向。
+@export var mobile_shadow_size: int = 1024
+
 ## T0.5 唯一调参源：环境、玩家动作、庇护所、夜间结算的全部数值集中在这里。
 ## 每个字段注释都带 [REAL] / [GAME] / [TUNE] 身份标签：
 ##   [REAL] 有现实依据（出处见 research/SNOW_SHELTER_RESEARCH.md）
@@ -808,7 +818,7 @@ extends Resource
 ## [GAME] 生火按住秒数。
 @export var fire_hold_seconds: float = 2.0
 ## [GAME] 每根木材燃烧的游戏分钟（营火，非通宵）。
-@export var campfire_minutes_per_wood: float = 25.0
+@export var campfire_minutes_per_wood: float = 120.0 # 旧资源兼容；运行时由 fire_fuel_hours_per_log 与天气统一计算。
 ## [GAME] 火的有效取暖半径 3.5 m。
 @export var fire_warm_radius_m: float = 3.5
 ## [GAME] 树冠下生火判定半径 2.2 m（落雪压火）。

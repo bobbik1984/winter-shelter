@@ -806,6 +806,8 @@ func set_shelter_card(title: String, line: String, done: bool) -> void:
 		v.add_child(_shelter_line)
 		get_child(0).add_child(_shelter_card)
 	_shelter_card.visible = title != "" and _day_hud_on
+	var tray := _objective.get_parent().get_parent() as Control
+	_shelter_card.position.y = tray.position.y + tray.size.y + 10.0
 	_shelter_title.text = title
 	_shelter_line.text = line
 	(_shelter_card.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(1.0, 0.7, 0.35) if done else Color(0.62, 0.78, 0.95)
@@ -1125,6 +1127,13 @@ func set_day_hud(on: bool) -> void:
 	var tray_card := _objective.get_parent().get_parent() as Control
 	if tray_card:
 		tray_card.visible = on
+
+## 洞内只保留交互与结构信息，探索目标/背包不覆盖剖面。
+func set_inside_hud(inside: bool) -> void:
+	var tray := _objective.get_parent().get_parent() as Control
+	tray.visible = _day_hud_on and not inside
+	if inside and _shelter_card:
+		_shelter_card.visible = false
 
 func show_night_hud(on: bool) -> void:
 	if on and _night_hud == null:

@@ -29,8 +29,19 @@ const UI_SCALES := [0.9, 1.0, 1.15, 1.3]
 ## [TUNE] 网页版每档的 3D 渲染高度（像素）。
 const COMPAT_3D_HEIGHT := [480, 720, 1080]
 var ui_scale_idx: int = 1
+var power_tuning: Tuning
+var _scene_mode := "briefing"
+var _background := false
+var _was_tree_paused := false
+var _was_muted := false
+
+static func mobile_profile() -> bool:
+	return OS.has_feature("mobile") or "--mobile-profile" in OS.get_cmdline_user_args()
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	power_tuning = load("res://resources/tuning.tres") as Tuning
+	set_scene_mode("briefing")
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
 		level = clampi(int(cfg.get_value("graphics", "level", _default_level())), 0, 2)
@@ -44,7 +55,43 @@ func _ready() -> void:
 ## 网页版一律默认低档（2026-11-07 用户定）：浏览器里认不出集显（X1 上桌面浏览器默认成了 Medium），
 ## 而且网页版是单线程，比本地版慢（X1 Low：本地约 57 FPS、浏览器约 40 FPS）。玩家自己按 F10 改过的档位照旧保留。
 func _default_level() -> int:
-	return 0 if TouchMode.enabled or OS.has_feature("web") or _weak_gpu() else 1
+	return 0 if mobile_profile() or TouchMode.enabled or OS.has_feature("web") or _weak_gpu() else 1
+
+## 菜单降帧；不调整 Engine.time_scale 或物理频率。
+func set_scene_mode(mode: String) -> void:
+	_scene_mode = mode
+	if not mobile_profile() or power_tuning == null:
+		return
+	Engine.max_fps = power_tuning.mobile_background_fps if _background else (power_tuning.mobile_menu_fps if mode in ["briefing", "paused", "report"] else power_tuning.mobile_play_fps)
+	# 报告是不透明的 2D 画面，停止绘制其后的世界。
+	get_viewport().disable_3d = mode == "report"
+
+func _notification(what: int) -> void:
+	if not mobile_profile() or not is_inside_tree() or power_tuning == null:
+		return
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED]:
+		set_background(true)
+	elif what in [NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED]:
+		set_background(false)
+
+## 锁屏/切后台时冻结整局，停音频与渲染；返回时恢复原来的暂停和静音状态。
+func set_background(on: bool) -> void:
+	if not mobile_profile() or on == _background:
+		return
+	_background = on
+	if on:
+		_was_tree_paused = get_tree().paused
+		_was_muted = AudioServer.is_bus_mute(0)
+		for action in InputMap.get_actions():
+			Input.action_release(action)
+		HoldAssist.latched = ""
+		get_tree().paused = true
+		AudioServer.set_bus_mute(0, true)
+	else:
+		get_tree().paused = _was_tree_paused
+		AudioServer.set_bus_mute(0, _was_muted)
+	RenderingServer.set_render_loop_enabled(not on)
+	set_scene_mode(_scene_mode)
 
 ## 集成显卡默认最低档（UHD 620 实测 Medium 约 27 FPS、Low 约 45 FPS）。
 ## 兼容渲染器不一定报告显卡类型，所以再按名字认一次。
@@ -135,13 +182,18 @@ func apply() -> void:
 	if BuildInfo.is_compat():
 		# 网页版的渲染器没有 FSR；手机窗口像素很高，按固定的 3D 高度算比例，不按窗口比例
 		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-		vp.scaling_3d_scale = clampf(float(COMPAT_3D_HEIGHT[level]) / maxf(float(get_window().size.y), 1.0), 0.25, 1.0)
+		var height: int = COMPAT_3D_HEIGHT[level]
+		if mobile_profile():
+			height = power_tuning.mobile_render_heights[level]
+		vp.scaling_3d_scale = clampf(float(height) / maxf(float(get_window().size.y), 1.0), 0.25, 1.0)
 	else:
 		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
 		vp.scaling_3d_scale = float(p[0])
 	# 低档关闭 FXAA（画面已经过 FSR 放大；约 +2 FPS）
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if level == 0 else Viewport.SCREEN_SPACE_AA_FXAA
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(p[6]) as RenderingServer.ShadowQuality)
+	if mobile_profile():
+		RenderingServer.directional_shadow_atlas_set_size(power_tuning.mobile_shadow_size, true)
 	var env_node := get_tree().get_first_node_in_group("world_environment") as WorldEnvironment
 	if env_node and env_node.environment:
 		# 兼容渲染器没有 SSAO、体积雾：不去请求，否则控制台报错

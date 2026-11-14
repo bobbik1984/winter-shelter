@@ -13,24 +13,21 @@ const LESSONS := {
 	"site": "Face the entrance away from the wind — the trees lean downwind and the compass needle shows where the wind goes.",
 	"structure": "Start digging earlier. When the shadows grow long, you have less than an hour of light.",
 	"insulation": "Gather bedding: dry grass and low spruce boughs keep the snow from stealing your heat.",
-	"isolation": "Cold air sinks. In a snow cave, dig a cold-air pit and sleep on a raised platform.",
-	"air": "Always pierce a vent in a snow shelter. Stale air kills quietly.",
+	"isolation": "Keep the sleeping platform above the low entrance passage. Choose a raised cave when snow depth and time allow; bedding reduces heat loss to snow.",
+	"air": "Keep an air vent open in an enclosed snow shelter. Check it after snowfall.",
 	"heat": "Probe several spots — deeper snow means thicker walls. Warm up by a fire and drink something hot before you crawl in.",
 }
 
 static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionary:
 	var scores: Dictionary = report.get("scores", {})
 	var d: Dictionary = report.get("details", {})
-	var zh_notes: Array = report.get("notes", [])
 	var preset := String(input.get("shelter_type", "None"))
 	var rows: Array = []
-	var idx := 0
 	for a in AXES:
 		var key: String = a[0]
-		# 中文模式：直接使用 NightSimulator 自带的中文归因（同一批事实）
-		var note := String(zh_notes[idx]) if Loc.is_zh() and idx < zh_notes.size() else _note(key, preset, input, d, t, scores)
+		# 中英文共用同一条件与事实；切换语言不切换归因算法。
+		var note := _note(key, preset, input, d, t, scores)
 		rows.append({"key": key, "label": Loc.t(a[1]), "score": int(round(float(scores.get(key, 0.0)))), "note": note})
-		idx += 1
 	var outcome := String(report.get("outcome", "DANGEROUS"))
 	var raw_title := String(report.get("outcome_title", outcome))
 	var title := raw_title.split(" (")[0]
@@ -47,9 +44,9 @@ static func build(report: Dictionary, input: Dictionary, t: Tuning) -> Dictionar
 		if min_axis == "isolation":
 			# 只有本图真的有雪洞深度时才建议去挖洞（如实：第 4 关根本没有）
 			if float(input.get("map_max_snow_m", 3.0)) >= t.snow_depth_cave_min_m:
-				lesson = Loc.t("An open lean-to can't trap cold air. Pile bedding thick and keep the reflector fire fed — or find deeper snow for a cave.")
+				lesson = Loc.t("An open lean-to loses heat to the outside air. Use thick bedding and tend the fire, or choose a cave where snow is deep enough.")
 			else:
-				lesson = Loc.t("An open lean-to can't trap cold air. Pile bedding thick and keep the reflector fire fed all night.")
+				lesson = Loc.t("An open lean-to loses heat to the outside air. Use thick bedding and tend the reflector fire.")
 		elif min_axis == "heat":
 			lesson = Loc.t("The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.") % [
 				t.night_duration_hours, t.fire_fuel_hours_per_log, int(ceil(t.night_duration_hours / t.fire_fuel_hours_per_log))]
@@ -145,104 +142,104 @@ static func _note(key: String, preset: String, i: Dictionary, d: Dictionary, t: 
 	match key:
 		"site":
 			if none:
-				return "No shelter — exposed to the %d km/h wind all night." % int(float(i.get("wind_speed_kmh", t.wind_speed_kmh)))
+				return Loc.t("No shelter — exposed to the %d km/h wind all night.") % int(float(i.get("wind_speed_kmh", t.wind_speed_kmh)))
 			if tent:
 				if angle < 60.0:
-					return "The tent door faced into the wind (%d°): the fabric flapped and drafts cut through all night." % int(angle)
+					return Loc.t("The tent door faced into the wind (%d°): the fabric flapped and drafts cut through all night.") % int(angle)
 				if angle < 120.0:
-					return "The tent door was side-on to the wind (%d°); gusts pressed the fabric in now and then." % int(angle)
-				return "The tent door was leeward (%d°); the fabric blocked the worst of the wind." % int(angle)
+					return Loc.t("The tent door was side-on to the wind (%d°); gusts pressed the fabric in now and then.") % int(angle)
+				return Loc.t("The tent door was leeward (%d°); the fabric blocked the worst of the wind.") % int(angle)
 			if angle < 60.0:
-				return "The entrance faced into the wind (%d°): drafts and drifting snow all night." % int(angle)
+				return Loc.t("The entrance faced into the wind (%d°): drafts and drifting snow all night.") % int(angle)
 			if angle < 120.0:
-				return "The entrance was side-on to the wind (%d°); gusts cut in now and then." % int(angle)
-			return "The entrance was leeward (%d°); the wind passed over you." % int(angle)
+				return Loc.t("The entrance was side-on to the wind (%d°); gusts cut in now and then.") % int(angle)
+			return Loc.t("The entrance was leeward (%d°); the wind passed over you.") % int(angle)
 		"structure":
 			if none:
-				return "Nothing was built."
+				return Loc.t("Nothing was built.")
 			if tent:
 				if completion < 0.999:
-					return "Only %d%% of the tent was up — the door or pegging was unfinished." % int(completion * 100.0)
-				return "Tent pitched, pegged and sealed; canvas has no snow body or reflector wall to hold heat."
+					return Loc.t("Only %d%% of the tent was up — the door or pegging was unfinished.") % int(completion * 100.0)
+				return Loc.t("Tent pitched, pegged and sealed; canvas has no snow body or reflector wall to hold heat.")
 			if bool(d.get("invalid_snow_depth", false)):
-				return "The snow here (%.1f m) was too shallow for this shelter." % float(i.get("snow_depth_meters", 0.0))
+				return Loc.t("The snow here (%.1f m) was too shallow for this shelter.") % float(i.get("snow_depth_meters", 0.0))
 			if completion < 0.999:
-				return "Only %d%% finished — it wasn't closed up before night." % int(completion * 100.0)
+				return Loc.t("Only %d%% finished — it wasn't closed up before night.") % int(completion * 100.0)
 			if preset == "TreeWell":
-				return "The spruce's own boughs made the roof; %.1f m of snow around the trunk made the walls." % float(i.get("snow_depth_meters", 0.0))
+				return Loc.t("The spruce's own boughs made the roof; %.1f m of snow around the trunk made the walls.") % float(i.get("snow_depth_meters", 0.0))
 			if is_snow:
-				return "Roof %.2f m thick over %.1f m of snow — it held." % [float(i.get("roof_thickness_meters", 0.0)), float(i.get("snow_depth_meters", 0.0))]
-			return "Frame, thatch and reflector wall all finished."
+				return Loc.t("Roof thickness %.2f m; snow depth %.1f m. Structure score includes completion and depth.") % [float(i.get("roof_thickness_meters", 0.0)), float(i.get("snow_depth_meters", 0.0))]
+			return Loc.t("The frame and roof were finished. Fire reflection depends on the shelter type.")
 		"insulation":
 			var b := float(i.get("bedding_quality", 0.0))
 			if b < 0.2:
-				return "No bedding: you lay on the snow and it drew the heat out of you."
+				return Loc.t("No bedding: you lay on the snow and it drew the heat out of you.")
 			if b >= 0.8:
-				return "Thick bough and grass bedding cut you off from the snow."
-			return "Thin bedding — the cold crept up by morning."
+				return Loc.t("Thick bough and grass bedding reduced heat loss into the snow.")
+			return Loc.t("Thin bedding — the cold crept up by morning.")
 		"isolation":
 			if lean:
-				return "An open shelter can't trap cold air; bedding and fire had to make up for it."
+				return Loc.t("An open shelter loses warm air; thick bedding and an external fire reduce heat loss.")
 			if tent:
-				return "No cold-air pit: the grass bed and sleeping bag kept you off the ground, but the tent floor still conducts cold."
+				return Loc.t("No cold-air pit: the grass bed and sleeping bag kept you off the ground, but the tent floor still conducts cold.")
 			if none:
-				return "You slept in the coldest air, right on the ground."
+				return Loc.t("No raised sleeping platform separates the bed from cold air near the ground.")
 			if preset == "TreeWell":
-				return "You slept at the bottom of the well with the cold air; a thick bough floor is what kept it off you."
+				return Loc.t("You slept at the bottom of the well with the cold air; a thick bough floor is what kept it off you.")
 			var pit := bool(i.get("has_cold_pit", false))
 			var bed := bool(i.get("has_raised_bed", false))
 			if pit and bed:
-				return "The cold-air pit and raised platform kept you above the coldest air."
+				return Loc.t("The sleeping platform is above the low passage and cold-air sump.")
 			if pit:
-				return "A cold-air pit, but the bed wasn't raised — cold air still reached you."
-			return "Your bed was level with the entrance, where the cold air pools."
+				return Loc.t("A cold-air pit, but the bed wasn't raised — cold air still reached you.")
+			return Loc.t("The sleeping floor is level with the entrance passage. This design has no raised platform; colder air can reach the bedding.")
 		"air":
 			if tent:
-				return "The chimney kept the air fresh; it also carried some heat straight out."
+				return Loc.t("The chimney and ventilation openings must stay clear; ventilation also carries heat away.")
 			if preset == "TreeWell":
-				return "The bough roof breathes — no vent needed, nothing to clog."
+				return Loc.t("This bough roof is treated as ventilated in the game; it has no snow-vent blockage event.")
 			if not is_snow:
-				return "Open air — no stale-air risk, but no trapped heat either."
+				return Loc.t("The open structure is treated as ventilated; it also loses warm air.")
 			if int(i.get("vent_count", 0)) <= 0:
-				return "No vent: CO₂ and moisture built up inside. Dangerous."
+				return Loc.t("No vent: CO₂ and moisture built up inside. Dangerous.")
 			if bool(i.get("vent_snow_clogged", false)):
-				return "New snow partly blocked the vent; you woke with a headache."
-			return "The vent kept the air fresh."
+				return Loc.t("Snow can partly block this vent. Clear it if a blockage event occurs.")
+			return Loc.t("The vent kept the air fresh.")
 		"heat":
 			var s := ""
 			if tent:
 				if not bool(i.get("fire_lit", false)):
-					s = "No fire in the pan: the tent only broke the wind, so you kept losing heat all night."
+					s = Loc.t("No fire in the pan: the tent only broke the wind, so you kept losing heat all night.")
 				elif bool(d.get("fire_reaches_dawn", false)):
-					s = "The small fire pan burned until dawn (%.0f h of wood); the tent still lost heat, just more slowly." % float(d.get("fuel_hours", 0.0))
+					s = Loc.t("The stove has a theoretical fuel budget of %.0f hours; while burning, it slows heat loss in the tent.") % float(d.get("fuel_hours", 0.0))
 				else:
-					s = "The fire pan ran out around %s; without that small heat the tent cooled for the rest of the night." % String(d.get("fire_out_clock", "midnight"))
+					s = Loc.t("The fire pan ran out around %s; without that small heat the tent cooled for the rest of the night.") % String(d.get("fire_out_clock", "midnight"))
 			elif is_snow:
 				var depth := float(i.get("snow_depth_meters", 0.0))
 				var heat_score := float(report_scores.get("heat", 100.0))
-				s = "Body heat and %.1f m of snow kept you warm; no fire inside — correct." % depth
+				s = Loc.t("Snow depth %.1f m contributes to insulation. No fire burns inside this snow shelter.") % depth
 				if heat_score < t.safe_min_axis and depth < t.snow_depth_raised_cave_min_m + 0.4:
-					s = "Only %.1f m of snow: thin walls let the heat leak out. Deeper snow (2.4 m+) means a warmer night." % depth
+					s = Loc.t("Only %.1f m of snow: thin walls let the heat leak out. Deeper snow (2.4 m+) means a warmer night.") % depth
 				if bool(i.get("prewarmed", false)):
-					s += " A fire and hot water before bed helped."
+					s += Loc.t(" A fire and hot water before bed helped.")
 				elif heat_score < t.safe_min_axis:
-					s += " A fire and a hot drink before bed would have helped."
+					s += Loc.t(" A fire and a hot drink before bed would have helped.")
 			elif lean:
 				if not bool(i.get("fire_lit", false)):
-					s = "No fire in an open lean-to: a long, bitter night."
+					s = Loc.t("No fire in an open lean-to: a long, bitter night.")
 				elif bool(d.get("fire_reaches_dawn", false)):
-					s = "The reflector fire burned until dawn (%.0f h of wood)." % float(d.get("fuel_hours", 0.0))
+					s = Loc.t("The reflector fire has a theoretical fuel budget of %.0f hours.") % float(d.get("fuel_hours", 0.0))
 				else:
-					s = "The wood ran out around %s; the rest of the night was bitter." % String(d.get("fire_out_clock", "midnight"))
+					s = Loc.t("The wood ran out around %s; the rest of the night was bitter.") % String(d.get("fire_out_clock", "midnight"))
 			else:
-				s = "Nothing kept your heat in."
+				s = Loc.t("Nothing kept your heat in.")
 			var wf := NightSimulator.wet_fraction(float(i.get("dampness", 0.0)), t)
 			if wf >= 0.99:
-				s += " Your clothes were wet when you lay down — wet layers hold almost no heat."
+				s += Loc.t(" Your clothes were wet at bedtime, reducing their insulation.")
 			elif wf > 0.01:
-				s += " Your clothes were damp at bedtime, which cost you some warmth."
+				s += Loc.t(" Your clothes were damp at bedtime, which cost you some warmth.")
 			var w := float(i.get("starting_warmth", 100.0))
 			if w < t.warmth_tier_warm:
-				s += " You went to bed already chilled (%d/100)." % int(w)
+				s += Loc.t(" You went to bed already chilled (%d/100).") % int(w)
 			return s
 	return ""

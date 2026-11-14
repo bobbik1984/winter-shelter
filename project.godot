@@ -9,6 +9,7 @@ config_version=5
 config/name="Snow Shelter Challenge"
 config/description="Orthographic 45° ISO Winter Wilderness Survival Prototype"
 run/main_scene="res://scenes/main.tscn"
+run/max_fps.mobile=30
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -19,6 +20,11 @@ window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://localization/messages.en.translation", "res://localization/messages.zh.translation")
+locale/fallback="en"
 
 [input]
 
@@ -66,7 +72,7 @@ textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/screen_space_aa=1
 lights_and_shadows/directional_shadow/size=4096
 lights_and_shadows/directional_shadow/size.web=2048
-lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/directional_shadow/size.mobile=1024
 scaling_3d/mode=0
 scaling_3d/scale=0.67
 scaling_3d/fsr_sharpness=0.4

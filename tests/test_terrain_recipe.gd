@@ -32,7 +32,7 @@ func run() -> Dictionary:
 		var p: Vector2 = r[1]
 		max_err = maxf(max_err, absf(TerrainHeight.height_at(p.x, p.y) - float(r[2])))
 		max_err = maxf(max_err, absf(TerrainHeight.snow_depth_at(p.x, p.y) - float(r[3])))
-	_check(max_err < 2e-6, "默认配方与 S1 之前的地图一致（最大误差 %.2e）" % max_err)
+	_check(max_err < 2e-6, "默认配方与 S1 之前的地图一致（最大误差 %.8f）" % max_err)
 
 	# 2. 每种形态（4 个山谷都要满足）
 	for v in TerrainHeight.VALLEY_SEEDS:

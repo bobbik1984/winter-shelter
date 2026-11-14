@@ -1,0 +1,712 @@
+keys,en,zh
+No shelter — exposed to the %d km/h wind all night.,No shelter — exposed to the %d km/h wind all night.,没有庇护所，需要整夜承受 %d km/h 的风。
+The tent door faced into the wind (%d°): the fabric flapped and drafts cut through all night.,The tent door faced into the wind (%d°): the fabric flapped and drafts cut through all night.,帐篷门迎风（%d°），风容易灌入。
+The tent door was side-on to the wind (%d°); gusts pressed the fabric in now and then.,The tent door was side-on to the wind (%d°); gusts pressed the fabric in now and then.,帐篷门侧对来风（%d°），阵风容易影响帐篷。
+The tent door was leeward (%d°); the fabric blocked the worst of the wind.,The tent door was leeward (%d°); the fabric blocked the worst of the wind.,帐篷门背风（%d°），帐篷减少了风的影响。
+The entrance faced into the wind (%d°): drafts and drifting snow all night.,The entrance faced into the wind (%d°): drafts and drifting snow all night.,入口迎风（%d°），容易灌风、飘入积雪。
+The entrance was side-on to the wind (%d°); gusts cut in now and then.,The entrance was side-on to the wind (%d°); gusts cut in now and then.,入口侧对来风（%d°），阵风仍可能灌入。
+The entrance was leeward (%d°); the wind passed over you.,The entrance was leeward (%d°); the wind passed over you.,入口背风（%d°），减少了风直接灌入。
+Nothing was built.,Nothing was built.,没有建造庇护所。
+Only %d%% of the tent was up — the door or pegging was unfinished.,Only %d%% of the tent was up — the door or pegging was unfinished.,帐篷只完成 %d%%，门帘或固定尚未完成。
+"Tent pitched, pegged and sealed; canvas has no snow body or reflector wall to hold heat.","Tent pitched, pegged and sealed; canvas has no snow body or reflector wall to hold heat.",帐篷已搭好并固定，但帆布不像雪墙那样保温，也没有反射火墙。
+The snow here (%.1f m) was too shallow for this shelter.,The snow here (%.1f m) was too shallow for this shelter.,此处雪深 %.1f 米，不足以建这种庇护所。
+Only %d%% finished — it wasn't closed up before night.,Only %d%% finished — it wasn't closed up before night.,只完成 %d%%，入夜前尚未封好。
+The spruce's own boughs made the roof; %.1f m of snow around the trunk made the walls.,The spruce's own boughs made the roof; %.1f m of snow around the trunk made the walls.,云杉枝条作为屋顶，树干周围 %.1f 米的雪形成围壁。
+Roof thickness %.2f m; snow depth %.1f m. Structure score includes completion and depth.,Roof thickness %.2f m; snow depth %.1f m. Structure score includes completion and depth.,顶厚 %.2f 米，雪深 %.1f 米；结构分同时考虑完工度与雪深。
+The frame and roof were finished. Fire reflection depends on the shelter type.,The frame and roof were finished. Fire reflection depends on the shelter type.,骨架与屋顶已完工；是否能反射火的热量取决于庇护所类型。
+No bedding: you lay on the snow and it drew the heat out of you.,No bedding: you lay on the snow and it drew the heat out of you.,没有垫层，身体向雪面快速散热。
+Thick bough and grass bedding reduced heat loss into the snow.,Thick bough and grass bedding reduced heat loss into the snow.,厚实的枝条与干草垫层减少了向雪面的散热。
+Thin bedding — the cold crept up by morning.,Thin bedding — the cold crept up by morning.,垫层较薄，向地面的散热较多。
+An open shelter loses warm air; thick bedding and an external fire reduce heat loss.,An open shelter loses warm air; thick bedding and an external fire reduce heat loss.,开放式庇护所难以留住暖空气；厚垫层与外部火源可减少失温。
+"No cold-air pit: the grass bed and sleeping bag kept you off the ground, but the tent floor still conducts cold.","No cold-air pit: the grass bed and sleeping bag kept you off the ground, but the tent floor still conducts cold.",没有冷气槽；干草垫层和睡袋减少了与地面的热交换，但地布仍会传热。
+No raised sleeping platform separates the bed from cold air near the ground.,No raised sleeping platform separates the bed from cold air near the ground.,没有高床让铺位避开近地面的较冷空气。
+You slept at the bottom of the well with the cold air; a thick bough floor is what kept it off you.,You slept at the bottom of the well with the cold air; a thick bough floor is what kept it off you.,树井铺位低于周围雪面；厚枝条垫层可减少散热。
+The sleeping platform is above the low passage and cold-air sump.,The sleeping platform is above the low passage and cold-air sump.,睡台高于低位入口通道和冷气槽，较冷空气主要停留在睡台下方。
+"A cold-air pit, but the bed wasn't raised — cold air still reached you.","A cold-air pit, but the bed wasn't raised — cold air still reached you.",有冷气槽，但睡台未抬高，较冷空气仍容易接触铺位。
+The sleeping floor is level with the entrance passage. This design has no raised platform; colder air can reach the bedding.,The sleeping floor is level with the entrance passage. This design has no raised platform; colder air can reach the bedding.,睡面与入口通道同高，没有高床隔离；较冷空气容易接触铺位。这是结构局限，并非漏做施工。
+The chimney and ventilation openings must stay clear; ventilation also carries heat away.,The chimney and ventilation openings must stay clear; ventilation also carries heat away.,烟囱与换气通道必须畅通；换气也会带走一部分热量。
+This bough roof is treated as ventilated in the game; it has no snow-vent blockage event.,This bough roof is treated as ventilated in the game; it has no snow-vent blockage event.,游戏按开放通风的枝条屋顶计算，不触发雪屋通气孔堵塞事件。
+The open structure is treated as ventilated; it also loses warm air.,The open structure is treated as ventilated; it also loses warm air.,游戏按开放通风结构计算，同时暖空气也容易散失。
+No vent: CO₂ and moisture built up inside. Dangerous.,No vent: CO₂ and moisture built up inside. Dangerous.,没有通气孔，密闭空间换气不足，存在窒息危险。
+Snow can partly block this vent. Clear it if a blockage event occurs.,Snow can partly block this vent. Clear it if a blockage event occurs.,降雪可能堵塞此通气孔；出现堵孔事件时请清理。
+The vent kept the air fresh.,The vent kept the air fresh.,通气孔畅通，保持换气。
+"No fire in the pan: the tent only broke the wind, so you kept losing heat all night.","No fire in the pan: the tent only broke the wind, so you kept losing heat all night.",火炉未点燃；帐篷主要挡风，仍会持续失温。
+"The stove has a theoretical fuel budget of %.0f hours; while burning, it slows heat loss in the tent.","The stove has a theoretical fuel budget of %.0f hours; while burning, it slows heat loss in the tent.",火炉的理论燃料预算为 %.0f 小时；有火能减缓帐篷内的失温。
+The fire pan ran out around %s; without that small heat the tent cooled for the rest of the night.,The fire pan ran out around %s; without that small heat the tent cooled for the rest of the night.,火炉的理论燃料预算约在 %s 耗尽；此后失去这部分供热。
+Snow depth %.1f m contributes to insulation. No fire burns inside this snow shelter.,Snow depth %.1f m contributes to insulation. No fire burns inside this snow shelter.,雪深 %.1f 米，有助于保温；这种雪屋内不生火。
+Only %.1f m of snow: thin walls let the heat leak out. Deeper snow (2.4 m+) means a warmer night.,Only %.1f m of snow: thin walls let the heat leak out. Deeper snow (2.4 m+) means a warmer night.,雪深只有 %.1f 米，雪墙保温有限；更深的雪通常提供更大的保温余量。
+ A fire and hot water before bed helped., A fire and hot water before bed helped., 睡前烤火和热饮改善了入睡状态。
+ A fire and a hot drink before bed would have helped., A fire and a hot drink before bed would have helped., 睡前烤火和热饮有助于改善入睡状态。
+"No fire in an open lean-to: a long, bitter night.","No fire in an open lean-to: a long, bitter night.",开放式棚屋没有火源，夜间更容易失温。
+The reflector fire has a theoretical fuel budget of %.0f hours.,The reflector fire has a theoretical fuel budget of %.0f hours.,反射火的理论燃料预算为 %.0f 小时。
+The wood ran out around %s; the rest of the night was bitter.,The wood ran out around %s; the rest of the night was bitter.,理论燃料预算约在 %s 耗尽，之后更容易失温。
+Nothing kept your heat in.,Nothing kept your heat in.,没有庇护结构帮助保温。
+" Your clothes were wet at bedtime, reducing their insulation."," Your clothes were wet at bedtime, reducing their insulation.", 入睡时衣物湿透，保温效果降低。
+" Your clothes were damp at bedtime, which cost you some warmth."," Your clothes were damp at bedtime, which cost you some warmth.", 入睡时衣物受潮，增加了散热。
+ You went to bed already chilled (%d/100)., You went to bed already chilled (%d/100)., 入睡时已经受冷（保暖值 %d/100）。
+1. Clear the ground and lay a grass bed,1. Clear the ground and lay a grass bed,1. 清理地面，铺干草垫层
+2. Pitch the tent and peg the windward side,2. Pitch the tent and peg the windward side,2. 支起帐篷，固定迎风侧
+3. Set the small fire pan and chimney,3. Set the small fire pan and chimney,3. 安装火炉与烟囱
+4. Roll out the sleeping bag,4. Roll out the sleeping bag,4. 铺开睡袋
+5. Seal the door and stack firewood inside,5. Seal the door and stack firewood inside,5. 压好门帘，在帐篷内堆柴
+The fire is outside. It cannot heat this enclosed snow shelter; dry off before bed.,The fire is outside. It cannot heat this enclosed snow shelter; dry off before bed.,火在洞外，不能给封闭雪屋内供暖；请在睡前烘干衣服。
+"Stoke the tent stove: %d logs, +%d min (%d left)","Stoke the tent stove: %d logs, +%d min (%d left)",帐篷火炉：添 %d 根柴，续燃 %d 分钟（剩 %d 根）
+"Tend the fire at the opening: %d logs, +%d min (%d left)","Tend the fire at the opening: %d logs, +%d min (%d left)",照料开口旁的火：添 %d 根柴，续燃 %d 分钟（剩 %d 根）
+"Move in your bedding (+%d warmth net, 10 min; costs sleep)","Move in your bedding (+%d warmth net, 10 min; costs sleep)",在铺位活动（净回温 %d，耗时 10 分钟，损失睡眠）
+Air vent · no indoor fire,Air vent · no indoor fire,通气孔 · 洞内禁止生火
+"Body warmth %d. Awake by choice, before the cold wakes you: check your shelter and bedding, then sleep again. Every wake costs sleep.","Body warmth %d. Awake by choice, before the cold wakes you: check your shelter and bedding, then sleep again. Every wake costs sleep.",保暖值 %d。主动醒来：检查庇护所和铺位，再继续睡。每次醒来都会损失睡眠。
+Close,Close,关闭
+Chapter,Chapter,章
+Stage,Stage,阶
+New map,New map,换图
+Intel,Intel,情报
+Full day,Full day,全天
+Begin,Begin,开始
+Build,Build,建造
+Tent kit,Tent kit,帐篷套装
+"Tent kit ON — slower, no firewood on your back","Tent kit ON — slower, no firewood on your back",[T] 帐篷套装 已开——走得慢，背上不能带柴
+Tent kit OFF — standard shovel kit,Tent kit OFF — standard shovel kit,[T] 帐篷套装 关——标准雪铲装备
+"[T] Tent kit ON — slower, no firewood on your back","[T] Tent kit ON — slower, no firewood on your back",[T] 帐篷套装 开——走得慢，背上不能带柴
+[T] Tent kit OFF — standard shovel kit,[T] Tent kit OFF — standard shovel kit,[T] 帐篷套装 关——标准雪铲装备
+"Tent kit: no shovel, no firewood on the back, slower; pitch it to carry wood.","Tent kit: no shovel, no firewood on the back, slower; pitch it to carry wood.",帐篷套装：不带雪铲，背上不能带柴，走得更慢；支起帐篷后就能背柴。
+Shovel kit: normal gear.,Shovel kit: normal gear.,雪铲装备：常规装备。
+"Tent on your back — no firewood, slower. Pitch it before you gather wood.","Tent on your back — no firewood, slower. Pitch it before you gather wood.",帐篷还背在背上——不能带柴、走得慢。先把帐篷支起来再拾柴。
+Tent is up. You can carry wood now — stack it inside for the fire pan.,Tent is up. You can carry wood now — stack it inside for the fire pan.,帐篷支好了。现在可以背柴了——把柴堆到帐篷里给火盆用。
+Tent is ready. [N] rest.,Tent is ready. [N] rest.,帐篷好了，按 [N] 休息。
+Too steep for a tent (%d° > %d°): find flatter ground,Too steep for a tent (%d° > %d°): find flatter ground,太陡，搭不了帐篷（%d° > %d°）：找平一点的地方
+Tent + Sleeping Bag,Tent + Sleeping Bag,帐篷 + 睡袋
+tent + sleeping bag,tent + sleeping bag,帐篷 + 睡袋
+small fire pan + chimney (no shovel),small fire pan + chimney (no shovel),小火盆 + 烟囱（不带雪铲）
+A tent loses heat through the canvas and floor. To keep the fire pan alive for %.0f h you need about %d logs inside; stack them during the day.,A tent loses heat through the canvas and floor. To keep the fire pan alive for %.0f h you need about %d logs inside; stack them during the day.,帐篷会从帆布和地布持续散热。要让火盆烧 %.0f 小时，帐篷里大约需要 %d 根柴；白天就要把柴堆进去。
+"Lay the grass bed and sleep in the bag: a tent alone is only windbreak, not warmth.","Lay the grass bed and sleep in the bag: a tent alone is only windbreak, not warmth.",先铺干草垫层再睡进睡袋：帐篷只挡风，本身不保暖。
+Finish pegging and sealing the tent before dark; an unfinished tent is just fabric in the wind.,Finish pegging and sealing the tent before dark; an unfinished tent is just fabric in the wind.,天黑前把地钉和门帘都压好；没搭完的帐篷只是风里的一块布。
+Stage 1: Clear the ground and lay a grass bed,Stage 1: Clear the ground and lay a grass bed,阶段 1：清地、铺干草垫层
+Stage 2: Pitch the tent and peg the windward side,Stage 2: Pitch the tent and peg the windward side,阶段 2：支帐篷、压好迎风边
+Stage 3: Set the small fire pan and chimney,Stage 3: Set the small fire pan and chimney,阶段 3：装小火盆和烟囱
+Stage 4: Roll out the sleeping bag,Stage 4: Roll out the sleeping bag,阶段 4：铺开睡袋
+Stage 5: Seal the door and stack firewood inside,Stage 5: Seal the door and stack firewood inside,阶段 5：压好门帘、把柴堆进帐篷
+Step back,Step back,退后
+Other spot,Other spot,换地方
+Place,Place,放置
+Type,Type,类型
+Rotate,Rotate,旋转
+Cancel,Cancel,取消
+Roof,Roof,屋顶
+Vents,Vents,通风
+Use,Use,动作
+Probe,Probe,探测
+Fire,Fire,生火
+Sleep,Sleep,睡觉
+Menu,Menu,菜单
+Resume,Resume,继续
+Restart,Restart,重开
+Graphics,Graphics,画质
+Sound,Sound,声音
+Text,Text,字号
+Credits,Credits,致谢
+Save log,Save log,保存记录
+Speed up,Speed up,加速
+Next stage,Next stage,下一阶
+Try again,Try again,再试一次
+Please rotate your phone to landscape,Please rotate your phone to landscape,请把手机横过来
+No play log yet.,No play log yet.,还没有试玩记录。
+Play log saved.,Play log saved.,试玩记录已保存。
+"DejaVu Sans symbols font © Bitstream and DejaVu authors, free license (assets/fonts/DejaVuSans-LICENSE.txt).","DejaVu Sans symbols font © Bitstream and DejaVu authors, free license (assets/fonts/DejaVuSans-LICENSE.txt).",符号字体 DejaVu Sans © Bitstream 与 DejaVu 作者，自由许可（assets/fonts/DejaVuSans-LICENSE.txt）。
+Shallow snow,Shallow snow,浅雪
+~ %.1f m · lean-to only,~ %.1f m · lean-to only,约 %.1f m · 只能搭倒棚
+Thin snow,Thin snow,薄雪
+~ %.1f m · walled trench,~ %.1f m · walled trench,约 %.1f m · 砌墙雪沟
+Trench depth,Trench depth,雪沟深度
+~ %.1f m · snow trench,~ %.1f m · snow trench,约 %.1f m · 雪沟
+Good depth,Good depth,深度合适
+~ %.1f m · snow cave,~ %.1f m · snow cave,约 %.1f m · 雪洞
+Deep snow,Deep snow,深雪
+~ %.1f m · raised cave,~ %.1f m · raised cave,约 %.1f m · 高床雪洞
+No open fire inside a snow shelter — it melts the roof and fills it with CO.,No open fire inside a snow shelter — it melts the roof and fills it with CO.,雪庇护所里不能生明火——会烤化顶棚，还会积聚一氧化碳。
+Need birch bark as tinder (%d).,Need birch bark as tinder (%d).,需要桦树皮作引火物（%d）。
+Need %d dry wood. Standing dead trees burn; fallen logs are wet.,Need %d dry wood. Standing dead trees burn; fallen logs are wet.,需要 %d 根干柴。立枯木能烧，倒木是湿的。
+Fire put out by snow falling from the branches above. Move out from under the tree.,Fire put out by snow falling from the branches above. Move out from under the tree.,树枝上的积雪落下，把火压灭了。离开树冠下方再生火。
+Fire lit.,Fire lit.,火生起来了。
+Striking the ferro rod… keep holding [F],Striking the ferro rod… keep holding [F],擦打火棒……按住 [F] 别松
+"Fire lit. Warm up, dry off, and melt snow for a hot drink [E].","Fire lit. Warm up, dry off, and melt snow for a hot drink [E].",火生起来了。烤暖、烘干，再融雪烧点热水 [E]。
+No dry wood left to add.,No dry wood left to add.,没有干柴可添了。
+Added a log (+%d min of fire).,Added a log (+%d min of fire).,添了一根柴（火多烧 %d 分钟）。
+Melt snow & drink hot water,Melt snow & drink hot water,融雪烧水，喝口热的
+Hot water: +%d warmth.,Hot water: +%d warmth.,热水：保暖值 +%d。
+Getting cold — get out of the wind or light a fire.,Getting cold — get out of the wind or light a fire.,越来越冷——躲开风口，或者生火。
+"Sun is down. Finish up, or sleep now [N].","Sun is down. Finish up, or sleep now [N].",太阳落山了。抓紧收尾，或者现在睡下 [N]。
+Long shadows — night is close. Rest when ready [N].,Long shadows — night is close. Rest when ready [N].,影子很长——快天黑了。准备好就休息 [N]。
+Very long shadows: <%d min of light. Finish now!,Very long shadows: <%d min of light. Finish now!,影子极长：天光不足 %d 分钟。马上完工！
+Shadows lengthening — ~%d min of light left.,Shadows lengthening — ~%d min of light left.,影子在变长——大约还有 %d 分钟天光。
+Sun %d° — shadows grow toward evening.,Sun %d° — shadows grow toward evening.,太阳高度 %d°——越近傍晚影子越长。
+Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).,Snow is falling — hold [E] at your shelter: stick in the vent (1 wood).,下雪了——在庇护所按住 [E]：往通风孔插根木棍（1 木）。
+"Shelter done. Stockpile dry wood for the fire, then rest [N].","Shelter done. Stockpile dry wood for the fire, then rest [N].",庇护所完工。给火备足干柴，然后休息 [N]。
+"Shelter done. Warm up by a fire [F] + hot drink, then rest [N].","Shelter done. Warm up by a fire [F] + hot drink, then rest [N].",庇护所完工。生火暖身 [F]、喝口热水，然后休息 [N]。
+Gather %s — then hold [E] at your site.,Gather %s — then hold [E] at your site.,先收集 %s——然后在工地按住 [E]。
+Hold [E] at your site: %s,Hold [E] at your site: %s,在工地按住 [E]：%s
+Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log).,Lean-to: the reflector fire burns your stockpiled wood all night (%.0f h per log).,倒棚：反射火整夜烧你的备柴（每根 %.0f 小时）。
+"Quick roof %.2f m (−%d%% time, weaker)","Quick roof %.2f m (−%d%% time, weaker)",快速顶 %.2f m（工时 −%d%%，较弱）
+Solid roof %.2f m,Solid roof %.2f m,结实顶 %.2f m
+"2 vents (more air, a little colder)","2 vents (more air, a little colder)",2 根通风管（空气更好，稍冷）
+1 vent,1 vent,1 根通风管
+%s · %s   [T] roof  [2] vents,%s · %s   [T] roof  [2] vents,%s · %s   [T] 顶厚  [2] 通风管
+Too close to the edge of the valley.,Too close to the edge of the valley.,离山谷边缘太近。
+"Allowed, but a lean-to without a rootball windbreak is cold. Snow here is deep enough for a snow shelter.","Allowed, but a lean-to without a rootball windbreak is cold. Snow here is deep enough for a snow shelter.",可以，但没有树根挡风的倒棚很冷。这里的雪够深，可以挖雪庇护所。
+Entrance faces INTO the wind (%d°) — expect drafts. [R] rotate,Entrance faces INTO the wind (%d°) — expect drafts. [R] rotate,入口正对风口（%d°）——会灌风。[R] 旋转
+Entrance is side-on to the wind (%d°),Entrance is side-on to the wind (%d°),入口侧对风（%d°）
+Entrance is leeward (%d°) — good,Entrance is leeward (%d°) — good,入口背风（%d°）——很好
+"Snow %.1f m · slope %d° · %s
+%s","Snow %.1f m · slope %d° · %s
+%s","雪深 %.1f m · 坡度 %d° · %s
+%s"
+ · rootball windbreak nearby, · rootball windbreak nearby, · 附近有树根挡风
+BUILD — ,BUILD — ,建造 —— 
+[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel,[Tab] shelter type   [R] rotate entrance   [T] roof   [2] vents   [E] place   [B] cancel,[Tab] 类型   [R] 旋转入口   [T] 顶厚   [2] 通风管   [E] 放置   [B] 取消
+You're already building a %s. Hold [E] at the site to continue.,You're already building a %s. Hold [E] at the site to continue.,你已经在建 %s 了。到工地按住 [E] 继续。
+Site marked. Hold [E] at the site to work: %s,Site marked. Hold [E] at the site to work: %s,工地已标好。按住 [E] 施工：%s
+Push a stick through the vent (1 wood) — keeps it clear in falling snow,Push a stick through the vent (1 wood) — keeps it clear in falling snow,往通风孔插一根木棍（1 木）——下雪时能捅开
+  (needs ,  (needs ,（需要 
+%s%s  ·  ~%d min,%s%s  ·  ~%d min,%s%s  ·  约 %d 分钟
+You need 1 dry wood for a vent stick.,You need 1 dry wood for a vent stick.,插通风木棍需要 1 根干柴。
+Stick in the vent: you can poke it clear during the night.,Stick in the vent: you can poke it clear during the night.,木棍插好了：夜里可以把新雪捅开。
+Not enough materials — still need %s.,Not enough materials — still need %s.,材料不够——还差 %s。
+Stage %d/5 done — %s,Stage %d/5 done — %s,第 %d/5 阶段完成——%s
+Shelter complete. Bring in what you need — rest when ready [N].,Shelter complete. Bring in what you need — rest when ready [N].,庇护所完工。把需要的东西搬进来——准备好就休息 [N]。
+ Stockpile dry wood: the reflector fire burns %.0f h per log., Stockpile dry wood: the reflector fire burns %.0f h per log., 备足干柴：反射火每根柴烧 %.0f 小时。
+Snow too shallow (%.2f m < %.2f m required for %s),Snow too shallow (%.2f m < %.2f m required for %s),雪太浅（%.2f m < %.2f m，%s 的最低要求）
+Slope too flat (%.1f° < 8.0° needed to excavate cave horizontally),Slope too flat (%.1f° < 8.0° needed to excavate cave horizontally),坡太缓（%.1f°，横向挖洞至少需要 8°）
+Too steep for Lean-To; build near fallen rootball or flatter lee ground,Too steep for Lean-To; build near fallen rootball or flatter lee ground,太陡，搭不了倒棚；去倒树根旁或较平的背风地
+Site suitable for %s,Site suitable for %s,适合建 %s
+Snow Cave (Raised Platform),Snow Cave (Raised Platform),高床雪洞
+Basic Snow Cave,Basic Snow Cave,基础雪洞
+Shallow Snow Trench,Shallow Snow Trench,浅雪沟
+Rootball Lean-To + Reflector Fire,Rootball Lean-To + Reflector Fire,树根倒棚 + 反射火
+Stage 1: Entrance tunnel (Slopes slightly down),Stage 1: Entrance tunnel (Slopes slightly down),阶段 1：入口隧道（略向下倾）
+Stage 2: Cold-air pit (Traps cold air lower),Stage 2: Cold-air pit (Traps cold air lower),阶段 2：冷气坑（把冷空气留在低处）
+Stage 3: Raised sleeping platform (Stay above cold air),Stage 3: Raised sleeping platform (Stay above cold air),阶段 3：高床睡台（睡在冷空气之上）
+Stage 4: Air vent (keep the passage open),Stage 4: Air vent (keep the passage open),阶段 4：打通通气孔（保持换气）
+Stage 5: Interior candle lantern (Warm 2700K glow),Stage 5: Interior candle lantern (Warm 2700K glow),阶段 5：洞内烛灯（2700K 暖光）
+Stage 1: Dig horizontal entrance,Stage 1: Dig horizontal entrance,阶段 1：挖水平入口
+Stage 2: Hollow main sleeping chamber,Stage 2: Hollow main sleeping chamber,阶段 2：掏出主睡室
+Stage 3: Lay pine & dry grass bedding,Stage 3: Lay pine & dry grass bedding,阶段 3：铺松枝和干草垫层
+Stage 4: Pierce roof ventilation hole,Stage 4: Pierce roof ventilation hole,阶段 4：打通顶部通风孔
+Stage 5: Wind-block entrance & light lantern,Stage 5: Wind-block entrance & light lantern,阶段 5：入口挡风、点灯
+Stage 1: Cut narrow body-length trench,Stage 1: Cut narrow body-length trench,阶段 1：挖一人长的窄沟
+Stage 2: Stack snow-block side walls,Stage 2: Stack snow-block side walls,阶段 2：两侧砌雪砖墙
+Stage 3: Lay ground insulation boughs,Stage 3: Lay ground insulation boughs,阶段 3：铺地面隔热树枝
+Stage 4: Roof with deadwood & snow slabs,Stage 4: Roof with deadwood & snow slabs,阶段 4：枯木 + 雪板封顶
+Stage 5: Seal windward end & vent gap,Stage 5: Seal windward end & vent gap,阶段 5：封住迎风端、留通风缝
+Stage 1: Anchor ridgepole against fallen rootball,Stage 1: Anchor ridgepole against fallen rootball,阶段 1：横梁靠在倒树根上
+Stage 2: Thatch windward roof with spruce boughs,Stage 2: Thatch windward roof with spruce boughs,阶段 2：用云杉枝铺迎风棚顶
+Stage 3: Pile thick dry grass & bough bed,Stage 3: Pile thick dry grass & bough bed,阶段 3：铺厚干草和树枝床
+Stage 4: Stack log heat-reflector wall in front,Stage 4: Stack log heat-reflector wall in front,阶段 4：前方垒原木反射墙
+Stage 5: Light long-burning reflector campfire,Stage 5: Light long-burning reflector campfire,阶段 5：点燃长燃反射火
+Your pack can't carry more wood. Stack it at your site.,Your pack can't carry more wood. Stack it at your site.,背包装不下更多木柴了。先堆到工地去。
+Pack full,Pack full,背包满了
++%d dry wood — standing dead trees burn well.,+%d dry wood — standing dead trees burn well.,+%d 干柴——立枯木很好烧。
++%d birch bark — the best tinder there is.,+%d birch bark — the best tinder there is.,+%d 桦树皮——最好的引火物。
++%d bedding (dry grass).,+%d bedding (dry grass).,+%d 垫层（干草）。
++%d bedding (spruce boughs).,+%d bedding (spruce boughs).,+%d 垫层（云杉枝）。
+This fallen log is soaked through — it won't burn. Look for STANDING dead trees.,This fallen log is soaked through — it won't burn. Look for STANDING dead trees.,这根倒木湿透了——烧不着。去找站着的枯树（立枯木）。
+Harvest standing deadwood (dry fuel),Harvest standing deadwood (dry fuel),砍立枯木（干柴）
+Peel birch bark (tinder),Peel birch bark (tinder),剥桦树皮（引火物）
+Gather dry grass (bedding),Gather dry grass (bedding),收集干草（垫层）
+Cut low spruce boughs (bedding),Cut low spruce boughs (bedding),砍云杉低枝（垫层）
+Chop fallen log,Chop fallen log,砍倒木
+Deadwood,Deadwood,立枯木
+Harvest for fuel,Harvest for fuel,可作燃料
+Bedding,Bedding,垫层
+Hold [E]  ,Hold [E]  ,按住 [E]  
+Enter the shelter,Enter the shelter,进入庇护所
+Low door keeps the warmth in,Low door keeps the warmth in,门开得低，热气不外跑
+Lets out moisture and stale air,Lets out moisture and stale air,排出湿气和浊气
+Thick snow roof,Thick snow roof,厚雪顶
+Snow holds your body heat in,Snow holds your body heat in,雪把保暖值留在里面
+Roof over the trench,Roof over the trench,雪沟的顶
+Blocks wind and falling snow,Blocks wind and falling snow,挡风挡雪
+Bough floor,Bough floor,枝条地板
+Keeps you off the snow,Keeps you off the snow,把人和雪隔开
+Spruce bough roof,Spruce bough roof,云杉枝顶
+The tree shelters you,The tree shelters you,树替你挡着
+Snow wall,Snow wall,雪墙
+Blocks the wind,Blocks the wind,挡风
+Thatched roof,Thatched roof,枝条棚顶
+Open at the front,Open at the front,前面敞开
+Fire side,Fire side,火在这一侧
+Heat reflects in from here,Heat reflects in from here,热从这边反射进来
+Cold rock wall,Cold rock wall,冰冷的岩壁
+"Blocks wind, drinks heat","Blocks wind, drinks heat",挡风，但吸热
+Thick bough bed,Thick bough bed,厚枝条床
+Keeps you off cold rock,Keeps you off cold rock,把人和冷岩隔开
+Fallen log ridge,Fallen log ridge,倒木做屋脊
+Holds up the thatched ribs,Holds up the thatched ribs,撑起枝条肋
+Bough bed,Bough bed,枝条床
+Step outside,Step outside,走出去
+You're inside  ·  [E] Step outside  ·  [N] Sleep,You're inside  ·  [E] Step outside  ·  [N] Sleep,你在里面  ·  [E] 走出去  ·  [N] 睡觉
+Step outside to light or feed a fire.,Step outside to light or feed a fire.,到外面才能生火或添柴。
+Birch bark,Birch bark,桦树皮
+"Tinder · walk up, hold [E]","Tinder · walk up, hold [E]",引火物 · 走近后按住 [E]
+"Bedding · walk up, hold [E]","Bedding · walk up, hold [E]",垫层 · 走近后按住 [E]
+Fire: %d min left,Fire: %d min left,火还能烧 %d 分钟
+Fire is out,Fire is out,火灭了
+No dry wood to add,No dry wood to add,没有干柴可添
+You're warming up,You're warming up,正在取暖
+Too far to feel the heat,Too far to feel the heat,太远了，感觉不到热
+Step into the circle,Step into the circle,走进光圈才能取暖和添柴
+[F] Add a log: +%d min (%d dry wood),[F] Add a log: +%d min (%d dry wood),[F] 添一根柴：多烧 %d 分钟（干柴 %d）
+[F] Relight with a log: +%d min (%d dry wood),[F] Relight with a log: +%d min (%d dry wood),[F] 添柴重新点燃：多烧 %d 分钟（干柴 %d）
+Add log,Add log,添柴
+"Fire lit. Warm up, dry off, hold [E] for a hot drink. [F] adds a log.","Fire lit. Warm up, dry off, hold [E] for a hot drink. [F] adds a log.",火点着了。取暖、烘干，按住 [E] 喝口热水。[F] 添柴。
+nearest bedding: %d m %s,nearest bedding: %d m %s,最近的垫层：%d 米，%s
+Dry grass,Dry grass,干草
+Spruce boughs,Spruce boughs,云杉枝
+Bedding: dry grass or low spruce boughs. None left on this map.,Bedding: dry grass or low spruce boughs. None left on this map.,垫层：干草或云杉低枝。这张地图上已经没有了。
+Bedding: dry grass (orange tufts) or low spruce boughs (green). Nearest: %d m %s,Bedding: dry grass (orange tufts) or low spruce boughs (green). Nearest: %d m %s,垫层：干草（橙色草丛）或云杉低枝（绿色）。最近的：%d 米，%s
+Deeper snow,Deeper snow,更深的雪
+Ideal for shelter,Ideal for shelter,适合建庇护所
+Sound off  [M],Sound off  [M],声音关  [M]
+Hold assist ON — tap once to probe / work / light fire  [F9],Hold assist ON — tap once to probe / work / light fire  [F9],按住辅助已开——轻点一次即可探雪 / 干活 / 生火  [F9]
+Hold assist OFF  [F9],Hold assist OFF  [F9],按住辅助已关  [F9]
+UI size %d%%  [-] [=],UI size %d%%  [-] [=],界面大小 %d%%  [-] [=]
+Sound on  [M],Sound on  [M],声音开  [M]
+Graphics: %s  [F10],Graphics: %s  [F10],画质：%s  [F10]
+[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [I] Intel   [H] Field guide,[WASD] Move   [Space] Probe   [E] Gather / Build   [B] Build   [F] Fire   [N] Sleep   [I] Intel   [H] Field guide,[WASD] 移动   [Space] 探雪   [E] 采集 / 施工   [B] 建造   [F] 生火   [N] 睡觉   [I] 情报   [H] 手册   [L] English
+Night falls...,Night falls...,夜幕降临……
+You crawl in and try to sleep...,You crawl in and try to sleep...,你钻进去，试着睡下……
+%s (%d/5 stages),%s (%d/5 stages),%s（%d/5 阶段）
+None — slept in the open,None — slept in the open,无——露天过夜
+Raised cave,Raised cave,高床雪洞
+Snow cave,Snow cave,雪洞
+Trench,Trench,雪沟
+Lean-to,Lean-to,倒棚
+No shelter,No shelter,露天
+Your best nights — ,Your best nights — ,你的最好一夜 —— 
+no shelter,no shelter,没有庇护所
+a shelter only %d/5 done,a shelter only %d/5 done,只完成 %d/5 的庇护所
+"Sleep now, with %s?","Sleep now, with %s?",现在就睡（%s）？
+Press [N] again to sleep anyway.,Press [N] again to sleep anyway.,再按一次 [N] 照样睡。
+"Your clothes are %s. Estimated minimum warmth: %d if you ignore wake-ups, %d if you use available actions when awake; with dry clothes, %d. Dry off by a fire before bed.","Your clothes are %s. Estimated minimum warmth: %d if you ignore wake-ups, %d if you use available actions when awake; with dry clothes, %d. Dry off by a fire before bed.",衣物%s。预计最低保暖值：忽略醒来事件约 %d，醒来后利用可用行动约 %d；干衣状态约 %d。请先在火边烘干再睡。
+wet,wet,湿
+damp,damp,潮
+You get up. About %d minutes of light left.,You get up. About %d minutes of light left.,你起来了。离天黑还有约 %d 分钟。
+"Dry your clothes by a fire, then [N] sleep again.","Dry your clothes by a fire, then [N] sleep again.",先去火边把衣服烘干，再按 [N] 重新睡。
+Get up: it's still light (%d min to sunset),Get up: it's still light (%d min to sunset),起床：天还亮着（离日落 %d 分钟）
+got up,got up,起床
+"Sheltered from the wind. Insulated bedding below, an open air vent above.","Sheltered from the wind. Insulated bedding below, an open air vent above.",避开外面的风；身下有隔热垫层，头顶通气孔保持畅通。
+Probing snow depth…,Probing snow depth…,正在探雪……
+Too cold to go on — you curl up where you are.,Too cold to go on — you curl up where you are.,冷得撑不住了——你就地蜷缩起来。
+"Forecast: overcast — a weak, hazy sun. Shadows will be faint; keep an eye on the clock.","Forecast: overcast — a weak, hazy sun. Shadows will be faint; keep an eye on the clock.",天气预报：阴天——太阳朦胧，影子很淡，记得看时钟。
+"Forecast: a storm is coming in this afternoon — stronger wind, early snow, a colder night.","Forecast: a storm is coming in this afternoon — stronger wind, early snow, a colder night.",天气预报：下午有暴风雪——风更大、雪来得早、夜里更冷。
+"Forecast: clear and cold — long, sharp shadows to read the time by.","Forecast: clear and cold — long, sharp shadows to read the time by.",天气预报：晴冷——影子又长又清楚，可以用来判断时间。
+Jan 14  ,Jan 14  ,1月14日  
+Sun set at %s — dusk,Sun set at %s — dusk,%s 已日落——黄昏
+Sunset %s (%s left),Sunset %s (%s left),日落 %s（还剩 %s）
+Campfire Warmth,Campfire Warmth,篝火取暖
+Sheltered / Cozy,Sheltered / Cozy,庇护所内 / 暖和
+Shelter Hold,Shelter Hold,庇护所内 / 保温
+Leeward Shelter,Leeward Shelter,背风处
+Exposed Ridge,Exposed Ridge,迎风暴露
+BODY WARMTH,BODY WARMTH,保暖值
+▣ CLOTHING · DRY LAYER,▣ CLOTHING · DRY LAYER,▣ 衣物 · 干燥保暖层
+▣ CLOTHING · DAMP — dry it by a fire,▣ CLOTHING · DAMP — dry it by a fire,▣ 衣物 · 受潮——去火边烘干
+▣ CLOTHING · WET — no longer warm,▣ CLOTHING · WET — no longer warm,▣ 衣物 · 湿透——已不保暖
+Dry wood  %d/%d     Birch bark  %d     Bedding  %d/%d,Dry wood  %d/%d     Birch bark  %d     Bedding  %d/%d,干柴  %d/%d     桦树皮  %d     垫层  %d/%d
+SNOW SHELTER,SNOW SHELTER,雪 夜 庇 护
+C H A L L E N G E,C H A L L E N G E,生 存 挑 战
+FIND  ·  GATHER  ·  BUILD  ·  SURVIVE,FIND  ·  GATHER  ·  BUILD  ·  SURVIVE,寻找  ·  收集  ·  建造  ·  生存
+Wind from the %s. Probe [Space] leeward slopes.,Wind from the %s. Probe [Space] leeward slopes.,风从%s来。去背风坡探雪 [Space]。
+"January 14, %s. %d °C, wind from the %s at %d km/h; the sun sets at %s.
+","January 14, %s. %d °C, wind from the %s at %d km/h; the sun sets at %s.
+","1 月 14 日 %s。%d °C，%s风 %d km/h，%s 日落。
+"
+north,north,北
+north-east,north-east,东北
+east,east,东
+south-east,south-east,东南
+south,south,南
+south-west,south-west,西南
+west,west,西
+north-west,north-west,西北
+Free,Free,自由
+Free play unlocked!,Free play unlocked!,自由模式已解锁！
+"You have about %d hours of light to read the land, gather what you need and build a shelter for the night.
+
+","You have about %d hours of light to read the land, gather what you need and build a shelter for the night.
+
+","你大约有 %d 个小时的天光：读懂这片地、收集所需，在天黑前建好过夜的庇护所。
+
+"
+Probe the snow [Space]: its depth decides which shelter you can build.,Probe the snow [Space]: its depth decides which shelter you can build.,按住 [Space] 探雪：雪有多深，决定你能建哪种庇护所。
+Hold [Space] to probe the snow on leeward slopes. Its depth decides which shelter you can build.,Hold [Space] to probe the snow on leeward slopes. Its depth decides which shelter you can build.,按住 [Space] 在背风坡探雪。雪有多深，决定你能建哪种庇护所。
+"Deepest so far %.2f m — too thin to dig. Probe elsewhere, or build a lean-to by a root plate [B].","Deepest so far %.2f m — too thin to dig. Probe elsewhere, or build a lean-to by a root plate [B].",目前最深 %.2f m——太薄，挖不了。换个地方探，或者靠树根搭倒棚 [B]。
+Deepest so far %.1f m — enough for a trench [B]. A snow cave needs %.1f m.,Deepest so far %.1f m — enough for a trench [B]. A snow cave needs %.1f m.,目前最深 %.1f m——够挖雪沟 [B]。挖雪洞要 %.1f m。
+Deepest so far %.1f m — a snow cave fits [B]. A raised cave needs %.1f m.,Deepest so far %.1f m — a snow cave fits [B]. A raised cave needs %.1f m.,目前最深 %.1f m——能挖雪洞 [B]。高床雪洞要 %.1f m。
+Deep snow found (%.1f m) — room for a raised cave. Stand next to it and press [B].,Deep snow found (%.1f m) — room for a raised cave. Stand next to it and press [B].,找到深雪（%.1f m）——够挖高床雪洞。站在旁边按 [B]。
+An open lean-to loses heat to the outside air. Use thick bedding and tend the reflector fire.,An open lean-to loses heat to the outside air. Use thick bedding and tend the reflector fire.,开放式斜棚容易向外界散热。铺厚垫层，并照料反射火。
+You had no shelter at all.,You had no shelter at all.,你什么庇护所都没有。
+You read the land right.,You read the land right.,你读懂了这片地。
+Right choice of shelter — the weakest score above is what to fix.,Right choice of shelter — the weakest score above is what to fix.,庇护所选对了——照上面最低的那一项改。
+"%s got you through, but %s fits these conditions better.","%s got you through, but %s fits these conditions better.",%s 撑过去了，但这种条件更适合%s。
+%s was the harder road here; %s fits these conditions.,%s was the harder road here; %s fits these conditions.,这里选%s是在走弯路；这种条件适合%s。
+Free play: everything is random.,Free play: everything is random.,自由模式：一切随机。
+"Read the wind, then dig a snow cave on the sheltered side. You have the whole day.","Read the wind, then dig a snow cave on the sheltered side. You have the whole day.",先读风向，再在背风的一侧挖雪洞。今天你有一整个白天。
+Deep snow hides in only a few places. Probe before you dig.,Deep snow hides in only a few places. Probe before you dig.,深雪只藏在少数几个地方。先探，再挖。
+A storm is coming. Read the land and decide which shelter it allows.,A storm is coming. Read the land and decide which shelter it allows.,暴风雪要来了。读懂这片地，判断它允许你建哪种庇护所。
+You've learned the %s — you can use it on any level now.,You've learned the %s — you can use it on any level now.,你学会了%s——现在任何关卡都能用。
+Learned: %s,Learned: %s,学会了：%s
+Shelters you know: %s,Shelters you know: %s,你会的庇护所：%s
+New here: %s,New here: %s,本关新增：%s
+snow shovel,snow shovel,雪铲
+extra warm layer,extra warm layer,额外保暖层
+NO extra layer,NO extra layer,没有额外保暖层
+sleeping pad,sleeping pad,防潮垫
+%d birch bark,%d birch bark,%d 份桦树皮
+%d dry wood,%d dry wood,%d 根干柴
+%d bedding,%d bedding,%d 份垫层
+Gear: %s,Gear: %s,装备：%s
+"Deep snow (up to %.1f m) and a %d km/h wind: dig into the lee slope, entrance away from the wind.","Deep snow (up to %.1f m) and a %d km/h wind: dig into the lee slope, entrance away from the wind.",深雪（最深 %.1f m）、%d km/h 的风：在背风坡挖洞，入口背着风。
+"Only %d%% of this valley had snow deep enough for a cave (≥ %.1f m), in a few lee pockets. Probing finds them.","Only %d%% of this valley had snow deep enough for a cave (≥ %.1f m), in a few lee pockets. Probing finds them.",这个山谷只有 %d%% 的地方雪深够挖雪洞（≥ %.1f m），藏在几处背风窝里，靠探测才找得到。
+You started at %s with %d min of light; a snow cave takes about %d min to dig. A root plate is half a shelter: a lean-to and a fire go up in time.,You started at %s with %d min of light; a snow cave takes about %d min to dig. A root plate is half a shelter: a lean-to and a fire go up in time.,你 %s 开工，只剩 %d 分钟天光；挖一个雪洞要约 %d 分钟。树根盘就是半个庇护所：倒棚和火来得及。
+No snow here was deeper than %.1f m; a cave needs %.1f m. A trench works from %.1f m.,No snow here was deeper than %.1f m; a cave needs %.1f m. A trench works from %.1f m.,这里最深的雪只有 %.1f m，挖雪洞要 %.1f m；雪沟 %.1f m 就能挖。
+"Storm night: %d km/h wind and %d °C. The deepest snow was %.1f m, so the shelter it allowed was: %s.","Storm night: %d km/h wind and %d °C. The deepest snow was %.1f m, so the shelter it allowed was: %s.",暴风雪夜：风 %d km/h，%d °C。最深的雪 %.1f m，所以能建的是：%s。
+Chapter %d · stage %d — ,Chapter %d · stage %d — ,第 %d 章 · 第 %d 阶——
+Blowdown: fallen trees everywhere and little light left. A root plate is half a shelter: build a lean-to and keep a fire going.,Blowdown: fallen trees everywhere and little light left. A root plate is half a shelter: build a lean-to and keep a fire going.,风倒区：到处是倒木，天光不多了。树根盘就是半个庇护所：搭倒棚，把火烧旺。
+"Open, flat ground and shallow snow: no drift deep enough for a cave. Dig a trench.","Open, flat ground and shallow snow: no drift deep enough for a cave. Dig a trench.",开阔平地、雪不深：没有够挖雪洞的雪堆。挖雪沟。
+COLD or SAFE on stage %d opens stage %d.,COLD or SAFE on stage %d opens stage %d.,第 %d 阶拿到 COLD 或 SAFE 开放第 %d 阶。
+Pass stage %d to open chapter %d.,Pass stage %d to open chapter %d.,通过第 %d 阶开放第 %d 章。
+Free play,Free play,自由模式
+Chapter %d · Stage %d  (%d of 50),Chapter %d · Stage %d  (%d of 50),第 %d 章 · 第 %d 阶（共 50 阶中的第 %d 阶）
+Stage %d unlocked!,Stage %d unlocked!,第 %d 阶已开放！
+Chapter %d unlocked!,Chapter %d unlocked!,第 %d 章已开放！
+[Enter] next stage   ·   [R] same place again,[Enter] next stage   ·   [R] same place again,[Enter] 下一阶   ·   [R] 同一个地方再来
+Reach COLD or SAFE to unlock the next stage.  [R] try the same place again,Reach COLD or SAFE to unlock the next stage.  [R] try the same place again,拿到 COLD 或 SAFE 才能开放下一阶。  [R] 同一个地方再试一次
+Best on this stage: %s (%s),Best on this stage: %s (%s),本阶最好：%s（%s）
+[←] CHAPTER [→],[←] CHAPTER [→],[←] 章 [→]
+[↓] STAGE [↑],[↓] STAGE [↑],[↓] 阶 [↑]
+Map %d  [N] new map   ·   Seed %d,Map %d  [N] new map   ·   Seed %d,第 %d 张图  [N] 换一张   ·   种子 %d
+"You have about an hour of light to read the land, gather what you need and build a shelter for the night.
+
+","You have about an hour of light to read the land, gather what you need and build a shelter for the night.
+
+","你大约只有 1 个小时的天光：读懂这片地、收集所需，在天黑前建好过夜的庇护所。
+
+"
+Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.,Digging soaks your layers. Dry them by a fire before you crawl in — wet clothes hold almost no heat.,挖雪会弄湿保暖层。钻进去之前先在火边烘干——湿衣服几乎不保暖。
+"Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.","Right shelter, but you never probed where you dug — the depth was luck. Probe before you dig.",庇护所选对了，但你从没在挖的地方探过雪——深度是碰巧的。先探，再挖。
+"Right shelter, but the entrance was only %d° away from the wind — face it fully downwind (120°+).","Right shelter, but the entrance was only %d° away from the wind — face it fully downwind (120°+).",庇护所选对了，但入口只偏离风向 %d°——让它完全背风（120° 以上）。
+Your %s,Your %s,你的%s
+Entrance here · [N] rest when ready,Entrance here · [N] rest when ready,入口在这里 · 准备好就 [N] 休息
+Tree well,Tree well,树井
+Tree Well Shelter,Tree Well Shelter,树井庇护所
+1. Scoop out the well around the trunk,1. Scoop out the well around the trunk,1. 掏出树干周围的雪坑
+2. Trim low inner branches (headroom),2. Trim low inner branches (headroom),2. 修掉里面的低枝（留出空间）
+3. Spruce-bough floor,3. Spruce-bough floor,3. 云杉枝地板
+4. Thatch the gaps in the bough roof,4. Thatch the gaps in the bough roof,4. 用枝条补好屋顶的空隙
+5. Close the entrance with boughs,5. Close the entrance with boughs,5. 用枝条封住入口
+Snow around this spruce is too shallow for a tree well (%.2f m < %.2f m),Snow around this spruce is too shallow for a tree well (%.2f m < %.2f m),这棵云杉周围的雪太浅，做不了树井（%.2f m < %.2f m）
+Too steep around this trunk for a tree well,Too steep around this trunk for a tree well,这棵树周围太陡，做不了树井
+No big spruce with low branches here — look for one: the snow around its trunk is shallow.,No big spruce with low branches here — look for one: the snow around its trunk is shallow.,这里没有低枝浓密的大云杉——去找一棵：它树干周围的雪很浅。
+"No shovel today, but the forest gives you a roof. Find a big spruce with low branches: the snow around its trunk is shallow. Dig a tree well.","No shovel today, but the forest gives you a roof. Find a big spruce with low branches: the snow around its trunk is shallow. Dig a tree well.",今天没有雪铲，但森林会给你屋顶。找一棵低枝浓密的大云杉：它树干周围的雪很浅。挖一个树井。
+No shovel: a snow cave dug by hand takes about %d min; a tree well under a big spruce took about %d. The old spruces with a hollow at their base were the shelter.,No shovel: a snow cave dug by hand takes about %d min; a tree well under a big spruce took about %d. The old spruces with a hollow at their base were the shelter.,没有雪铲：徒手挖雪洞要约 %d 分钟；大云杉下的树井只要约 %d 分钟。树根处有浅坑的老云杉，就是现成的庇护所。
+You're in it · [N] rest when ready,You're in it · [N] rest when ready,你就在里面 · 准备好就 [N] 休息
+"Your layers are wet and no longer warm — dry them by a fire [F]: right behind a root plate on its downwind side, away from spruce branches.","Your layers are wet and no longer warm — dry them by a fire [F]: right behind a root plate on its downwind side, away from spruce branches.",保暖层湿透了，不再保暖——去火边烘干 [F]：紧贴树根盘的下风一侧生火，别在云杉树枝下面。
+"The wind blew the flame out. Get low behind something solid, on its downwind side: a rock, a root plate or your own walls. A deep hollow works too; trees alone let too much wind through.","The wind blew the flame out. Get low behind something solid, on its downwind side: a rock, a root plate or your own walls. A deep hollow works too; trees alone let too much wind through.",风把火苗吹灭了。贴低躲到实心的东西下风一侧：岩石、树根盘或者你自己的墙。够深的洼地也行；光靠树林挡不住，风会透过来。
+Sheltered fire spot,Sheltered fire spot,避风的生火处
+"Out of the wind, no branches above · [F] here","Out of the wind, no branches above · [F] here",挡得住风、头上没有树枝 · 在这里按 [F]
+To finish the shelter you still need: %s,To finish the shelter you still need: %s,要完工还缺：%s
+"NO shovel — dig with your pot, %dx slower","NO shovel — dig with your pot, %dx slower",没有雪铲——用锅挖雪，慢 %d 倍
+"NO shovel or pot — dig by hand, %dx slower and wetter","NO shovel or pot — dig by hand, %dx slower and wetter",没有雪铲也没有锅——徒手挖，慢 %d 倍，而且更湿
+caribou hides,caribou hides,驯鹿皮
+Hold [Space] to fast-forward,Hold [Space] to fast-forward,按住 [Space] 快进
+[W] Wake up,[W] Wake up,[W] 醒来
+Probe the snow depth,Probe the snow depth,探测雪深
+Mark a shelter site [B],Mark a shelter site [B],选好工地 [B]
+Gather materials for the next stage,Gather materials for the next stage,备齐下一阶的材料
+Build the shelter,Build the shelter,建庇护所
+Build the shelter (%d/%d),Build the shelter (%d/%d),建庇护所（%d/%d）
+Light a fire [F],Light a fire [F],生火 [F]
+Rest [N],Rest [N],休息 [N]
+Wood,Wood,木柴
+Bark,Bark,桦皮
+full,full,满了
+[Wheel] scroll,[Wheel] scroll,[滚轮] 翻看
+open in free play,open in free play,自由模式里都能用
+you know it,you know it,你已经会了
+new on this level,new on this level,这一关新学
+learn it in chapter %d,learn it in chapter %d,第 %d 章学
+%d h %02d min,%d h %02d min,%d 小时 %02d 分
+%d min,%d min,%d 分钟
+snow ≥ %.1f m on a slope of 8° or more,snow ≥ %.1f m on a slope of 8° or more,雪深 ≥ %.1f m，坡度 8° 以上
+"snow ≥ %.1f m, flat or gentle ground","snow ≥ %.1f m, flat or gentle ground",雪深 ≥ %.1f m，平地或缓坡
+an old spruce with snow ≥ %.1f m around it,an old spruce with snow ≥ %.1f m around it,一棵老云杉，周围雪深 ≥ %.1f m
+snow ≥ %.1f m on ground flatter than %d°,snow ≥ %.1f m on ground flatter than %d°,雪深 ≥ %.1f m，坡度小于 %d°
+any snow; a rootball at its back blocks the wind,any snow; a rootball at its back blocks the wind,有雪就行；背靠树根盘能挡风
+"within %d m of a tall rock, or below a cliff, on its downwind side","within %d m of a tall rock, or below a cliff, on its downwind side",高岩石 %d 米内或悬崖脚下，在它的下风一侧
+within %d m of a fallen trunk,within %d m of a fallen trunk,倒木 %d 米内
+"No fire inside a snow shelter, and one outside doesn't reach you while you sleep.","No fire inside a snow shelter, and one outside doesn't reach you while you sleep.",雪庇护所里不能生火；外面的火在你睡着时也够不着你。
+A fire beside it helps a little.,A fire beside it helps a little.,旁边生火能帮上一点。
+From stage 4 its back wall reflects the fire's heat onto you: the warmest fire you can have.,From stage 4 its back wall reflects the fire's heat onto you: the warmest fire you can have.,第 4 阶起，后墙把火的热量反射到你身上：能有的最暖的火。
+From stage 2 the rock reflects the fire's heat onto you.,From stage 2 the rock reflects the fire's heat onto you.,第 2 阶起，岩壁把火的热量反射到你身上。
+A fire in front helps; there is no wall to reflect it.,A fire in front helps; there is no wall to reflect it.,前面生火有帮助；没有墙把热量反射回来。
+no materials,no materials,不用材料
+CUTAWAY,CUTAWAY,内部剖面
+OUTSIDE,OUTSIDE,地图外观
+SITE,SITE,选址条件
+WORK TIME,WORK TIME,施工耗时
+MATERIALS,MATERIALS,所需材料
+FIRE,FIRE,篝火作用
+Needs: %s  ·  about %s of work  ·  %s,Needs: %s  ·  about %s of work  ·  %s,条件：%s  ·  约 %s 工时  ·  %s
+"Dug sideways into a deep drift on a slope, with the sleeping bench above the entrance so the warm air stays in. The warmest shelter, if you find snow deep enough.","Dug sideways into a deep drift on a slope, with the sleeping bench above the entrance so the warm air stays in. The warmest shelter, if you find snow deep enough.",在坡上的深雪堆里横着挖进去，睡台高过入口，暖空气留在里面。找得到够深的雪，这是最暖的庇护所。
+A quicker snow cave with a level sleeping floor. No raised platform or cold-air sump: colder than a raised cave even when fully built.,A quicker snow cave with a level sleeping floor. No raised platform or cold-air sump: colder than a raised cave even when fully built.,施工较快的基础雪洞，睡面与入口通道同高。没有高床和冷气槽：即使全部完工，也比高床雪洞冷。
+"A trench dug into flat snow and roofed over. Works where the snow is too thin for a cave, but it is colder.","A trench dug into flat snow and roofed over. Works where the snow is too thin for a cave, but it is colder.",在平地的雪里挖一条沟，再盖上顶。雪太薄挖不了洞时能用，但更冷。
+A sloped roof of branches with a fire in front. Best with a rootball at its back; for thin snow and plenty of wood.,A sloped roof of branches with a fire in front. Best with a rootball at its back; for thin snow and plenty of wood.,树枝搭的斜顶，前面生火。最好背靠树根盘；适合雪薄、柴多的地方。
+"The hollow under an old spruce's low branches, dug out and roofed. Quick, and the branches keep the snow off.","The hollow under an old spruce's low branches, dug out and roofed. Quick, and the branches keep the snow off.",老云杉低垂的枝条下面的雪坑，掏空再盖顶。快，枝条还能挡雪。
+"A heap of snow piled up, left to settle, then hollowed out. Works on flat ground with shallow snow; takes long.","A heap of snow piled up, left to settle, then hollowed out. Works on flat ground with shallow snow; takes long.",把雪堆成一堆，等它凝实，再掏空。平地、雪浅也能做；很费时间。
+"The lee side of a tall rock or the foot of a cliff, walled in with branches. Dry and out of the wind; cold rock underneath, so pile on bedding.","The lee side of a tall rock or the foot of a cliff, walled in with branches. Dry and out of the wind; cold rock underneath, so pile on bedding.",高岩石的背风面或悬崖脚，用树枝围起来。干燥、避风；身下的岩石很冷，要铺厚垫层。
+Branches leaned against a fallen trunk lying in the snow. Fast to build; works like a small lean-to.,Branches leaned against a fallen trunk lying in the snow. Fast to build; works like a small lean-to.,把树枝斜靠在雪里的倒木上。搭得快，像个小倒棚。
+Wake up,Wake up,醒来
+[F] Fire watch: %s,[F] Fire watch: %s,[F] 守火：%s
+Fire watch: %s,Fire watch: %s,守火：%s
+on,on,开
+off,off,关
+ · slept %.1f h, · slept %.1f h, · 已睡 %.1f 小时
+Fire watch on: you'll wake when the fire burns low.,Fire watch on: you'll wake when the fire burns low.,守火已开：火快烧完时你会醒来添柴。
+Fire watch off: a low fire will not wake you just for refuelling.,Fire watch off: a low fire will not wake you just for refuelling.,守火已关：不会仅因需要添柴而叫醒你。
+You wake yourself,You wake yourself,你自己醒了
+Fire watch: the fire is low,Fire watch: the fire is low,守火：火快烧完了
+"Body warmth %d. Awake by choice, before the cold wakes you: tend the fire or warm up, then sleep again. Every wake costs sleep.","Body warmth %d. Awake by choice, before the cold wakes you: tend the fire or warm up, then sleep again. Every wake costs sleep.",保暖值 %d。趁还没被冻醒，自己先醒：照看火、活动取暖，然后接着睡。每次醒来都要花掉睡眠。
+"Body warmth %d. You woke as planned, while still warm — feed it now and it keeps you warm.","Body warmth %d. You woke as planned, while still warm — feed it now and it keeps you warm.",保暖值 %d。按约好的醒了，人还暖和——现在添柴，火就能接着护着你。
+woke yourself,woke yourself,自己醒来
+fire watch,fire watch,守火
+Night score %d / 100   ·   warmth %d  ·  sleep %d  ·  health %d   ·   slept about %.1f h,Night score %d / 100   ·   warmth %d  ·  sleep %d  ·  health %d   ·   slept about %.1f h,夜晚得分 %d / 100   ·   保暖值 %d  ·  睡眠 %d  ·  健康 %d   ·   约睡了 %.1f 小时
+Night · %s · body warmth %d,Night · %s · body warmth %d,夜里 · %s · 保暖值 %d
+%s — %s,%s — %s,%s——%s
+You wake up cold,You wake up cold,你冻醒了
+You wake up shivering violently,You wake up shivering violently,你抖得厉害，醒了过来
+The fire is burning down,The fire is burning down,火快灭了
+Your feet are freezing,Your feet are freezing,脚冻得发疼
+A pounding headache,A pounding headache,头痛欲裂
+Headache: the vent is blocked,Headache: the vent is blocked,头痛：通风口堵了
+The roof sags under new snow,The roof sags under new snow,新雪压得屋顶往下塌
+"Body warmth %d. The cold woke you — do something, or try to sleep on.","Body warmth %d. The cold woke you — do something, or try to sleep on.",保暖值 %d。冷把你冻醒了——做点什么，或者接着睡。
+Body warmth %d. You are dangerously cold. Move in your bedding or use an available heat source.,Body warmth %d. You are dangerously cold. Move in your bedding or use an available heat source.,保暖值 %d。你已严重失温。请在铺位活动，或利用可用热源取暖。
+The fire is low. Add fuel if you need its heat; the remaining burn time depends on the weather.,The fire is low. Add fuel if you need its heat; the remaining burn time depends on the weather.,火快烧完了。如果还需要它供暖，请添柴；剩余燃烧时间受天气影响。
+You went to bed in wet socks. Wet layers insulate less effectively.,You went to bed in wet socks. Wet layers insulate less effectively.,你穿着湿袜子睡下了。湿衣物的保温效果会降低。
+There is no open vent. Clear an air passage before going back to sleep.,There is no open vent. Clear an air passage before going back to sleep.,通气孔不通。请先打通换气通道，再继续睡。
+New snow has buried the vent. The air is getting thick.,New snow has buried the vent. The air is getting thick.,新雪把通风口埋住了，空气越来越闷。
+"Snow is piling on the boughs above you. If it caves in, the cold gets in.","Snow is piling on the boughs above you. If it caves in, the cold gets in.",雪在头顶的枝条上越堆越厚。塌下来，冷就进来了。
+Add wood to the fire (%d logs left),Add wood to the fire (%d logs left),往火里添柴（还剩 %d 根）
+"Get up and move (+%d warmth, costs sleep)","Get up and move (+%d warmth, costs sleep)",起来活动（保暖值 +%d，少睡一会儿）
+Poke the vent clear,Poke the vent clear,把通风口捅开
+Knock the snow off the roof,Knock the snow off the roof,把屋顶的雪顶下去
+Dry your socks and boots by the fire,Dry your socks and boots by the fire,在火边烘袜子和靴子
+Go back to sleep  [Enter],Go back to sleep  [Enter],接着睡  [Enter]
+added wood,added wood,添了柴
+got up and moved,got up and moved,起来活动了
+cleared the vent,cleared the vent,捅开了通风口
+knocked the snow off,knocked the snow off,顶落了积雪
+dried socks and boots,dried socks and boots,烘干了袜子和靴子
+woke cold,woke cold,冻醒
+woke shivering,woke shivering,抖醒
+fire burning down,fire burning down,火快灭了
+cold wet feet,cold wet feet,湿脚冻醒
+"stale air, no vent","stale air, no vent",空气浑浊、没有通风口
+vent blocked,vent blocked,通风口堵了
+snow on the roof,snow on the roof,屋顶积雪
+Your night: you slept through until dawn.,Your night: you slept through until dawn.,你的夜晚：一觉睡到天亮。
+Your night: ,Your night: ,你的夜晚：
+SURVIVED COZY,SURVIVED COZY,舒适安全过夜
+"SURVIVED, COLD","SURVIVED, COLD",熬过来了，很冷
+SUFFOCATED,SUFFOCATED,窒息
+SEVERE HYPOTHERMIA,SEVERE HYPOTHERMIA,严重失温
+You made it to dawn in good condition. Lowest body warmth %d.,You made it to dawn in good condition. Lowest body warmth %d.,你状态良好地熬到了天亮。最低保暖值 %d。
+"You made it to dawn, but it was a hard night: lowest body warmth %d, woke once. Biggest heat leak: %s.","You made it to dawn, but it was a hard night: lowest body warmth %d, woke once. Biggest heat leak: %s.",你熬到了天亮，但这一夜很难熬：保暖值最低 %d，醒了 1 次。热量漏得最多的是：%s。
+"You made it to dawn, but it was a hard night: lowest body warmth %d, woke %d times. Biggest heat leak: %s.","You made it to dawn, but it was a hard night: lowest body warmth %d, woke %d times. Biggest heat leak: %s.",你熬到了天亮，但这一夜很难熬：保暖值最低 %d，醒了 %d 次。热量漏得最多的是：%s。
+The air ran out in a shelter with no vent. You woke with the warning and went back to sleep.,The air ran out in a shelter with no vent. You woke with the warning and went back to sleep.,没有通风口的庇护所里空气耗尽了。你醒来时已经有了警告，却又睡了回去。
+Your body warmth fell to %d — severe hypothermia. Biggest heat leak: %s.,Your body warmth fell to %d — severe hypothermia. Biggest heat leak: %s.,你的保暖值跌到了 %d——严重失温。热量漏得最多的是：%s。
+the cold,the cold,冷
+the bare ground,the bare ground,睡在光地上
+wet clothes,wet clothes,湿衣服
+"You took on %s at the same time. ""Cold, the ground, or hunger — only one of those at a time.""","You took on %s at the same time. ""Cold, the ground, or hunger — only one of those at a time.""","你同时承受了 %s。""冷、睡地上、挨饿——一次只能受一样。"""
+"Wet kit and no drying fire during sleep — cold, damp boots made the night harder.","Wet kit and no drying fire during sleep — cold, damp boots made the night harder.",装备受潮，睡眠期间又没有火源烘干——湿冷的靴子让这一夜更难熬。
+SOAKED THROUGH,SOAKED THROUGH,湿透失温
+You kept the fire going until dawn.,You kept the fire going until dawn.,你把火一直烧到了天亮。
+The fire last went out at %s. Its heating effect ended then.,The fire last went out at %s. Its heating effect ended then.,火最后在 %s 熄灭，此后不再提供热量。
+"Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ","Read the land: trees lean away from the wind, snow piles up on leeward slopes, standing dead trees are dry fuel — ",读懂大地：树冠背风倾斜，背风坡积雪最深，立枯木是干柴——
+and the shadows tell you how much daylight is left.,and the shadows tell you how much daylight is left.,影子告诉你还剩多少天光。
+"[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics
+","[WASD] move    [Space] hold to probe snow depth    [E] hold to gather / build    [F10] graphics
+","[WASD] 移动    [Space] 按住探雪    [E] 按住采集 / 施工    [F10] 画质    [L] English
+"
+[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom,[B] build mode    [F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom,[B] 建造    [F] 生火 / 添柴    [N] 睡觉    [V] 相机    [滚轮] 缩放
+Press  ENTER  to begin,Press  ENTER  to begin,按  ENTER  开始
+Valley %d of %d,Valley %d of %d,山谷 %d / %d
+"[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)","[2]  Full day — start at 10:00 (more time, watch the shadows shorten and grow)",[2]  全天模式——10:00 开局（时间更宽裕，看影子先变短再变长）
+READ THE LAND,READ THE LAND,读懂大地
+"Trees show wind direction — branches are short on the windward side, crowns lean downwind.","Trees show wind direction — branches are short on the windward side, crowns lean downwind.",树指示风向——迎风侧枝条短，树冠向下风倾斜。
+Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure.,Snow drifts reveal depth — leeward slopes collect the deepest snow. Probe to be sure.,积雪形状透露深度——背风坡雪最深。用探针确认。
+Standing dead trees mean fuel — fallen logs are wet and won't burn.,Standing dead trees mean fuel — fallen logs are wet and won't burn.,立枯木是燃料——倒木是湿的，烧不着。
+"Rootballs and thick forest break the wind — shelter there, and light fires there.","Rootballs and thick forest break the wind — shelter there, and light fires there.",树根盘和密林能挡风——在那里避风、生火。
+"Shadows tell time — the longer they get, the less daylight you have left.","Shadows tell time — the longer they get, the less daylight you have left.",影子就是时钟——影子越长，天光越少。
+KEY RESOURCES,KEY RESOURCES,关键资源
+"Birch bark — tinder (white trunk, black bands)","Birch bark — tinder (white trunk, black bands)",桦树皮——引火物（白树干、黑横纹）
+Dry grass / spruce boughs — bedding,Dry grass / spruce boughs — bedding,干草 / 云杉枝——垫层
+Dry wood — standing dead trees,Dry wood — standing dead trees,干柴——立枯木
+Snow — melt it over a fire for a hot drink,Snow — melt it over a fire for a hot drink,雪——在火上融化，烧热水喝
+[H] close,[H] close,[H] 关闭
+PAUSED,PAUSED,暂停
+[Esc] resume      [R] restart      [Q] quit      [C] credits,[Esc] resume      [R] restart      [Q] quit      [C] credits,[Esc] 继续      [R] 重开      [Q] 退出      [C] 致谢与许可
+CREDITS & LICENSES,CREDITS & LICENSES,致谢与许可
+Snow Shelter Challenge — design and development by the Winter Shelter project.,Snow Shelter Challenge — design and development by the Winter Shelter project.,雪夜庇护——Winter Shelter 项目设计与开发。
+Built with the Godot Engine (godotengine.org). Character modelled procedurally in Blender.,Built with the Godot Engine (godotengine.org). Character modelled procedurally in Blender.,使用 Godot 引擎（godotengine.org）制作；角色用 Blender 程序化建模。
+"Chinese text fallback font: Droid Sans Fallback © Google, Apache License 2.0 (assets/fonts/DroidSansFallback-LICENSE.txt).","Chinese text fallback font: Droid Sans Fallback © Google, Apache License 2.0 (assets/fonts/DroidSansFallback-LICENSE.txt).",中文后备字体：Droid Sans Fallback © Google，Apache License 2.0（assets/fonts/DroidSansFallback-LICENSE.txt）。
+"All other art, sound and shaders are generated procedurally by this project.","All other art, sound and shaders are generated procedurally by this project.",其余美术、音效与着色器均由本项目程序化生成。
+[C] close,[C] close,[C] 关闭
+[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink,[WASD] move    [Space] hold: probe snow    [E] hold: gather / build / drink,[WASD] 移动    [Space] 按住：探雪    [E] 按住：采集 / 施工 / 喝水
+"[B] build mode — [Tab] type, [R] rotate entrance, [E] place","[B] build mode — [Tab] type, [R] rotate entrance, [E] place",[B] 建造——[Tab] 类型、[R] 旋转入口、[E] 放置
+[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics,[F] light fire / add wood    [N] sleep    [V] camera    [Wheel] zoom    [F10] graphics,[F] 生火 / 添柴    [N] 睡觉    [V] 相机    [滚轮] 缩放    [F10] 画质    [L] 语言
+Air vent,Air vent,通气孔
+Allow fresh air in and moist air out,Allow fresh air in and moist air out,保持换气，排出湿气
+Roof thickness,Roof thickness,顶厚
+Raised sleeping platform,Raised sleeping platform,高床睡台
+Stay above cold air,Stay above cold air,睡在冷空气之上
+Entrance tunnel,Entrance tunnel,入口隧道
+Slopes slightly down,Slopes slightly down,略向下倾
+Cold-air pit,Cold-air pit,冷气坑
+stage %d,stage %d,第 %d 阶段
+Traps cold air (lower),Traps cold air (lower),把冷空气留在低处
+≥ %.2f m · built %.2f m,≥ %.2f m · built %.2f m,≥ %.2f m · 实建 %.2f m
+SHELTER DESIGN (SNOW CAVE),SHELTER DESIGN (SNOW CAVE),庇护所设计（雪洞）
+CUTAWAY VIEW (45° ISOMETRIC),CUTAWAY VIEW (45° ISOMETRIC),剖面图（45° 等距）
+WARMER   ·   SAFER   ·   LONGER NIGHTS,WARMER   ·   SAFER   ·   LONGER NIGHTS,更暖   ·   更安全   ·   熬过长夜
+Your day: ,Your day: ,你的一天：
+first probe,first probe,首次探雪
+site marked,site marked,选定工地
+shelter done,shelter done,庇护所完工
+fire lit,fire lit,生火
+bed,bed,入睡
+start,start,开局
+sunset,sunset,日落
+NIGHT REPORT  ·  JAN 14 → 15,NIGHT REPORT  ·  JAN 14 → 15,过夜报告  ·  1 月 14 → 15 日
+Shelter: %s,Shelter: %s,庇护所：%s
+What to remember: ,What to remember: ,要记住的一件事：
+Survival starts with understanding.          [R] try again,Survival starts with understanding.          [R] try again,生存始于理解。          [R] 再来一次
+Site & wind,Site & wind,选址与风
+Structure,Structure,结构
+Insulation,Insulation,隔热
+Cold-air isolation,Cold-air isolation,冷气隔离
+Air,Air,通风
+Heat,Heat,保温与热源
+You slept through the night and walked out at dawn. Weakest point: %s.,You slept through the night and walked out at dawn. Weakest point: %s.,你睡了一整夜，天亮时走了出来。最弱的一环：%s。
+"You made it to dawn, shivering. Weakest point: %s.","You made it to dawn, shivering. Weakest point: %s.",你哆嗦着熬到了天亮。最弱的一环：%s。
+You would not have survived this night. Main cause: %s.,You would not have survived this night. Main cause: %s.,这一夜你撑不过去。主要原因：%s。
+Face the entrance away from the wind — the trees lean downwind and the compass needle shows where the wind goes.,Face the entrance away from the wind — the trees lean downwind and the compass needle shows where the wind goes.,入口要背对风——树冠向下风倾斜，罗盘指针指向风的去向。
+"Start digging earlier. When the shadows grow long, you have less than an hour of light.","Start digging earlier. When the shadows grow long, you have less than an hour of light.",早点开工。影子变长时，天光已不到一小时。
+Gather bedding: dry grass and low spruce boughs keep the snow from stealing your heat.,Gather bedding: dry grass and low spruce boughs keep the snow from stealing your heat.,收集垫层：干草和云杉低枝能挡住雪吸走你的热量。
+Keep the sleeping platform above the low entrance passage. Choose a raised cave when snow depth and time allow; bedding reduces heat loss to snow.,Keep the sleeping platform above the low entrance passage. Choose a raised cave when snow depth and time allow; bedding reduces heat loss to snow.,让睡台高于低位入口通道。雪深和时间允许时选高床雪洞；铺厚垫层可减少向雪面的散热。
+Keep an air vent open in an enclosed snow shelter. Check it after snowfall.,Keep an air vent open in an enclosed snow shelter. Check it after snowfall.,封闭雪屋要保持通气孔畅通，降雪后注意检查。
+Probe several spots — deeper snow means thicker walls. Warm up by a fire and drink something hot before you crawl in.,Probe several spots — deeper snow means thicker walls. Warm up by a fire and drink something hot before you crawl in.,多探几处——雪越深墙越厚。钻进去前先烤火、喝点热的。
+"An open lean-to loses heat to the outside air. Use thick bedding and tend the fire, or choose a cave where snow is deep enough.","An open lean-to loses heat to the outside air. Use thick bedding and tend the fire, or choose a cave where snow is deep enough.",开放式斜棚容易向外界散热。铺厚垫层、照料火堆，或在雪深足够处选建雪洞。
+"The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.","The night is %.0f hours long. At %.0f h per log, a lean-to fire needs about %d logs of dry wood stockpiled.",夜长 %.0f 小时。每根柴烧 %.0f 小时，倒棚的火需要备约 %d 根干柴。
+"When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent.","When snow is falling, leave a stick in the vent and poke it clear — or dig a second vent.",下雪时在通风孔里插根木棍，夜里捅开——或者再挖一根通风管。
+Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing.,Without any shelter the wind takes your heat all night. Even a half-finished trench is better than nothing.,没有庇护所，风会整夜带走你的热量。哪怕半成品的雪沟也比什么都没有强。
+Survive a night in a shelter and you've learned it — use it on any level after that.,Survive a night in a shelter and you've learned it — use it on any level after that.,在某种庇护所里熬过一夜，就算学会了——之后任何关卡都能用。
+"%s  ·  %d °C  ·  wind from the %s, %d km/h  ·  sunset %s, ~%d h of light","%s  ·  %d °C  ·  wind from the %s, %d km/h  ·  sunset %s, ~%d h of light",%s  ·  %d °C  ·  %s风 %d km/h  ·  日落 %s，约 %d 小时天光
+A shovel digs at full speed. Digging still makes you sweat — dry off by a fire before bed.,A shovel digs at full speed. Digging still makes you sweat — dry off by a fire before bed.,有雪铲，挖雪是全速。挖雪照样出汗——睡前在火边烘干。
+Without a shovel every snow shelter takes much longer — a trench or a tree well may be all the day allows.,Without a shovel every snow shelter takes much longer — a trench or a tree well may be all the day allows.,没有雪铲，每种雪庇护所都慢得多——这一天也许只够做雪沟或树井。
+All shelters are open in free play.,All shelters are open in free play.,自由模式里所有庇护所都可用。
+Map %d  ·  Seed %d,Map %d  ·  Seed %d,第 %d 张图  ·  种子 %d
+Terrain: %s,Terrain: %s,地形：%s
+[N] on this screen gives the same stage a new map.,[N] on this screen gives the same stage a new map.,在这一页按 [N]：同一阶换一张新图。
+[I] intel    [H] field guide    [L] language    [M] sound    [-] [=] UI size    [Esc] pause,[I] intel    [H] field guide    [L] language    [M] sound    [-] [=] UI size    [Esc] pause,[I] 情报    [H] 野外手册    [L] English    [M] 声音    [-] [=] 界面大小    [Esc] 暂停
+Night: [Enter] sleep on    [1]–[5] act when you wake    hold [Space] to speed up,Night: [Enter] sleep on    [1]–[5] act when you wake    hold [Space] to speed up,夜里：[Enter] 接着睡    醒来时 [1]–[5] 行动    按住 [Space] 快进
+No record on this stage yet.,No record on this stage yet.,这一阶还没有记录。
+Brief,Brief,简报
+Conditions,Conditions,条件
+Kit,Kit,装备
+Shelters,Shelters,庇护所
+Map,Map,地图
+Field guide,Field guide,野外手册
+Controls,Controls,操作
+Records,Records,记录
+Out of the wind · [F] here,Out of the wind · [F] here,背风处 · 在这里按 [F]
+"Entrance faces %s, out of the wind","Entrance faces %s, out of the wind",入口朝%s，背风
+"Entrance faces %s, INTO the wind","Entrance faces %s, INTO the wind",入口朝%s，迎风！
+[N] rest when ready,[N] rest when ready,准备好了按 [N] 休息
+Next: %s,Next: %s,下一步：%s
+dry wood,dry wood,干柴
+birch bark,birch bark,桦树皮
+bedding,bedding,垫层
+still to gather: %s,still to gather: %s,还要采集：%s
+%d m away,%d m away,离你 %d 米
+Map %d  ·  [N] new map,Map %d  ·  [N] new map,第 %d 张图  ·  [N] 换新图
+"Read the land, find deep snow on the sheltered side, and build a shelter before dark.","Read the land, find deep snow on the sheltered side, and build a shelter before dark.",读懂地形，在背风处找到深雪，天黑前建好庇护所。
+"ENTER  Begin          [I]  Intel: gear, shelters, map, controls","ENTER  Begin          [I]  Intel: gear, shelters, map, controls",ENTER  开始          [I]  情报：装备、庇护所、地图、操作
+[←] [→] or [Tab]  switch page      [I] / [H]  close,[←] [→] or [Tab]  switch page      [I] / [H]  close,[←] [→] 或 [Tab]  翻页      [I] / [H]  关闭
+"You're already building a %s, %d m away. Walk back and press [E] to continue.","You're already building a %s, %d m away. Walk back and press [E] to continue.",你已经在建%s了，离这里 %d 米。走回去按 [E] 继续。
+Your %s is finished. One shelter is all you get to build tonight.,Your %s is finished. One shelter is all you get to build tonight.,你的%s已经建好了。今晚只建这一个。
+Shelter complete.,Shelter complete.,庇护所完工。
+%d %s (you have %d),%d %s (you have %d),%d %s（你有 %d）
+Needs: %s,Needs: %s,需要：%s
+No materials needed for this stage.,No materials needed for this stage.,这一阶不需要材料。
+after sunset,after sunset,已过日落
+%d min of daylight left,%d min of daylight left,还有 %d 分钟天光
+~%d min of work  ·  %s,~%d min of work  ·  %s,约 %d 分钟工时  ·  %s
+[B] Step back & gather — your site stays here,[B] Step back & gather — your site stays here,[B] 退后去采集——工地会留在这里
+Hold [E] to build   ·   [B] Step back,Hold [E] to build   ·   [B] Step back,按住 [E] 施工   ·   [B] 退后
+[R] Pick another spot,[R] Pick another spot,[R] 换个地方
+Return to site [E],Return to site [E],回到工地按 [E]
+Your pack can't carry more bedding. Stack it at your site.,Your pack can't carry more bedding. Stack it at your site.,背包装不下更多垫层了。先堆到工地去。
+Added to your site pile: %s,Added to your site pile: %s,已加到工地材料堆：%s
+"Stack what you're carrying here (fire logs, extra bedding)","Stack what you're carrying here (fire logs, extra bedding)",把带着的东西堆在这里（烧火的柴、多铺的垫层）
+"pile: %d wood, %d bedding","pile: %d wood, %d bedding",材料堆：%d 柴，%d 垫层
+The fire has gone out and the cold is creeping in,The fire has gone out and the cold is creeping in,火灭了，寒气正在逼近
+Body warmth %d. There is still wood in your pile — you can get it going again.,Body warmth %d. There is still wood in your pile — you can get it going again.,保暖值 %d。柴堆里还有柴——可以把火重新点起来。
+"fire out, getting cold","fire out, getting cold",火灭变冷
+No fire to tend: you have no logs left.,No fire to tend: you have no logs left.,没有火可添：柴已经用完了。
+No spare logs for the fire.,No spare logs for the fire.,没有多余的柴可以添。
+No fire to tend: the wind here is too strong to keep one going.,No fire to tend: the wind here is too strong to keep one going.,没有火可添：这里风太大，火留不住。
+No fire to tend: you didn't build one near your bed.,No fire to tend: you didn't build one near your bed.,没有火可添：你没有在睡的地方附近生火。
+"Before dark, trying to sleep · %s · body warmth %d","Before dark, trying to sleep · %s · body warmth %d",天还没黑，想睡一觉 · %s · 保暖值 %d
+no shelter at all,no shelter at all,根本没有庇护所
+an unfinished shelter,an unfinished shelter,没建完的庇护所
+a fire that ran out of wood,a fire that ran out of wood,柴烧完了的火
+wind getting into the entrance,wind getting into the entrance,灌进入口的风
+a thin roof,a thin roof,太薄的屋顶
+thin bedding under you,thin bedding under you,身下太薄的垫层
+cold air pooling around your bed,cold air pooling around your bed,积在床边的冷空气
+the vent you had to keep open,the vent you had to keep open,不得不开着的通风口
+no fire or hot drink before bed,no fire or hot drink before bed,睡前没有火，也没喝热水
+thin snow walls,thin snow walls,太薄的雪墙
+Quinzhee,Quinzhee,雪堆屋
+Rock Overhang,Rock Overhang,岩檐
+Fallen-Log Lean-To,Fallen-Log Lean-To,倒木斜棚
+Tent,Tent,帐篷
+Rock overhang,Rock overhang,岩檐
+Fallen-log lean-to,Fallen-log lean-to,倒木斜棚
+1. Heap a snow mound about 1.4 m high,1. Heap a snow mound about 1.4 m high,1. 堆一个约 1.4 米高的雪丘
+"2. Push in sticks as depth gauges, then let it set","2. Push in sticks as depth gauges, then let it set",2. 插上木棍当厚度标记，然后等它固结
+"3. Hollow it out from the low side, down to the sticks","3. Hollow it out from the low side, down to the sticks",3. 从低处掏空，掏到木棍为止
+4. Poke a vent through the roof,4. Poke a vent through the roof,4. 在顶上捅一个通风孔
+5. Bough floor and a snow-block door,5. Bough floor and a snow-block door,5. 铺枝条地板，用雪块做门
+1. Clear the snow from under the rock,1. Clear the snow from under the rock,1. 清掉岩石下的雪
+2. Lean poles against the rock face,2. Lean poles against the rock face,2. 把木杆靠在岩壁上
+3. Thick bough bed: cold rock drinks your heat,3. Thick bough bed: cold rock drinks your heat,3. 铺厚枝条床：冷岩会吸走热量
+4. Thatch the poles with boughs,4. Thatch the poles with boughs,4. 用枝条盖住木杆
+5. Block the open end with a log,5. Block the open end with a log,5. 用圆木挡住开口一端
+1. Check the trunk is stable and clear under it,1. Check the trunk is stable and clear under it,1. 确认树干稳固，清理树干下方
+2. Lean ribs along the trunk,2. Lean ribs along the trunk,2. 沿树干斜靠肋条
+3. Thatch the ribs with boughs,3. Thatch the ribs with boughs,3. 用枝条盖住肋条
+4. Bough bed off the snow,4. Bough bed off the snow,4. 铺枝条床，离开雪面
+5. Pile snow against the windward side,5. Pile snow against the windward side,5. 在迎风面堆雪
+Not enough snow on the ground to heap a quinzhee (%.2f m < %.2f m),Not enough snow on the ground to heap a quinzhee (%.2f m < %.2f m),地上的雪不够堆雪堆屋（%.2f m < %.2f m）
+Too steep to heap a quinzhee (%d° > %d°): find flat ground,Too steep to heap a quinzhee (%d° > %d°): find flat ground,太陡，堆不了雪堆屋（%d° > %d°）：找平地
+"The rock is your wall and reflects a fire's heat, but cold stone drinks warmth: pile the bed thick.","The rock is your wall and reflects a fire's heat, but cold stone drinks warmth: pile the bed thick.",岩石就是墙，还能反射火的热量；但冷岩吸热，床要铺厚。
+"The trunk is your ridgepole. No wall to reflect a fire, so keep your back to the wind.","The trunk is your ridgepole. No wall to reflect a fire, so keep your back to the wind.",树干就是脊梁。没有反射火的墙，要背对着风。
+No rock or cliff to shelter behind here: it has to stand between you and the wind.,No rock or cliff to shelter behind here: it has to stand between you and the wind.,这里没有可以躲的岩石或悬崖：它得挡在你和风之间。
+No fallen trunk here to use as a ridgepole: look for a log lying in the snow.,No fallen trunk here to use as a ridgepole: look for a log lying in the snow.,这里没有能当脊梁的倒木：找一根躺在雪里的树干。
+You wait for the snow to set.,You wait for the snow to set.,你等着雪固结。
+The snow is setting: %d min left.,The snow is setting: %d min left.,雪正在固结：还要 %d 分钟。
+Hollow it too soon and it collapses.,Hollow it too soon and it collapses.,掏得太早会塌。
+[B] Step back & gather meanwhile   ·   Hold [E] to wait it out,[B] Step back & gather meanwhile   ·   Hold [E] to wait it out,[B] 退后，趁这段时间去采集   ·   按住 [E] 干等
+snow setting: %d min,snow setting: %d min,雪在固结：%d 分钟

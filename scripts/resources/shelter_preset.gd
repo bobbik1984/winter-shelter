@@ -28,7 +28,7 @@ extends Resource
 	"1. Entrance Tunnel & Main Arch",
 	"2. Cold-Air Pit (Traps cold air lower)",
 	"3. Raised Sleeping Platform & Bedding",
-	"4. Telescopic Vent / Chimney",
+	"4. Telescopic Air vent",
 	"5. Cozy Interior Lantern (2700K)"
 ])
 
@@ -52,7 +52,7 @@ static func create_all_presets() -> Dictionary:
 		"Stage 1: Entrance tunnel (Slopes slightly down)",
 		"Stage 2: Cold-air pit (Traps cold air lower)",
 		"Stage 3: Raised sleeping platform (Stay above cold air)",
-		"Stage 4: Vent / Chimney (Reduce CO2, expel moisture)",
+		"Stage 4: Air vent (keep the passage open)",
 		"Stage 5: Interior candle lantern (Warm 2700K glow)"
 	])
 

@@ -223,6 +223,14 @@ func _run() -> void:
 	check(m.find_child("ReportNightGraph", true, false) != null and m.find_child("ReportNightTimeline", true, false) != null, "the report shows the night curve and timeline")
 	var rs := m.find_child("ReportScore", true, false) as Label
 	check(rs != null and rs.text.contains("Night score"), "the report shows the night score (%s)" % (rs.text if rs else "none"))
+	await key(KEY_L)
+	await process_frame
+	rs = m.find_child("ReportScore", true, false) as Label
+	check(Loc.is_zh() and rs != null and rs.text.contains("夜晚得分"), "L rebuilds the report in Chinese")
+	await key(KEY_L)
+	await process_frame
+	rs = m.find_child("ReportScore", true, false) as Label
+	check(not Loc.is_zh() and rs != null and rs.text.contains("Night score"), "L switches the report back to English")
 	# 手柄：报告页按 Start = 重开（这里只验证映射，不真的重开）
 	check(d._joy_to_key(JOY_BUTTON_START) == KEY_R, "gamepad Start maps to retry on the report")
 	check(InputMap.action_has_event("interact", _joy_btn(JOY_BUTTON_A)), "gamepad A is bound to interact")

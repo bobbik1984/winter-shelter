@@ -271,7 +271,7 @@ func _check_rotation() -> void:
 ## L5：文案如实——课题有中文；目标行只依据探测结果与 D5 门槛；报告要点引用本图实测值。
 func _check_texts(defs: Array[LevelDef], t: Tuning) -> void:
 	for d in defs:
-		_check(Loc.ZH.has(d.lesson), "关卡 %d 课题缺中文：%s" % [d.index, d.lesson])
+		_check(Loc.catalog().has(d.lesson), "关卡 %d 课题缺中文：%s" % [d.index, d.lesson])
 	# 第 5 章（自己判断）：目标 = 本图实测雪深允许的、玩家能用的庇护所
 	for k in range(6):
 		LevelState.begin(5, -1, 1, k)
@@ -434,4 +434,4 @@ func _check_tree_well(t: Tuning) -> void:
 	cave["has_raised_bed"] = true
 	cave["roof_thickness_meters"] = 0.45
 	_check(float(rep["scores"]["heat"]) < float(NightSimulator.evaluate(cave, t)["scores"]["heat"]), "树井不如深雪高床洞暖（省工的代价）")
-	_check(String(rep["notes"][4]).contains("透气") and NightReportText.build(rep, night, t)["rows"][4]["note"].contains("breathes"), "报告：树井枝条屋顶透气")
+	_check(String(rep["notes"][4]).contains("透气") and NightReportText.build(rep, night, t)["rows"][4]["note"].contains("treated as ventilated"), "报告：树井枝条屋顶透气")

@@ -173,6 +173,28 @@ func run() -> Dictionary:
 				pn.act(NightCurve.ACT_SLEEP)
 			secs += 1.0 / fps
 		_check(absf(pn.minute - rate * 10.0) <= t.night_step_min + 1.0, "%d FPS：播放 10 秒走 %.0f 分钟（应约 %.0f）" % [int(fps), pn.minute, rate * 10.0])
+	# 2026-11-14 真人截图回归：洞外火不能在洞内添柴/烘袜；帐篷独立柴耗。
+	var closed: Dictionary = c["raised_dry"].duplicate()
+	closed.merge({"campfire_near": true, "fire_exposure": 0.0, "firewood_logs": 8.0, "dampness": 1.0}, true)
+	var cn := NightCurve.new(closed, t)
+	_check(cn.stock_logs == 8, "洞外火不自动消耗封闭雪洞的备用木柴")
+	_check(not (NightCurve.ACT_ADD_WOOD in cn.available_actions()), "封闭雪洞不提供无效的洞外添柴")
+	_check(not (NightCurve.ACT_DRY_SOCKS in cn.available_actions()), "封闭雪洞不能隔墙烘袜")
+	cn.wake_now()
+	var before_logs := cn.stock_logs
+	_check(not cn.act(NightCurve.ACT_ADD_WOOD) and cn.stock_logs == before_logs, "拒绝无效添柴且不扣木材")
+	var ti: Dictionary = c["leanto_fire"].duplicate()
+	ti["shelter_type"] = "Tent"
+	ti["night_snowfall"] = 0.0
+	ti["wind_speed_kmh"] = 0.0
+	var tn := NightCurve.new(ti, t)
+	_check(is_equal_approx(tn.log_minutes, t.tent_fire_hours_per_log * 60.0), "帐篷柴耗使用自己的参数")
+	tn.wake_now()
+	var fuel_before := tn.fire_minutes
+	var used := mini(tn.stock_logs, t.night_add_wood_logs)
+	tn.act(NightCurve.ACT_ADD_WOOD)
+	_check(is_equal_approx(tn.fire_minutes, fuel_before + used * tn.log_minutes - 5.0), "添柴续燃按根数和操作耗时结算")
+	_check(tn._fire_factor() == t.tent_fire_bonus, "帐篷火炉热量不误用开放式反射火")
 	_get_up(c, t)
 	_wake_and_score(c, t)
 	return {"passed": _passed, "failures": _failures}

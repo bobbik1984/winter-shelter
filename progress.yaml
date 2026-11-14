@@ -140,7 +140,7 @@ phases:
       - {id: W1, text: "手机网页版：触屏、横屏、手机布局、网页修复、部署脚本", status: written-unverified, depends: [S7], evidence: "tools/touch_smoke_test.gd（headless，整局只用触摸）；tests/test_build_session.gd（文字改写、摇杆、4 种屏幕 × 8 种情境按钮不出屏不重叠）；Chromium 手机模拟 + 真实触摸事件：走路、探针、放工地、中文、转屏暂停，控制台无报错", note: "没上过真机：帧率、内存、iPhone 行为都未验证"}
 
 polish:
-  - {id: P1, text: "中英双语界面（Loc，[L] 切换并保存）", status: written-unverified, note: "约 190 条；中文报告用 NightSimulator 中文归因；依赖系统 CJK 字体"}
+  - {id: P1, text: "中英双语界面（Loc，[L] 切换并保存）", status: written-unverified, note: "2026-11-14：690 条词表，1436 项覆盖/格式/动态标题/双语归因检查通过；报告共用分支，结算页支持 L；全量 2676 PASS；尚未覆盖所有屏幕尺寸的双语视觉验收"}
   - {id: P2, text: "手柄支持", status: written-unverified, note: "左摇杆 / A / X 进 InputMap；其余按键映射；smoke test 覆盖映射，未接真实手柄"}
   - {id: P3, text: "静音 [M] / 全屏 [F11]", status: written-unverified}
   - {id: P5, text: "随包 CJK 后备字体（Droid Sans Fallback, Apache-2.0）", status: done, evidence: "ThemeDB 默认字体 fallbacks 已挂载；中文简报截图正常"}
@@ -158,3 +158,15 @@ polish:
   - {id: P17, text: "致谢与许可面板 [C]", status: written-unverified}
   - {id: P18, text: "保暖层受潮 / 烘干（CORE_GAMEPLAY §4）", status: written-unverified, note: "挖洞与大雪受潮，火旁烘干；机器人平衡结果不变"}
   - {id: P4, text: "真实启动检查", status: done, evidence: "godot --path . --quit-after 900：主场景 900 帧零错误零警告；1280x720 布局截图正常"}
+
+review_20261114:
+  status: done
+  scope: "真人截图的卡片重叠与封闭雪洞无效添柴；白天/夜间柴耗统一；帐篷参数与活动文案"
+  evidence: "15 suites / 1827 assertions PASS；touch smoke PASS；review_shelter_smoke 1280x720 touch CSS 390 PASS；snapshots/review_20261114_*.png"
+  limitations: "局部剖面着色与休息装备处理，不代表达到参考图；原有格式化/渲染/退出泄漏日志未清理；53 FPS，GPU 计时不可用；未重新发布；新柴耗需真人采集节奏复测"
+
+android_v02_20261115:
+  status: written-unverified
+  scope: "原生 CSV i18n；30 FPS 游玩/15 FPS 菜单；后台冻结与恢复；1024 阴影；隐藏剖面与报告停止重绘；0.2/code 2 正式签名包"
+  evidence: "语言 2821 项；全量 15 suites / 4061 assertions PASS；真实窗口手机配置 30/15/15 FPS，后台/恢复及物理 60 Hz PASS；snapshots/power_20261115_*.png"
+  limitations: "桌面 CPU 对比通过；Android 真机安装、温度和耗电未验收；渲染后端提示与退出泄漏仍存在"

@@ -155,19 +155,19 @@ func labels() -> Array:
 				[Vector3(0, 0.02, 0.9), Loc.t("Cold-air pit"), Loc.t("Traps cold air (lower)")],
 				[Vector3(0, 0.3, 2.2), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
 			if _vents > 0:
-				out.append([Vector3(0, 2.15, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+				out.append([Vector3(0, 2.15, 0.1), Loc.t("Air vent · no indoor fire"), Loc.t("Lets out moisture and stale air")])
 			return out
 		"BasicCave":
 			var out := [[Vector3(0, 1.6, -0.6), Loc.t("Thick snow roof"), Loc.t("Snow holds your body heat in")],
 				[Vector3(0, 0.3, 2.2), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
 			if _vents > 0:
-				out.append([Vector3(0, 2.15, 0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+				out.append([Vector3(0, 2.15, 0.1), Loc.t("Air vent · no indoor fire"), Loc.t("Lets out moisture and stale air")])
 			return out
 		"Quinzhee":
 			var out := [[Vector3(0, 1.3, -0.6), Loc.t("Thick snow roof"), Loc.t("Snow holds your body heat in")],
 				[Vector3(0, 0.3, 1.9), Loc.t("Entrance tunnel"), Loc.t("Low door keeps the warmth in")]]
 			if _vents > 0:
-				out.append([Vector3(0, 1.6, -0.1), Loc.t("Vent / Chimney"), Loc.t("Lets out moisture and stale air")])
+				out.append([Vector3(0, 1.6, -0.1), Loc.t("Air vent · no indoor fire"), Loc.t("Lets out moisture and stale air")])
 			return out
 		"SnowTrench":
 			return [[Vector3(0, 0.95, -0.5), Loc.t("Roof over the trench"), Loc.t("Blocks wind and falling snow")],

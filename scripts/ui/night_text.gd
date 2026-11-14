@@ -24,19 +24,21 @@ static func event_title(ev: String) -> String:
 static func event_body(ev: String, warmth: float) -> String:
 	match ev:
 		NightCurve.EV_COLD: return Loc.t("Body warmth %d. The cold woke you — do something, or try to sleep on.") % int(warmth)
-		NightCurve.EV_CRITICAL: return Loc.t("Body warmth %d. You will not survive the night lying still. Get up and move, now.") % int(warmth)
-		NightCurve.EV_FIRE_DYING: return Loc.t("Only embers left. Without more wood the cold comes back within the hour.")
+		NightCurve.EV_CRITICAL: return Loc.t("Body warmth %d. You are dangerously cold. Move in your bedding or use an available heat source.") % int(warmth)
+		NightCurve.EV_FIRE_DYING: return Loc.t("The fire is low. Add fuel if you need its heat; the remaining burn time depends on the weather.")
 		NightCurve.EV_FIRE_OUT: return Loc.t("Body warmth %d. There is still wood in your pile — you can get it going again.") % int(warmth)
-		NightCurve.EV_WET_FEET: return Loc.t("You went to bed in wet socks. Wet layers hold almost no heat.")
-		NightCurve.EV_NO_VENT: return Loc.t("The air is stale — there is no vent. Make one, or don't wake up again.")
+		NightCurve.EV_WET_FEET: return Loc.t("You went to bed in wet socks. Wet layers insulate less effectively.")
+		NightCurve.EV_NO_VENT: return Loc.t("There is no open vent. Clear an air passage before going back to sleep.")
 		NightCurve.EV_VENT_CLOGGED: return Loc.t("New snow has buried the vent. The air is getting thick.")
 		NightCurve.EV_SNOW_LOAD: return Loc.t("Snow is piling on the boughs above you. If it caves in, the cold gets in.")
-		NightCurve.EV_SELF: return Loc.t("Body warmth %d. Awake by choice, before the cold wakes you: tend the fire or warm up, then sleep again. Every wake costs sleep.") % int(warmth)
+		NightCurve.EV_SELF: return Loc.t("Body warmth %d. Awake by choice, before the cold wakes you: check your shelter and bedding, then sleep again. Every wake costs sleep.") % int(warmth)
 		NightCurve.EV_FIRE_WATCH: return Loc.t("Body warmth %d. You woke as planned, while still warm — feed it now and it keeps you warm.") % int(warmth)
 	return ""
 
 ## 为什么现在没法添柴（Hard ≠ Obscure：选项不能无声地消失）。能添柴时为空。
 static func fire_note(n: NightCurve) -> String:
+	if n._fire_factor() <= 0.0:
+		return Loc.t("The fire is outside. It cannot heat this enclosed snow shelter; dry off before bed.")
 	if n.has_fire_place and n.stock_logs > 0:
 		return ""
 	if n.has_fire_place:
@@ -47,8 +49,10 @@ static func fire_note(n: NightCurve) -> String:
 
 static func action_label(a: String, n: NightCurve, t: Tuning) -> String:
 	match a:
-		NightCurve.ACT_ADD_WOOD: return Loc.t("Add wood to the fire (%d logs left)") % n.stock_logs
-		NightCurve.ACT_EXERCISE: return Loc.t("Get up and move (+%d warmth, costs sleep)") % int(round(n.exercise_gain()))
+		NightCurve.ACT_ADD_WOOD:
+			var logs := mini(n.stock_logs, t.night_add_wood_logs)
+			return (Loc.t("Stoke the tent stove: %d logs, +%d min (%d left)") if n._shelter == "Tent" else Loc.t("Tend the fire at the opening: %d logs, +%d min (%d left)")) % [logs, int(round(logs * n.log_minutes)), n.stock_logs - logs]
+		NightCurve.ACT_EXERCISE: return Loc.t("Move in your bedding (+%d warmth net, 10 min; costs sleep)") % int(round(minf(t.warmth_max, n.warmth - n.loss_per_hour() / 6.0 + n.exercise_gain()) - n.warmth))
 		NightCurve.ACT_CLEAR_VENT: return Loc.t("Poke the vent clear")
 		NightCurve.ACT_KNOCK_SNOW: return Loc.t("Knock the snow off the roof")
 		NightCurve.ACT_DRY_SOCKS: return Loc.t("Dry your socks and boots by the fire")
@@ -130,7 +134,7 @@ static func conclusion(res: Dictionary, weakest: String) -> String:
 	var lo := int(res["min_warmth"])
 	var w := int(res["wakes"])
 	match String(res["outcome"]):
-		"SAFE": return Loc.t("You slept through and walked out at dawn. Lowest body warmth %d.") % lo
+		"SAFE": return Loc.t("You made it to dawn in good condition. Lowest body warmth %d.") % lo
 		"COLD":
 			if w == 1:
 				return Loc.t("You made it to dawn, but it was a hard night: lowest body warmth %d, woke once. Biggest heat leak: %s.") % [lo, weakest]
@@ -153,7 +157,7 @@ static func three_comforts(input: Dictionary, res: Dictionary, t: Tuning) -> Str
 	return Loc.t("You took on %s at the same time. \"Cold, the ground, or hunger — only one of those at a time.\"") % " + ".join(bad)
 
 static func boots_line(res: Dictionary) -> String:
-	return Loc.t("You went to bed with wet boots and no fire to dry them — by morning they were frozen solid.") if bool(res.get("boots_frozen", false)) else ""
+	return Loc.t("Wet kit and no drying fire during sleep — cold, damp boots made the night harder.") if bool(res.get("boots_frozen", false)) else ""
 
 ## 报告：夜晚得分一行（总分 + 三项 + 睡了多久）。
 static func score_line(res: Dictionary) -> String:

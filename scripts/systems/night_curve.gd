@@ -112,15 +112,16 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 	# 雪洞内仍不能生火（D3）——火在外面，睡着时对洞里没有作用（_fire_factor = 0）。
 	var wind_ratio := float(input.get("wind_speed_kmh", t.night_fire_wind_ref_kmh)) / maxf(t.night_fire_wind_ref_kmh, 0.1)
 	var snow_now := clampf(float(input.get("night_snowfall", 0.0)), 0.0, 1.0)
-	log_minutes = t.fire_fuel_hours_per_log * 60.0 / (1.0 + t.night_fire_wind_burn * maxf(wind_ratio - 1.0, 0.0) + t.night_fire_snow_burn * snow_now)
+	var hours_per_log := t.tent_fire_hours_per_log if _shelter == "Tent" else t.fire_fuel_hours_per_log
+	log_minutes = hours_per_log * 60.0 / (1.0 + t.night_fire_wind_burn * maxf(wind_ratio - 1.0, 0.0) + t.night_fire_snow_burn * snow_now)
 	if bool(input.get("fire_lit", false)) or bool(input.get("campfire_near", false)):
 		if float(input.get("fire_exposure", 1.0)) * maxf(wind_ratio, 1.0) > t.fire_blowout_dot:
 			fire_blocked = "wind"
 		else:
 			has_fire_place = true
 			var logs := int(round(float(input.get("firewood_logs", 0.0))))
-			var initial_logs := maxi(1, int(round(t.night_fire_initial_hours / maxf(t.fire_fuel_hours_per_log, 0.1))))
-			var burn_now := mini(logs, initial_logs)
+			var initial_logs := maxi(1, int(round(t.night_fire_initial_hours / maxf(hours_per_log, 0.1))))
+			var burn_now := mini(logs, initial_logs) if _fire_factor() > 0.0 else 0
 			fire_minutes = float(burn_now) * log_minutes + maxf(float(input.get("fire_minutes_left", 0.0)), 0.0)
 			stock_logs = logs - burn_now
 			fire_blocked = ""
@@ -187,6 +188,7 @@ func _fire_factor() -> float:
 	match _shelter:
 		"RaisedCave", "BasicCave", "Quinzhee": return 0.0
 		"SnowTrench", "TreeWell": return t.night_fire_factor_snow_open
+		"Tent": return t.tent_fire_bonus
 	return t.night_fire_factor_reflector if bool(input.get("has_reflector_wall", false)) else t.night_fire_factor_open
 
 ## 没有火时每小时掉多少。
@@ -337,13 +339,13 @@ func _woke_for(ev: String) -> bool:
 ## 当前事件下可选的行动（依赖白天的准备）。
 func available_actions() -> PackedStringArray:
 	var out := PackedStringArray()
-	if has_fire_place and stock_logs > 0:
+	if has_fire_place and stock_logs > 0 and _fire_factor() > 0.0:
 		out.append(ACT_ADD_WOOD)
 	if vent_none or vent_clogged_pending:
 		out.append(ACT_CLEAR_VENT)
 	if snow_load_due <= minute and not snow_load_active and _shelter in ["SnowTrench", "TreeWell", "LeanTo", "FallenLog", "RockOverhang"] and _pending_event == EV_SNOW_LOAD:
 		out.append(ACT_KNOCK_SNOW)
-	if has_fire_place and fire_minutes > 0.0 and NightSimulator.wet_fraction(dampness, t) > 0.0:
+	if has_fire_place and _fire_factor() > 0.0 and fire_minutes > 0.0 and NightSimulator.wet_fraction(dampness, t) > 0.0:
 		out.append(ACT_DRY_SOCKS)
 	out.append(ACT_EXERCISE)
 	if light_left() >= t.night_get_up_min_light_min:

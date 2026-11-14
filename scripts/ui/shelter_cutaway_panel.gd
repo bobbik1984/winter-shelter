@@ -6,8 +6,8 @@ extends PanelContainer
 const LABELS := [
 	{
 		"local": Vector3(0.25, 2.95, 0.0),
-		"title": "Vent / Chimney",
-		"sub": "Reduce CO2, expel moisture",
+		"title": "Air vent",
+		"sub": "Allow fresh air in and moist air out",
 		"pos": Vector2(342.0, 6.0),
 		"accent": Color(0.68, 0.86, 1.0),
 	},

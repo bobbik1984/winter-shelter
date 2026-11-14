@@ -77,6 +77,7 @@ var _markers: Array[Node3D] = []
 var _deeper_count := 0
 var _deeper_points: Array[Vector3] = []
 var _cutaway_panel: Control
+var _vignette_captured := false
 var _compass: Control
 var _forced := false
 var _probe_count := 0
@@ -239,6 +240,8 @@ func _enter_briefing() -> void:
 
 ## 简报时只留一个视觉焦点：隐藏体温卡 / 环境卡 / 罗盘 / 世界标签 / 背包托盘（第三次评审 UI）。
 func _set_world_hud(on: bool) -> void:
+	if callouts:
+		callouts.visible = on
 	var hud_layer := hud.get_parent()
 	if hud_layer:
 		hud_layer.set("visible", on)
@@ -261,6 +264,12 @@ func start_game() -> void:
 	else:
 		ui.toast(Loc.t("Probe the snow [Space]: its depth decides which shelter you can build."), 6.0)
 
+## 白天和夜里共用同一根柴的燃烧预算（风/雪会缩短）。
+func _fuel_minutes() -> float:
+	var hours := tuning.tent_fire_hours_per_log if site != null and site.preset_id == "Tent" else tuning.fire_fuel_hours_per_log
+	var ratio := weather.current_wind_kmh() / maxf(tuning.night_fire_wind_ref_kmh, 0.1)
+	return hours * 60.0 / (1.0 + tuning.night_fire_wind_burn * maxf(ratio - 1.0, 0.0) + tuning.night_fire_snow_burn * weather.atmosphere.snowfall)
+
 func _sleep(forced: bool) -> void:
 	if state != State.PLAYING:
 		return
@@ -271,6 +280,9 @@ func _sleep(forced: bool) -> void:
 	session.reset()
 	_mark("sleep")
 	state = State.NIGHT_FADE
+	_vignette_captured = false
+	_set_world_hud(false)
+	callouts.visible = false
 	_fade_t = 0.0
 	_fade_start_ms = Time.get_ticks_msec()
 	player.controls_enabled = false
@@ -288,7 +300,10 @@ func _vignette_texture() -> Texture2D:
 	var vp := _cutaway_panel.get_node_or_null("Margin/VBox/ViewportContainer/SubViewport") as SubViewport
 	if vp == null:
 		return null
-	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# 入睡过渡只需要静帧；UPDATE_ALWAYS 会在隐藏后继续消耗 GPU。
+	if not _vignette_captured:
+		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		_vignette_captured = true
 	return vp.get_texture()
 
 func _timeline_text() -> String:
@@ -359,7 +374,7 @@ func toggle_fire_watch() -> void:
 		return
 	night.fire_watch = not night.fire_watch
 	SessionLog.log_event("fire_watch", weather.clock_string(), {"on": night.fire_watch})
-	ui.toast(Loc.t("Fire watch on: you'll wake when the fire burns low.") if night.fire_watch else Loc.t("Fire watch off: you'll sleep until the cold wakes you."), 2.5)
+	ui.toast(Loc.t("Fire watch on: you'll wake when the fire burns low.") if night.fire_watch else Loc.t("Fire watch off: a low fire will not wake you just for refuelling."), 2.5)
 
 ## 夜间面板底下的一行操作提示。
 func night_hint() -> String:
@@ -369,7 +384,7 @@ func night_hint() -> String:
 	if not TouchMode.enabled:
 		parts.append(Loc.t("Hold [Space] to fast-forward"))
 		parts.append(Loc.t("[W] Wake up"))
-	if night.has_fire_place:
+	if night.has_fire_place and night._fire_factor() > 0.0:
 		var watch := Loc.t("on") if night.fire_watch else Loc.t("off")
 		parts.append((Loc.t("[F] Fire watch: %s") if not TouchMode.enabled else Loc.t("Fire watch: %s")) % watch)
 	return "   ·   ".join(parts)
@@ -458,7 +473,7 @@ func _end_night() -> void:
 	ui.set_fade(1.0)
 	_show_report(night.result())
 
-func _show_report(night_res: Dictionary = {}) -> void:
+func _show_report(night_res: Dictionary = {}, record_result: bool = true) -> void:
 	state = State.REPORT
 	var input := _night_input if not _night_input.is_empty() else night_input()
 	if night_res.is_empty():
@@ -482,10 +497,10 @@ func _show_report(night_res: Dictionary = {}) -> void:
 			extra.append(line)
 	data["night_timeline"] = "\n".join(extra)
 	# Heat 一行按整夜实际发生的写（旧模型假设"有柴就烧到天亮"；现在火要醒来添才烧得下去）
-	if bool(night_res.get("had_fire", false)) and data["rows"].size() >= 6:
+	if bool(night_res.get("had_fire", false)) and not String(input.get("shelter_type", "None")) in ["BasicCave", "RaisedCave", "Quinzhee"] and data["rows"].size() >= 6:
 		var out_at := float(night_res["fire_out_at"])
 		data["rows"][5]["note"] = Loc.t("You kept the fire going until dawn.") if out_at < 0.0 \
-			else Loc.t("The fire went out at %s and nobody fed it; the rest of the night was cold.") % NightText.clock(_bed_minutes, out_at)
+			else Loc.t("The fire last went out at %s. Its heating effect ended then.") % NightText.clock(_bed_minutes, out_at)
 	if LevelState.active() and not LevelState.level.is_free():
 		data["level_takeaway"] = NightReportText.level_takeaway(LevelState.level.theme, LevelState.target_presets(),
 			String(input.get("shelter_type", "None")), String(data["outcome"]), SnowField.map_facts(tuning),
@@ -497,6 +512,8 @@ func _show_report(night_res: Dictionary = {}) -> void:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
+	if not record_result:
+		return
 	SessionLog.log_event("report", weather.clock_string(), {"outcome": String(data["outcome"]), "preset": String(input.get("shelter_type", "None")), "scores": report["scores"], "min_axis": String(report["details"].get("min_axis", "")), "forced": _forced, "bed_warmth": int(warmth.body_warmth), "min_warmth": int(round(float(night_res.get("min_warmth", -1.0)))), "end_warmth": int(round(float(night_res.get("end_warmth", -1.0)))), "wakes": int(night_res.get("wakes", 0)), "cause": String(night_res.get("cause", "")), "score": int(night_res.get("score", 0)), "sleep_h": snappedf(float(night_res.get("sleep_h", 0.0)), 0.1), "planned_wakes": int(night_res.get("planned_wakes", 0))})
 	SessionLog.close()
 	var lvl := LevelState.level.index if LevelState.active() else 0
@@ -591,7 +608,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				elif k == KEY_F:
 					toggle_fire_watch()
 		State.REPORT:
-			if k == KEY_R:
+			if k == KEY_L:
+				_toggle_lang()
+				_show_report(night.result(), false)
+			elif k == KEY_R:
 				_restart()
 			elif (k == KEY_ENTER or k == KEY_KP_ENTER) and _next_stage().x >= 0:
 				_go_to(_next_stage().x, _next_stage().y)
@@ -857,7 +877,7 @@ func _intel_tabs() -> Array:
 ## 条件和数字直接读预设与 Tuning（和工地校验同一套），不会和规则对不上。
 const SHELTER_ABOUT := {
 	"RaisedCave": "Dug sideways into a deep drift on a slope, with the sleeping bench above the entrance so the warm air stays in. The warmest shelter, if you find snow deep enough.",
-	"BasicCave": "A snow cave dug sideways into a drifted slope. Warm and windproof; quicker than the raised cave, a little colder.",
+	"BasicCave": "A quicker snow cave with a level sleeping floor. No raised platform or cold-air sump: colder than a raised cave even when fully built.",
 	"SnowTrench": "A trench dug into flat snow and roofed over. Works where the snow is too thin for a cave, but it is colder.",
 	"LeanTo": "A sloped roof of branches with a fire in front. Best with a rootball at its back; for thin snow and plenty of wood.",
 	"TreeWell": "The hollow under an old spruce's low branches, dug out and roofed. Quick, and the branches keep the snow off.",
@@ -976,7 +996,7 @@ func _request_sleep() -> void:
 		lines.append(Loc.t("Sleep now, with %s?") % have)
 	var wet := wet_sleep_forecast()
 	if not wet.is_empty():
-		lines.append(Loc.t("Your clothes are %s. Tonight your warmth would fall to about %d if you sleep through, about %d if you get up and move each time you wake. With dry clothes: about %d. Dry off by a fire first.") \
+		lines.append(Loc.t("Your clothes are %s. Estimated minimum warmth: %d if you ignore wake-ups, %d if you use available actions when awake; with dry clothes, %d. Dry off by a fire before bed.") \
 			% [Loc.t(String(wet["state"])), int(wet["wet_sleep"]), int(wet["wet_smart"]), int(wet["dry_min"])])
 	if lines.is_empty():
 		_sleep(false)
@@ -1013,6 +1033,8 @@ func wet_sleep_forecast() -> Dictionary:
 # ------------------------------------------------------------------ 每帧
 
 func _process(delta: float) -> void:
+	if graphics:
+		graphics.set_scene_mode("report" if state == State.REPORT else ("paused" if state == State.PAUSED else ("briefing" if state == State.BRIEFING else "playing")))
 	# 启动守卫：第 30 帧再打开粒子（与 GraphicsSettings 一致，避开 swapchain 重建）
 	if _startup_frames < 30:
 		_startup_frames += 1
@@ -1033,7 +1055,7 @@ func _process(delta: float) -> void:
 			var total := tuning.night_fade_seconds + (3.5 if vignette else 0.0)
 			if vignette:
 				var a := clampf((_fade_t - 1.4) / 0.8, 0.0, 1.0) * clampf((total - _fade_t) / 0.6, 0.0, 1.0)
-				ui.show_vignette(vignette, Loc.t("Outside, the wind howls. Inside, the candle glows and the air stays still."), a)
+				ui.show_vignette(vignette, Loc.t("Sheltered from the wind. Insulated bedding below, an open air vent above."), a)
 				audio.shelter_level = 2
 			if _fade_t >= total:
 				_begin_night()
@@ -1117,6 +1139,7 @@ func _tick_playing(delta: float) -> void:
 	var octx := _objective_ctx()
 	ui.set_objective(GameRules.next_objective(octx, tuning))
 	ui.set_steps(first_steps(octx))
+	ui.set_inside_hud(_in_shelter)
 	# 傍晚降雪：16:00 起渐密（氛围 + 能见度下降的暗示）
 	snowfall.intensity = atm.snowfall
 	headlamp.light_energy = lerpf(0.0, 3.0, clampf((2.0 - atm.sun_elevation_deg) / 4.0, 0.0, 1.0))
@@ -1721,7 +1744,7 @@ func _update_fire_callout() -> void:
 	elif _fire_wood() <= 0:
 		lines.append(Loc.t("No dry wood to add"))
 	else:
-		lines.append((Loc.t("[F] Add a log: +%d min (%d dry wood)") if fire.lit else Loc.t("[F] Relight with a log: +%d min (%d dry wood)")) % [int(tuning.campfire_minutes_per_wood), _fire_wood()])
+		lines.append((Loc.t("[F] Add a log: +%d min (%d dry wood)") if fire.lit else Loc.t("[F] Relight with a log: +%d min (%d dry wood)")) % [int(_fuel_minutes()), _fire_wood()])
 	var line := "\n".join(lines)
 	callouts.set_callout("fire_status", fire.global_position + Vector3(0, 1.1, 0), title, line, Color(1.0, 0.62, 0.2), Vector2(28.0, -70.0), 3)
 
@@ -1809,6 +1832,7 @@ func _enter_shelter() -> void:
 	if _in_shelter or site == null or not site.is_complete() or not site.can_enter():
 		return
 	_in_shelter = true
+	ui.toast("", 0.0)
 	_shelter_transition(func() -> void:
 		var cam := site.set_interior_view(true)
 		player.global_position = Vector3(site.global_position.x, player.global_position.y, site.global_position.z)
@@ -1816,6 +1840,8 @@ func _enter_shelter() -> void:
 		interaction.enabled = false
 		var view := site.interior_view()
 		var fig: Node3D = player.visual_node
+		if fig.has_method("set_resting"):
+			fig.set_resting(true)
 		# 模型原点在脚底、身体绕中轴：躺平后要抬高半个身体厚度，不然半截埋进床里
 		fig.global_position = site.to_global(view.figure_spot + Vector3.UP * tuning.interior_figure_lift_m)
 		_set_figure_particles(false)   # 呼出的白气跟着站姿算位置，躺着时会飘在半空
@@ -1868,6 +1894,8 @@ func _leave_shelter() -> void:
 		return
 	_shelter_transition(func() -> void:
 		_in_shelter = false
+		if player.visual_node.has_method("set_resting"):
+			player.visual_node.set_resting(false)
 		if site != null:
 			site.set_interior_view(false)
 			# 一定要落在"算在里面"的半径之外，否则走出去了还在享受庇护所的体温（雪沟的入口离中心很近）
@@ -1998,7 +2026,7 @@ func _on_build_stage() -> Dictionary:
 	site.ready_at = weather.current_time_minutes + site.wait_before_next_stage()
 	if site.preset_id == "LeanTo" and site.is_complete() and site.fire:
 		# 阶段完成时才点燃（工时已流逝）；之后由玩家 [F] 添柴维持
-		site.fire.ignite(tuning.campfire_minutes_per_wood * 2.0)
+		site.fire.ignite(_fuel_minutes() * 2.0)
 		_attach_fire_interactable(site.fire)
 	if site.preset_id == "Tent" and site.stage() >= 2 and _tent_packed:
 		_set_tent_packed(false)
@@ -2126,8 +2154,8 @@ func _try_fire() -> void:
 		if not _spend_fire_wood(1):
 			ui.toast(Loc.t("No dry wood left to add."))
 			return
-		near.add_fuel(tuning.campfire_minutes_per_wood)
-		ui.toast(Loc.t("Added a log (+%d min of fire).") % int(tuning.campfire_minutes_per_wood))
+		near.add_fuel(_fuel_minutes())
+		ui.toast(Loc.t("Added a log (+%d min of fire).") % int(_fuel_minutes()))
 		_skip(2.0)
 		return
 	var p := _fire_place()
@@ -2148,7 +2176,7 @@ func _try_fire() -> void:
 	fire.position = p
 	fire.warm_radius = tuning.fire_warm_radius_m
 	main.add_child(fire)
-	fire.ignite(tuning.fire_wood_cost * tuning.campfire_minutes_per_wood)
+	fire.ignite(tuning.fire_wood_cost * _fuel_minutes())
 	_attach_fire_interactable(fire)
 	_skip(5.0)
 	audio.play_sfx("fire")
@@ -2237,7 +2265,7 @@ func _update_world_callouts() -> void:
 		callouts.remove_callout("probe")
 	callouts.player_world = player.global_position + Vector3(0, 0.9, 0)
 	# R3 + 第三次评审：庇护所 = 固定 HUD 卡片（名字 · 阶段 · 入口朝向 · 下一步）；世界里只在入口画环和箭头
-	if site != null:
+	if site != null and not _in_shelter:
 		callouts.set_marker("my_shelter", site.entrance_point(), Color(1.0, 0.7, 0.35))
 		var t := _shelter_card_text()
 		ui.set_shelter_card(t[0], t[1], site.is_complete())

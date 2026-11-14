@@ -535,7 +535,7 @@ static func _structure_note(
 			roof_thickness, t.roof_thickness_min_m
 		]
 	elif roof_thickness < t.roof_thickness_good_m:
-		snow_note = "顶厚 %.2f m 刚过下限，后半夜体温会削弱穹顶。" % roof_thickness
+		snow_note = "顶厚 %.2f m 刚过下限，保温和结构余量较小。" % roof_thickness
 	else:
 		snow_note = "雪深 %.2f m、顶厚 %.2f m，雪深余量与穹顶承重充足。" % [
 			snow_depth, roof_thickness
@@ -549,7 +549,7 @@ static func _insulation_note(bedding_quality: float, t: Tuning) -> String:
 	if bedding_quality <= t.bedding_bare_threshold:
 		return "几乎没有垫层，身体直接接触雪面，传导散热迅速抽走核心热量。"
 	if bedding_quality >= t.bedding_good_threshold:
-		return "铺设了厚实的松针/干草垫层（%.0f%%），切断了冰雪的传导散热。" % (
+		return "铺设了厚实的松针/干草垫层（%.0f%%），减少了向冰雪的传导散热。" % (
 			bedding_quality * 100.0
 		)
 	return "垫层单薄（%.0f%%），后半夜被压实后背部结霜，体感寒冷刺骨。" % (
@@ -565,16 +565,20 @@ static func _isolation_note(
 ) -> String:
 	if shelter_type == PRESET_RAISED_CAVE:
 		if has_cold_pit and has_raised_bed:
-			return "高床与冷气坑把睡眠区抬离沉积冷空气，底层冷湖被有效隔离。"
+			return "高床高于入口低位通道，冷气槽位于睡台下方，减少较冷空气接触铺位。"
 		if has_cold_pit:
-			return "挖了冷气坑，但睡床未抬高，重冷空气仍可能漫上睡面。"
-		return "高床缺少冷气坑，重冷空气仍会贴着床沿积聚。"
+			return "挖了冷气坑，但睡床未抬高，较冷空气仍可能漫上睡面。"
+		return "高床缺少冷气坑，较冷空气仍会贴着床沿积聚。"
 	if shelter_type == PRESET_BASIC_CAVE:
-		return "床面与入口同高，冷空气沉在床位附近，冷热分层有限。"
+		return "睡面与入口通道同高，没有高床隔离；较冷空气容易接触铺位。这是结构局限，并非漏做施工。"
+	if shelter_type == PRESET_TREE_WELL:
+		return "树井铺位低于周围雪面；没有高床，需用厚枝条垫层减少散热。"
+	if shelter_type == PRESET_QUINZHEE:
+		return "雪堆屋没有高床和低位通道的高度差，铺厚垫层可减少向雪面的散热。"
 	if shelter_type == PRESET_SNOW_TRENCH:
 		return "沟底平铺，缺少冷热分层，冷空气整夜贴着睡垫。"
-	if shelter_type == PRESET_LEAN_TO:
-		return "开放结构没有冷气池；靠背风地势、垫层与火抵消地面冷空气。"
+	if shelter_type in FRAME_TYPES:
+		return "开放结构难以留住暖空气；需背风选址、厚垫层和可用的外部火源。"
 	if shelter_type == PRESET_TENT:
 		return "帐篷没有冷气池；草甸 + 睡袋把身体和地面隔开，但帐篷底布仍会传冷。"
 	return "没有任何隔离，地面冷空气直接包裹身体。"
@@ -587,9 +591,9 @@ static func _air_note(
 	is_snow: bool
 ) -> String:
 	if shelter_type == PRESET_TREE_WELL:
-		return "云杉枝条屋顶透气，不需要通风管，CO₂ 不会积聚。"
+		return "云杉枝条屋顶透气，不需要通风管，游戏按开放通风结构计算，不触发封闭雪屋的堵孔事件。"
 	if shelter_type == PRESET_TENT:
-		return "帐篷有烟囱换气，不存在雪洞那种 CO₂ 积聚；烟囱也会带走一点热。"
+		return "帐篷需保持烟囱和换气通道畅通；本局按火炉通风结构计算，换气也会带走热量。"
 	if not is_snow and shelter_type != PRESET_NONE:
 		return "开放结构通风充分，不存在 CO₂ 积聚问题。"
 	if shelter_type == PRESET_NONE:

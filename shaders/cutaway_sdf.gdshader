@@ -177,12 +177,12 @@ void fragment() {
 		hit_any = true;
 		float strata = 0.5 + 0.5 * sin(pp.y * 21.0 + sin(pp.x * 2.3) * 1.3);
 		// 注意：unshaded 的 ALBEDO 是线性空间，0.05 显示出来约等于 sRGB 0.25。
-		vec3 base = vec3(0.035, 0.075, 0.17);
+		vec3 base = vec3(0.47, 0.62, 0.79);
 		base = mix(base, base * 0.86, smoothstep(0.55, 0.95, strata) * 0.55);
 		base *= mix(0.78, 1.0, smoothstep(0.0, 0.45, -d_plane));
 		float prox = exp(-length(pp - lantern_pos) * 0.5);
 		float warm = exp(-max(cavity(pp), 0.0) * 4.2) * prox * candle;
-		col = mix(base, vec3(0.95, 0.42, 0.10), clamp(warm * 1.1, 0.0, 0.8));
+		col = mix(base, vec3(0.95, 0.42, 0.10), clamp(warm * 0.22, 0.0, 0.22));
 	} else {
 		// —— 光线步进（从剖切面向里走）——
 		float t = t_plane + 0.002;
@@ -234,7 +234,7 @@ void fragment() {
 	// poché 描边：只画在剖切面上（沿雪丘外廓、拱顶内廓、冷气坑、通风井）
 	{
 		float ol = 1.0 - smoothstep(0.0, 1.0, abs(d_plane) / (fw * 2.4 + 1e-5));
-		col = mix(col, vec3(0.003, 0.008, 0.025), ol * 0.97);
+		col = mix(col, vec3(0.24, 0.36, 0.52), ol * 0.32);
 	}
 
 	ALBEDO = col;
