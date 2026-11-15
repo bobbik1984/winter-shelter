@@ -167,6 +167,7 @@ review_20261114:
 
 android_v02_20261115:
   status: written-unverified
+  delivery: "代码已推送 master；GitHub Release v0.2、线上 Web 与 APK 下载页已发布 28fbf8c，旧 APK 保留；Android 真机温度验收仍未完成"
   scope: "原生 CSV i18n；30 FPS 游玩/15 FPS 菜单；后台冻结与恢复；1024 阴影；隐藏剖面与报告停止重绘；0.2/code 2 正式签名包"
   evidence: "语言 2821 项；全量 15 suites / 4061 assertions PASS；真实窗口手机配置 30/15/15 FPS，后台/恢复及物理 60 Hz PASS；snapshots/power_20261115_*.png"
   limitations: "桌面 CPU 对比通过；Android 真机安装、温度和耗电未验收；渲染后端提示与退出泄漏仍存在"

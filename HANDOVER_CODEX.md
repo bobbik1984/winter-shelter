@@ -1,7 +1,7 @@
 # HANDOVER — Winter Shelter / Snow Shelter Challenge
 
 > 交接给同一台设备上的 Codex。  
-> 最后更新：2026-11-14 · 当前版本：`6a0c85a` · 默认/唯一开发分支：`master`
+> 最后更新：2026-11-15 · 当前发布代码：`28fbf8c`（0.2；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
 
 ---
 
@@ -93,11 +93,11 @@ DISPLAY=:0 XAUTHORITY=/run/user/1000/gdm/Xauthority \
   --resolution 1280x720 --audio-driver Dummy
 ```
 
-当前基线（2026-11-14）：
+当前基线（2026-11-15）：
 
 ```text
 15 suites, 0 failed
-1,818 assertions passed
+4,061 assertions passed
 touch smoke: PASS
 input smoke: PASS
 ```
@@ -119,19 +119,18 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 
 ```text
 默认分支：master
-HEAD：6a0c85a
-origin/master：6a0c85a
-origin/claude/visual-pass-1：6a0c85a（内容与 master 相同）
-Tag：v0.1
+发布代码：28fbf8ccf33da448411f9aac8fbc030dd4e44bc5
+代码已推送 origin/master；后续仅文档提交以 git log 为准
+发布 Tag：v0.2（指向发布代码）
 ```
 
 已发布：
 
 ```text
-GitHub Release v0.1
-https://github.com/bobbik1984/winter-shelter/releases/tag/v0.1
-APK: winter-shelter-6a0c85a.apk
-SHA-256: c0b9eb38f24137530c5ed6c913dbce79d2991e79d3858e05905fcce2e48fb49f
+GitHub Release v0.2
+https://github.com/bobbik1984/winter-shelter/releases/tag/v0.2
+APK: winter-shelter-28fbf8c.apk
+SHA-256: c7ccbbdb0f4c86a5026fdc87461b0476b27b89d5f141e6ea37bf82c617b76c87
 ```
 
 **Codex 请直接用 `master`，不要新开长期开发分支。**  
@@ -147,10 +146,10 @@ SHA-256: c0b9eb38f24137530c5ed6c913dbce79d2991e79d3858e05905fcce2e48fb49f
 | :--- | :--- |
 | Web | https://test.bobbik.org/winter/ |
 | APK 下载页 | https://test.bobbik.org/winter/download/ |
-| APK 直链 | https://test.bobbik.org/winter/download/winter-shelter-6a0c85a.apk |
-| GitHub Release | https://github.com/bobbik1984/winter-shelter/releases/tag/v0.1 |
+| APK 直链 | https://test.bobbik.org/winter/download/winter-shelter-28fbf8c.apk |
+| GitHub Release | https://github.com/bobbik1984/winter-shelter/releases/tag/v0.2 |
 
-线上 Web build 标记应为 `6a0c85a`；APK 也是 `6a0c85a`。
+线上 Web build 标记为 `28fbf8c`（`index-78a1006059.pck`）；APK 内标记为 `28fbf8c-android`。下载页已指向 0.2；服务器仍保留旧 6a0c85a APK 供对比。
 
 ---
 
@@ -226,18 +225,20 @@ tools/deploy_apk.sh build/android/winter-shelter-<sha>.apk
 
 ```text
 package: org.bobbik.wintershelter
-version: 0.1 (code 1)
+version: 0.2 (code 2)
 arch: arm64-v8a
 signing: release key
 ```
 
-APK 未在真机安装验证；签名与包结构已验证。
+0.2 APK 未在本机连接的真机安装验证；正式签名与 v0.1 一致、版本号、包结构、导出资源及公开下载均已核验。
 
 ---
 
 ## 9. 当前功能状态（不要从旧记录猜测）
 
 ### 已完成并在线
+
+- 2026-11-15：690 条译文迁入 Godot i18n（CSV→TranslationServer）；手机 30/15 FPS、后台暂停、阴影与隐藏重绘优化；庇护所火源/柴耗与重复 UI 修复。见 CURRENT_STAGE 与 CORE_GAMEPLAY。
 
 - D14 可玩夜晚、D16 建造特写 / 材料往返；
 - S5 其余庇护所、S7 章节平衡；
@@ -258,7 +259,7 @@ APK 未在真机安装验证；签名与包结构已验证。
 - Tent / TreeWell 在密林里的相机遮挡和树冠可读性仍需继续改；
 - 帐篷火盆的平衡（柴耗、最低体温）只做过逻辑/夜间模拟，没有真人长时间试玩；
 - APK 未在真机安装；
-- 线上和 GitHub Release 都是 `6a0c85a`，改动后必须重新打包并重新生成 release（不要覆盖 v0.1，发 v0.2）。
+- 线上 Web、APK 下载页和 GitHub Release v0.2 已更新为 `28fbf8c`；后续改动发布新版本，不覆盖历史 Release。
 
 ---
 

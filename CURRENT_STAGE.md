@@ -12,6 +12,8 @@
 
 手机采用 Tuning 的 30 FPS 游玩 / 15 FPS 菜单预算、1024 阴影图集，三档 3D 高度 480/600/720；后台冻结场景树、停渲染静音，恢复原暂停/静音状态；触屏失焦释放按键。报告停止绘制主世界，入睡剖面只请求单帧。真实窗口同场景：未限帧 world/pause/report 57.8/56.7/55.9 FPS，启用手机配置 30/15/15 FPS；进程 CPU 时钟占用分别从 94.3/75.4/77.1 降为 51.0/33.5/23.0 ticks/s（Linux USER_HZ=100，单个逻辑核百分比量级）；报告 draw calls 676→203。该结果来自 X1T UHD620，不能当作手机温度或续航的实测结果；GPU 计时不可用。后台/恢复与物理 60 Hz 检查 PASS。证据：`tools/mobile_perf_review.gd`、`snapshots/power_20261115_*.png`、`playtests/v02_20261115_*`。
 
+发布记录：`28fbf8c` 已推送 GitHub master，Release v0.2 含 APK 与校验清单；线上 Web build `28fbf8c` / `index-78a1006059.pck`，APK 下载页已指向同一版本，保留旧包。服务器 APK SHA-256 与本地一致：`c7ccbbdb0f4c86a5026fdc87461b0476b27b89d5f141e6ea37bf82c617b76c87`。
+
 Android 版本升为 0.2/code 2，使用原正式签名。导出前清理已导出资源缓存，导出错误中止构建。实际手机安装、发热和续航仍需真机验收；本机没有可用的已连接 Android 设备。
 
 ## 2026-11-14 真人截图回归（机制/UI 已验证，美术继续打磨）
