@@ -9,6 +9,17 @@ const CREAM := Color(0.96, 0.91, 0.80)
 const MUTED := Color(0.75, 0.78, 0.84)
 const AMBER := Color(1.0, 0.62, 0.20)
 
+func show_loading() -> void:
+	var shade := ColorRect.new()
+	shade.name = "MapLoading"
+	shade.color = INK
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	center.add_child(_label(Loc.t("Loading the selected map…"), 28, CREAM))
+	get_child(0).add_child(shade)
+
 var _prompt_card: PanelContainer
 var _prompt_label: Label
 var _progress: ProgressBar
@@ -352,7 +363,12 @@ func set_tent_kit(_on: bool) -> void:
 		_briefing_loadout.text = _tent_kit_line()
 
 func show_briefing(on: bool, forecast: String = "", intro: String = "", level: Dictionary = {}) -> void:
-	if on and _briefing == null:
+	if on:
+		# 选项变化时仅刷新简报控件；旧缓存不能继续显示上一个关卡。
+		if _briefing != null:
+			if _briefing.get_parent():
+				_briefing.get_parent().remove_child(_briefing)
+			_briefing.queue_free()
 		_briefing = _make_briefing(forecast, intro, level)
 		get_child(0).add_child(_briefing)
 	if _briefing:
@@ -407,6 +423,7 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 		if not (level.get("stage_chips", []) as Array).is_empty():
 			_chip_row(left, Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
 		var meta := Loc.t("Map %d  ·  [N] new map") % int(level.get("map", 1))
+		meta += "\n" + Loc.t("Map loads when you press Start.")
 		var ml := _label(meta, 13, MUTED)
 		ml.name = "LevelMeta"
 		left.add_child(ml)

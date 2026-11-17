@@ -265,12 +265,34 @@ func _get_up(c: Dictionary, t: Tuning) -> void:
 	_check(n.step() == "" and n.warmth == w, "起床后模型不再推进")
 	var late := NightCurve.new(c["raised_wet"], t)
 	late.step()
-	_check(not (NightCurve.ACT_GET_UP in late.available_actions()), "天黑后醒来没有起床选项")
+	_check(NightCurve.ACT_GET_UP in late.available_actions(), "天黑后仍然可以起床自由行动")
 	var edge := (c["raised_wet"] as Dictionary).duplicate()
 	edge["daylight_minutes"] = 1.0
 	var en := NightCurve.new(edge, t)
 	en.step()
-	_check(not (NightCurve.ACT_GET_UP in en.available_actions()), "离日落不到 %d 分钟：没有起床选项" % int(t.night_get_up_min_light_min))
+	_check(NightCurve.ACT_GET_UP in en.available_actions(), "接近日落也不限制起床")
+	var resumed_input: Dictionary = early.duplicate()
+	resumed_input["auto_feed_initial"] = false
+	resumed_input["fire_minutes_left"] = 37.0
+	resumed_input["starting_warmth"] = 65.0
+	resumed_input["firewood_logs"] = 3.0
+	n.min_warmth = 42.0
+	n._ex_total = 4
+	var resumed := NightCurve.resume(resumed_input, t, n, 25.0, 31.0)
+	_check(is_equal_approx(resumed.minute, n.minute + 25.0) and resumed.duration == n.duration, "起床再睡不重置经过时间或日出截止")
+	_check(resumed.min_warmth == 31.0 and resumed.warmth == 65.0, "保留外出期间最低保暖值，同时继承回床时保暖值")
+	_check(resumed.asleep_minutes == n.asleep_minutes and resumed.planned_wakes == n.planned_wakes and resumed._ex_total == 4, "起床再睡不刷新睡眠、醒来或活动疲劳记录")
+	_check(not resumed.got_up and not resumed.waiting() and resumed.playhead == resumed.minute, "恢复模型从当前位置继续播放")
+	_check(resumed.timeline.size() == n.timeline.size() + 1 and resumed.timeline[-1]["id"] == "awake", "整夜时间线保留离床前记录并记录自由行动")
+	var live_fire: Dictionary = c["leanto_fire"].duplicate()
+	live_fire["auto_feed_initial"] = false
+	live_fire["fire_minutes_left"] = 37.0
+	live_fire["firewood_logs"] = 3.0
+	var actual := NightCurve.new(live_fire, t)
+	_check(actual.fire_minutes == 37.0 and actual.stock_logs == 3, "真实游戏入睡不自动添柴，不凭空增加燃料")
+	actual.wake_now()
+	actual.act(NightCurve.ACT_ADD_WOOD)
+	_check(actual.stock_logs < 3 and actual.fire_minutes > 37.0, "火炉/开口火仍可按实际库存添柴")
 	# 机器人策略不会起床（不改原来的结局）
 	_check(not bool(NightCurve.run(early, t, "smart").get("got_up", false)), "smart 策略不起床")
 	# 网页版风声循环的交叉淡化：迎风端 0、闷声端 1、单调

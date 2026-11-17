@@ -5,7 +5,7 @@ extends Node
 ## 只做编排：规则在 GameRules / NightSimulator / ShelterBuilder，数值在 Tuning，外观在各自节点。
 ## 由 MainLevel 在 _ready 中创建并注入引用。
 
-enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT, PAUSED, NIGHT }
+enum State { BRIEFING, PLAYING, NIGHT_FADE, REPORT, PAUSED, NIGHT, LOADING }
 
 var main: Node3D
 var player: PlayerController
@@ -66,6 +66,12 @@ var _fire_spot := Vector3.INF
 ## D14 可玩的夜晚
 var night: NightCurve
 var _night_input: Dictionary = {}
+var _selection_pending := false
+var _night_history: NightCurve
+var _awake_since := -1.0
+var _awake_min := 100.0
+var _night_fire: Campfire
+var _darkness_announced := false
 var _bed_minutes := 0.0
 ## 测试工具用：夜晚播放倍速（smoke test 设大，避免等 75 秒）。
 static var night_speed_scale := 1.0
@@ -224,6 +230,16 @@ func _ready() -> void:
 	player.probe_activated.connect(_on_probe)
 	_last_minutes = weather.current_time_minutes
 	_enter_briefing()
+	if LevelState.start_on_load:
+		LevelState.start_on_load = false
+		full_day = LevelState.full_day_on_load
+		LevelState.full_day_on_load = false
+		if full_day:
+			weather.current_time_minutes = float(tuning.full_day_start_minutes)
+			weather.day_start_minutes = weather.current_time_minutes
+			weather.advance_minutes(0.0)
+			_last_minutes = weather.current_time_minutes
+		start_game.call_deferred()
 
 # ------------------------------------------------------------------ 状态
 
@@ -248,6 +264,13 @@ func _set_world_hud(on: bool) -> void:
 	ui.set_day_hud(on)
 
 func start_game() -> void:
+	if state != State.BRIEFING:
+		return
+	if _selection_pending:
+		state = State.LOADING
+		ui.show_loading()
+		_load_selected_game.call_deferred()
+		return
 	SessionLog.start({"valley": TerrainHeight.SEED, "weather": weather.weather_kind, "full_day": full_day, "lang": Loc.lang,
 		"level": LevelState.level.index if LevelState.active() else -1, "stage": LevelState.stage, "map": LevelState.map_index,
 		"seed": LevelState.game_seed, "terrain": TerrainHeight.RECIPE.describe()})
@@ -263,6 +286,24 @@ func start_game() -> void:
 		ui.toast(Loc.t(LevelState.level.lesson), 7.0)
 	else:
 		ui.toast(Loc.t("Probe the snow [Space]: its depth decides which shelter you can build."), 6.0)
+
+func _load_selected_game() -> void:
+	# 先让加载提示真正绘制出来，再进行同步场景重建；headless 同样可验证。
+	await get_tree().process_frame
+	await get_tree().process_frame
+	LevelState.start_on_load = true
+	LevelState.full_day_on_load = full_day
+	get_tree().reload_current_scene()
+
+func _preview_selection() -> void:
+	_selection_pending = true
+	full_day = false
+	LevelState.apply_world()
+	gear = LevelState.gear()
+	weather.preview_selection()
+	_last_minutes = weather.current_time_minutes
+	ui.show_briefing(true, weather.forecast_text(), _briefing_intro(), _level_info())
+	ui.set_intel(_intel_tabs())
 
 ## 白天和夜里共用同一根柴的燃烧预算（风/雪会缩短）。
 func _fuel_minutes() -> float:
@@ -327,8 +368,13 @@ func _timeline_text() -> String:
 func _begin_night() -> void:
 	_night_input = night_input()
 	_night_input["night_snowfall"] = weather.atmosphere.snowfall
-	night = NightCurve.new(_night_input, tuning)
-	_bed_minutes = weather.current_time_minutes
+	if _night_history == null:
+		_bed_minutes = weather.current_time_minutes
+		night = NightCurve.new(_night_input, tuning)
+	else:
+		night = NightCurve.resume(_night_input, tuning, _night_history, weather.current_time_minutes - _awake_since, _awake_min)
+	_night_history = null
+	_awake_since = -1.0
 	SessionLog.log_event("bed", weather.clock_string(), {"warmth": int(night.warmth), "fire": night.has_fire_place, "dampness": snappedf(float(_night_input.get("dampness", 0.0)), 0.01)})
 	state = State.NIGHT
 	ui.show_vignette(null, "", 0.0)
@@ -391,8 +437,12 @@ func night_hint() -> String:
 
 ## 夜里的火：模型说烧着就烧着、说灭了就灭（倒棚反射火 / 睡前篝火）。
 func _sync_night_fire() -> void:
+	var elapsed := maxf(weather.current_time_minutes - _last_minutes, 0.0)
 	for f in get_tree().get_nodes_in_group("campfires"):
 		var c := f as Campfire
+		if c != _night_fire:
+			c.burn(elapsed)
+			continue
 		if night.has_fire_place:
 			c.fuel_minutes = night.fire_minutes
 			c.lit = night.fire_minutes > 0.0
@@ -400,6 +450,7 @@ func _sync_night_fire() -> void:
 			c.fuel_minutes = 0.0
 			c.lit = false
 		c._apply_lit()
+	_last_minutes = weather.current_time_minutes
 
 func _show_night_event(ev: String) -> void:
 	headlamp.light_energy = 2.5   # 醒了：打开头灯
@@ -409,7 +460,7 @@ func _show_night_event(ev: String) -> void:
 		labels.append(NightText.action_label(a, night, tuning))
 	var body := NightText.event_body(ev, night.warmth)
 	var note := NightText.fire_note(night)
-	if note != "" and ev != NightCurve.EV_FIRE_DYING and ev != NightCurve.EV_FIRE_OUT:
+	if note != "":
 		body += "\n" + note
 	ui.show_night_event(Loc.t("%s — %s") % [weather.clock_string(), NightText.event_title(ev)], body, labels)
 	audio.play_sfx("probe")
@@ -431,13 +482,15 @@ func _night_act(a: String) -> void:
 	_sync_night_fire()
 	_show_night_event(night.pending_event())
 
-## 白天醒来、起床（2026-11-07 试玩报告 P1）：这一觉到此为止，回到白天。体温、受潮、时钟、火都接着夜里模型走到的状态；
-## 夜里烧掉的柴从工地堆 / 背包里扣掉。之后可以烘干衣服、添柴，再按 N 重新睡（新的一夜从那一刻算起）。
+## 离开铺位回到自由行动；保留同一夜的起点、统计和隐患，结清本段消耗的备柴。
 func _get_up() -> void:
 	var up_at := _bed_minutes + night.minute
+	weather.current_time_minutes = up_at
+	weather.advance_minutes(0.0)
+	_sync_night_fire()
 	var burned := int(round(float(_night_input.get("firewood_logs", 0.0)))) - night.stock_logs
 	if night.has_fire_place and burned > 0:
-		if site != null:
+		if site != null and bool(_night_input.get("use_site_stock", false)):
 			site.pile.spend({"wood": mini(burned, site.pile.total("wood", inventory))}, inventory)
 		else:
 			inventory.add("wood", -mini(burned, inventory.wood))
@@ -445,8 +498,10 @@ func _get_up() -> void:
 	dampness = night.dampness
 	SessionLog.log_event("get_up", weather.clock_string(), {"warmth": int(night.warmth), "dampness": snappedf(dampness, 0.01),
 		"light_left": int(night.light_left()), "logs_burned": maxi(burned, 0)})
+	_night_history = night
+	_awake_since = up_at
+	_awake_min = night.warmth
 	night = null
-	_night_input = {}
 	_forced = false
 	_zero_t = 0.0
 	ui.hide_night_event()
@@ -456,13 +511,14 @@ func _get_up() -> void:
 	weather.current_time_minutes = up_at
 	weather.advance_minutes(0.0)
 	_last_minutes = weather.current_time_minutes
-	_timeline = _timeline.filter(func(e): return e[0] != "sleep")
 	_mark("up")
 	state = State.PLAYING
-	player.controls_enabled = true
-	interaction.enabled = true
+	player.controls_enabled = not _in_shelter
+	interaction.enabled = not _in_shelter
+	if _in_shelter:
+		_leave_shelter()
 	weather.time_scale = _saved_time_scale
-	var msg := Loc.t("You get up. About %d minutes of light left.") % int(weather.minutes_to_sunset())
+	var msg := Loc.t("You are out of bed. Move, gather wood or tend a fire; outside exposure continues. Return to your bed and press [N] to sleep.")
 	if GameRules.clothing_state(dampness, tuning) != "dry":
 		msg += " " + Loc.t("Dry your clothes by a fire, then [N] sleep again.")
 	ui.toast(msg, 6.0)
@@ -475,6 +531,10 @@ func _end_night() -> void:
 
 func _show_report(night_res: Dictionary = {}, record_result: bool = true) -> void:
 	state = State.REPORT
+	_set_world_hud(false)
+	player.controls_enabled = false
+	interaction.enabled = false
+	weather.time_scale = 0.0
 	var input := _night_input if not _night_input.is_empty() else night_input()
 	if night_res.is_empty():
 		night_res = NightCurve.run(input, tuning, "sleep")
@@ -508,7 +568,7 @@ func _show_report(night_res: Dictionary = {}, record_result: bool = true) -> voi
 			"probed_site": _site_probed, "probe_count": _probe_count, "entrance_deg": float(input.get("wind_angle_diff", 180.0)),
 			"night_temp_c": weather.night_temp_c(), "start_minutes": int(weather.day_start_minutes), "sunset_minutes": weather.sunset_minutes}, tuning)
 	var name_ := Loc.t("None — slept in the open")
-	if site:
+	if site and String(input.get("shelter_type", "None")) == site.preset_id:
 		name_ = Loc.t("%s (%d/5 stages)") % [Loc.t(site.builder.active_preset().display_name), site.stage()]
 	data["timeline"] = _timeline_text()
 	ui.show_report(data, name_)
@@ -757,7 +817,7 @@ func _level_info() -> Dictionary:
 		"best": Records.stage_best(ch, LevelState.stage) if ch >= 1 else Records.text(),
 		"locked_hint": locked_hint, "full_day_option": ch == 0}
 
-## 简报页 ←/→：换章（到该章已开放的最高阶），↑/↓：本章内换阶，[N]：本阶换一张新图。都会重载场景。
+## 简报只更新所选配置；按开始后才重建世界，报告页进入下一阶仍返回简报。
 func _switch_chapter(step: int) -> void:
 	if not LevelState.active():
 		return
@@ -782,12 +842,15 @@ func _new_map() -> void:
 	var ch := LevelState.level.index
 	var k := Records.next_map(ch, LevelState.stage)
 	LevelState.begin(ch, -1, LevelState.stage, k)
-	get_tree().reload_current_scene()
+	_preview_selection()
 
 func _go_to(ch: int, st: int) -> void:
 	Records.set_last_selection(ch, st)
 	LevelState.begin(ch, -1, st, Records.map_index(ch, st))
-	get_tree().reload_current_scene()
+	if state == State.BRIEFING:
+		_preview_selection()
+	else:
+		get_tree().reload_current_scene()
 
 ## 报告页 [Enter]：本章下一阶；第 10 阶之后 = 下一章第 1 阶（第 5 章之后 = 自由模式）。Vector2i(-1, -1) = 没有。
 func _next_stage() -> Vector2i:
@@ -986,13 +1049,14 @@ func _apply_static_labels() -> void:
 		callouts.remove_callout("deadwood")
 
 func _request_sleep() -> void:
-	var done := site != null and site.is_complete()
+	var at_bed := _inside_site() and site.stage() > 0
+	var done := at_bed and site.is_complete()
 	if _sleep_confirm_t > 0.0:
 		_sleep(false)
 		return
 	var lines: Array[String] = []
 	if not done:
-		var have := Loc.t("no shelter") if site == null else Loc.t("a shelter only %d/5 done") % site.stage()
+		var have := Loc.t("no shelter") if not at_bed else Loc.t("a shelter only %d/5 done") % site.stage()
 		lines.append(Loc.t("Sleep now, with %s?") % have)
 	var wet := wet_sleep_forecast()
 	if not wet.is_empty():
@@ -1148,12 +1212,39 @@ func _tick_playing(delta: float) -> void:
 	_zero_t = _zero_t + delta if warmth.body_warmth <= 0.01 else 0.0
 	if _zero_t >= tuning.collapse_seconds_at_zero:
 		ui.toast(Loc.t("Too cold to go on — you curl up where you are."), 4.0)
-		_sleep(true)
+		_finish_awake_night()
 		return
 
-	# 天黑后宽限期结束 → 强制入夜
-	if now >= float(tuning.night_minutes) + tuning.forced_sleep_grace_minutes:
-		_sleep(true)
+	# 天黑只改变环境与提示，不夺走控制权；同一局始终在次日日出结束。
+	if weather.minutes_to_sunset() <= 0.0 and not _darkness_announced:
+		_darkness_announced = true
+		ui.toast(Loc.t("Night has fallen. You can still move and gather; exposed ground is colder. Enter your shelter before choosing to sleep."), 7.0)
+		if _night_history == null:
+			_bed_minutes = now
+			_night_history = NightCurve.new(night_input(), tuning)
+			_awake_since = now
+			_awake_min = warmth.body_warmth
+	if _night_history != null:
+		_awake_min = minf(_awake_min, warmth.body_warmth)
+	if now >= _dawn_minutes():
+		_finish_awake_night()
+
+func _dawn_minutes() -> float:
+	return 1440.0 + SunModel.sunrise_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes)
+
+func _finish_awake_night() -> void:
+	var awake_input := night_input()
+	# 六维解释保留最后一次实际铺位；自由行动的低温和耗时仍进入整夜曲线。
+	if _night_input.is_empty():
+		_night_input = awake_input
+	if _night_history == null:
+		_bed_minutes = weather.current_time_minutes
+		night = NightCurve.new(awake_input, tuning)
+		night.minute = tuning.night_step_min
+		night.min_warmth = warmth.body_warmth
+	else:
+		night = NightCurve.resume(awake_input, tuning, _night_history, weather.current_time_minutes - _awake_since, minf(_awake_min, warmth.body_warmth))
+	_end_night()
 
 ## 「第一步」清单（参考图 First Steps）：每一步由真实的游戏事件打勾，做完不会再取消（锁存），
 ## 第一个没做完的是当前步；具体怎么做仍由下面那句提示（GameRules.next_objective）说。
@@ -1209,7 +1300,11 @@ func _warmth_inputs() -> Dictionary:
 	var level := site.shelter_level() if _inside_site() else 0
 	var fire := 0.0
 	for f in get_tree().get_nodes_in_group("campfires"):
+		if site != null and f == site.fire and site.preset_id == "Tent" and not _inside_site():
+			continue
 		fire = maxf(fire, (f as Campfire).warmth_at(pos, tuning.fire_warm_radius_m))
+	if _inside_site() and site.preset_id in ["BasicCave", "RaisedCave", "Quinzhee"]:
+		fire = 0.0
 	var after_sunset := -weather.minutes_to_sunset()
 	var env := 1.0 + 0.6 * clampf(after_sunset / 60.0, 0.0, 1.0)
 	return {"windbreak": windbreak, "level": level, "fire": fire, "env": env}
@@ -1267,6 +1362,8 @@ func _update_warmth(real_seconds: float, factor: float, min_level: int = 0) -> v
 		dampness = minf(1.0, dampness + tuning.damp_snowfall_rate * secs)
 	warmth.has_extra_clothing = GameRules.clothing_effective(bool(gear["layer"]), dampness, tuning)
 	_update_cloth_label()
+	if _night_history != null:
+		_awake_min = minf(_awake_min, warmth.body_warmth)
 
 ## 动作消耗游戏时间：时钟跳进；按"劳作中"的暴露率结算体温；火堆燃烧。
 ## min_level：劳作时所处的庇护等级（例如在雪洞里挖掘 = 1，避开风吹）。
@@ -2333,30 +2430,35 @@ func _hud_rects() -> Array[Rect2]:
 ## 火（用户定调：所有庇护所同一条规则）：睡的地方附近有火堆，它就留到夜里，烧的是你的柴堆。
 ## 完工倒棚的反射火已经在 input 里；这里处理其它情况。雪洞里仍不能生火（D3），火在外面。
 func _add_campfire_to_night(input: Dictionary) -> void:
-	if bool(input.get("fire_lit", false)):
-		for f in get_tree().get_nodes_in_group("campfires"):
-			if site != null and f == site.fire and (f as Campfire).lit:
-				input["fire_minutes_left"] = (f as Campfire).fuel_minutes
-		return
-	var bed := site.global_position if site != null and site.stage() > 0 else player.global_position
+	input["fire_lit"] = false
+	input["fire_held"] = false
+	input["auto_feed_initial"] = false
+	var at_bed := _inside_site() and site.stage() > 0
+	input["use_site_stock"] = at_bed
+	input["firewood_logs"] = float(inventory.wood + (site.pile.amount("wood") if at_bed else 0))
+	_night_fire = null
+	var bed := site.global_position if at_bed else player.global_position
 	var best: Campfire = null
 	var best_d := tuning.night_fire_reach_m
 	for f in get_tree().get_nodes_in_group("campfires"):
+		if site != null and f == site.fire and site.preset_id == "Tent" and not at_bed:
+			continue
 		var d := Vector2((f as Node3D).global_position.x - bed.x, (f as Node3D).global_position.z - bed.z).length()
 		if d <= best_d and ((f as Campfire).lit or inventory.wood > 0 or (site != null and site.pile.amount("wood") > 0)):
 			best_d = d
 			best = f as Campfire
 	if best == null:
 		return
+	_night_fire = best
 	var p := best.global_position
 	input["campfire_near"] = true
-	input["firewood_logs"] = float(inventory.wood + (site.pile.amount("wood") if site != null else 0))
+	input["fire_lit"] = best.lit
 	input["fire_minutes_left"] = best.fuel_minutes if best.lit else 0.0
-	input["fire_exposure"] = fire_exposure_at(p)
+	input["fire_exposure"] = 0.0 if at_bed and site.preset_id == "Tent" and best == site.fire else fire_exposure_at(p)
 
 func night_input() -> Dictionary:
 	var input: Dictionary
-	if site == null or site.stage() == 0:
+	if site == null or site.stage() == 0 or not _inside_site():
 		var p := player.global_position
 		input = {
 			"shelter_type": "None",
@@ -2410,16 +2512,16 @@ func night_input() -> Dictionary:
 	input["dampness"] = dampness   # R1：入睡时受潮进入过夜结算
 	# 装备（S6）：防潮垫加到地面隔热
 	# 地面隔热：枝条地板底子 + 睡前多铺的枝条捆（背包里剩下的垫层）+ 防潮垫 + 兽皮
-	var spare_bedding := inventory.bedding + (site.pile.amount("bedding") if site != null else 0)
+	var spare_bedding := inventory.bedding + (site.pile.amount("bedding") if _inside_site() else 0)
 	input["bedding_quality"] = GameRules.ground_insulation(float(input.get("bedding_quality", 0.0)) > 0.5, spare_bedding,
 		bool(gear["pad"]), bool(gear.get("hides", false)), tuning)
-	if site != null and site.preset_id == "Tent":
+	if site != null and site.preset_id == "Tent" and _inside_site():
 		# 帐篷的睡袋第 4 阶才铺；草甸第 1 阶铺。不能靠背包里的 pad 提前算满。
 		input["bedding_quality"] = 1.0 if site.stage() >= 4 else (0.55 if site.stage() >= 1 else 0.15)
 	input["wind_speed_kmh"] = weather.current_wind_kmh()
 	input["night_temp_c"] = weather.night_temp_c()
 	# 夜晚到明天日出为止（早睡要熬更久）；日落前那段还没到夜间气温
-	var sunrise := SunModel.sunrise_minutes(tuning.sun_latitude_deg, tuning.sun_declination_deg, tuning.solar_noon_minutes) + 1440.0
+	var sunrise := _dawn_minutes()
 	input["night_hours"] = maxf(sunrise - weather.current_time_minutes, 60.0) / 60.0
 	input["daylight_minutes"] = maxf(weather.minutes_to_sunset(), 0.0)
 	return input

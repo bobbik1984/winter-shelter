@@ -271,6 +271,9 @@ func _run() -> void:
 	check(d.state == d.State.PLAYING, "Resume returns to play")
 	# 2026-11-07 试玩报告 P1：湿衣睡觉先提醒（按真实过夜模型算湿 / 干两种结果），再点一次才睡。
 	# 找一个"衣服干湿真的决定这一夜"的入睡时刻（太早睡的话干衣也撑不过 19 小时的夜，那时不该怪衣服）。
+	# 2026-11-17：必须回到实际床位，不能让露天睡眠借用远处庇护所的保暖分。
+	p.global_position = d.site.global_position + Vector3.UP * 0.3
+	await wait(0.2)
 	d.dampness = 1.0
 	var fc: Dictionary = {}
 	for h in [16.5, 16.0, 15.5, 15.0, 14.0]:
@@ -286,6 +289,11 @@ func _run() -> void:
 	for i in 5: await process_frame
 	check(d.state == d.State.PLAYING and d._sleep_confirm_t > 0.0, "wet clothes: the first Sleep only warns")
 	# 照样睡，但拨回中午：湿衣早睡会在天黑前冻醒，下面测"白天醒来起床"
+	# 回拨时间是独立测试布景，同步重置前一布景可能触发的夜间历史。
+	d._night_history = null
+	d._awake_since = -1.0
+	d._night_input = {}
+	d._darkness_announced = false
 	d.weather.current_time_minutes = 12.5 * 60.0
 	d.weather.advance_minutes(0.0)
 	d._last_minutes = d.weather.current_time_minutes

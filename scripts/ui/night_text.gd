@@ -38,9 +38,9 @@ static func event_body(ev: String, warmth: float) -> String:
 ## 为什么现在没法添柴（Hard ≠ Obscure：选项不能无声地消失）。能添柴时为空。
 static func fire_note(n: NightCurve) -> String:
 	if n._fire_factor() <= 0.0:
-		return Loc.t("The fire is outside. It cannot heat this enclosed snow shelter; dry off before bed.")
+		return Loc.t("Snow shelter: no indoor fire. The outside fire warms you only when you go out to its heat circle; it does not block cold air at the entrance. Get out of bed to tend it or gather wood.")
 	if n.has_fire_place and n.stock_logs > 0:
-		return ""
+		return Loc.t("Tent: fuel goes into the chimney stove inside.") if n._shelter == "Tent" else Loc.t("Open shelter: fuel goes into the fire at the opening. Get out of bed to move around or gather more wood.")
 	if n.has_fire_place:
 		return Loc.t("No fire to tend: you have no logs left.") if n.fire_minutes <= 0.0 else Loc.t("No spare logs for the fire.")
 	if n.fire_blocked == "wind":
@@ -56,7 +56,7 @@ static func action_label(a: String, n: NightCurve, t: Tuning) -> String:
 		NightCurve.ACT_CLEAR_VENT: return Loc.t("Poke the vent clear")
 		NightCurve.ACT_KNOCK_SNOW: return Loc.t("Knock the snow off the roof")
 		NightCurve.ACT_DRY_SOCKS: return Loc.t("Dry your socks and boots by the fire")
-		NightCurve.ACT_GET_UP: return Loc.t("Get up: it's still light (%d min to sunset)") % int(n.light_left())
+		NightCurve.ACT_GET_UP: return Loc.t("Get out of bed: move, tend a fire or gather wood (exposure continues)")
 		NightCurve.ACT_SLEEP: return Loc.t("Go back to sleep  [Enter]")
 	return a
 
@@ -67,6 +67,8 @@ static func action_done(a: String) -> String:
 		NightCurve.ACT_CLEAR_VENT: return Loc.t("cleared the vent")
 		NightCurve.ACT_KNOCK_SNOW: return Loc.t("knocked the snow off")
 		NightCurve.ACT_DRY_SOCKS: return Loc.t("dried socks and boots")
+		NightCurve.ACT_GET_UP: return Loc.t("got out of bed")
+		"awake": return Loc.t("awake in the world; exposure continued")
 	return ""
 
 static func event_short(ev: String) -> String:

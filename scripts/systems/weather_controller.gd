@@ -102,6 +102,15 @@ func advance_minutes(minutes: float) -> void:
 func minutes_to_sunset() -> float:
 	return sunset_minutes - current_time_minutes
 
+## 简报预览只重算轻量天气参数，不创建地形、树木或碰撞体。
+func preview_selection() -> void:
+	current_time_minutes = float(LevelState.roll.get("start_minutes", tuning.start_minutes))
+	day_start_minutes = current_time_minutes
+	wind_offset_kmh = float(LevelState.roll.get("wind_speed_offset_kmh", 0.0))
+	night_temp_offset_c = float(LevelState.roll.get("night_temp_offset_c", 0.0))
+	weather_kind = _roll_weather()
+	advance_minutes(0.0)
+
 func clock_string() -> String:
 	var m := int(current_time_minutes) % 1440
 	return "%02d:%02d" % [m / 60, m % 60]

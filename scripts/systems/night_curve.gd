@@ -19,7 +19,7 @@ const ACT_CLEAR_VENT := "clear_vent"
 const ACT_KNOCK_SNOW := "knock_snow"
 const ACT_DRY_SOCKS := "dry_socks"
 const ACT_SLEEP := "sleep"
-## 白天醒来（离日落还有 night_get_up_min_light_min 以上）可以起床、回到白天：烘干衣服、添柴，再重新睡。
+## 夜间也可起床返回自由行动；回床时接续同一夜的时钟和统计。
 const ACT_GET_UP := "get_up"
 
 const EV_COLD := "cold"
@@ -60,6 +60,7 @@ var vent_none := false
 var vent_clogged_pending := false
 var vent_clog_due := INF
 var vent_none_due := INF
+var vent_fatal_due := INF
 var snow_load_due := INF
 var snow_load_active := false
 var wet_feet_due := INF
@@ -80,7 +81,7 @@ var _last_wake := -INF
 var _ex_this_wake := 0
 var _ex_total := 0
 var _pending_event := ""
-## 白天醒来后起床了：这一夜到此为止，游戏回到白天（不出报告）。
+## 当前睡眠段已结束；调用方保存此段并转为自由行动，不立即结算整夜。
 var got_up := false
 ## 守火（默认开，有能整夜烧的火才有意义）：火只剩 30 分钟时把人叫醒添柴。
 var fire_watch := true
@@ -92,6 +93,7 @@ var _resettle_left := 0.0
 var _fire_dying_reported := false
 var _is_snow := false
 var _shelter := "None"
+var _shelter_history: Dictionary = {}
 
 func _init(p_input: Dictionary, p_t: Tuning) -> void:
 	input = p_input
@@ -121,7 +123,7 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 			has_fire_place = true
 			var logs := int(round(float(input.get("firewood_logs", 0.0))))
 			var initial_logs := maxi(1, int(round(t.night_fire_initial_hours / maxf(hours_per_log, 0.1))))
-			var burn_now := mini(logs, initial_logs) if _fire_factor() > 0.0 else 0
+			var burn_now := mini(logs, initial_logs) if _fire_factor() > 0.0 and bool(input.get("auto_feed_initial", true)) else 0
 			fire_minutes = float(burn_now) * log_minutes + maxf(float(input.get("fire_minutes_left", 0.0)), 0.0)
 			stock_logs = logs - burn_now
 			fire_blocked = ""
@@ -131,6 +133,7 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 		if vents <= 0:
 			vent_none = true
 			vent_none_due = t.night_no_vent_wake_min
+			vent_fatal_due = t.night_no_vent_fatal_min
 		elif bool(input.get("vent_snow_clogged", false)):
 			vent_clogged_pending = true
 			vent_clog_due = t.night_clog_wake_min
@@ -141,6 +144,47 @@ func _init(p_input: Dictionary, p_t: Tuning) -> void:
 		wet_feet_due = t.night_wet_feet_wake_min
 	fire_watch = bool(input.get("fire_watch", true))
 	curve.append(Vector2(0.0, warmth))
+
+## 世界行动已结算失温与燃料；返回铺位时只接续时间轴，不再重复扣除。
+static func resume(p_input: Dictionary, p_t: Tuning, previous: NightCurve, awake_minutes: float, awake_min: float) -> NightCurve:
+	var n := NightCurve.new(p_input, p_t)
+	n.duration = previous.duration
+	n.minute = minf(previous.duration, previous.minute + maxf(awake_minutes, 0.0))
+	n.playhead = n.minute
+	n.daylight_minutes = previous.daylight_minutes
+	n.min_warmth = minf(previous.min_warmth, minf(awake_min, n.warmth))
+	n.asleep_minutes = previous.asleep_minutes
+	n.wakes = previous.wakes
+	n.critical_wakes = previous.critical_wakes
+	n.planned_wakes = previous.planned_wakes
+	n.sleep_quality = previous.sleep_quality
+	n._ex_total = previous._ex_total
+	n._last_wake = previous._last_wake
+	n._resettle_left = p_t.night_resettle_min
+	n.clog_unresolved = previous.clog_unresolved
+	n.suffocated = previous.suffocated
+	n.curve = previous.curve.duplicate()
+	n.curve.append(Vector2(n.minute, n.warmth))
+	n.timeline = previous.timeline.duplicate(true)
+	if awake_minutes > 0.0:
+		n.timeline.append({"minute": n.minute, "kind": "action", "id": "awake", "warmth": n.warmth})
+	n._shelter_history = previous._shelter_history.duplicate(true)
+	var fields := ["vent_none", "vent_clogged_pending", "vent_clog_due", "vent_none_due", "vent_fatal_due", "snow_load_due", "snow_load_active", "wet_feet_due"]
+	var hazards := {}
+	for field in fields:
+		hazards[field] = previous.get(field)
+	n._shelter_history[previous._shelter] = hazards
+	if n._shelter_history.has(n._shelter):
+		for field in fields:
+			n.set(field, n._shelter_history[n._shelter][field])
+	else:
+		for field in ["vent_clog_due", "vent_none_due", "vent_fatal_due", "snow_load_due", "wet_feet_due"]:
+			n.set(field, float(n.get(field)) + n.minute)
+	if bool(p_input.get("has_vent", false)):
+		n.vent_none = false
+	if not bool(p_input.get("vent_snow_clogged", false)):
+		n.vent_clogged_pending = false
+	return n
 
 ## 庇护所保护度 0..1：原 6 维（不含空气）在"没有火、没有暖身、干衣、满体温"下的加权平均——只看庇护所本身。
 static func protection_of(p_input: Dictionary, p_t: Tuning) -> float:
@@ -258,7 +302,7 @@ func _advance_one() -> String:
 	if int(minute) % 30 == 0:
 		curve.append(Vector2(minute, warmth))
 	# 没通风管：到时没处理 → 窒息（之前一定已经闷醒过一次）
-	if vent_none and minute >= t.night_no_vent_fatal_min and _woke_for(EV_NO_VENT):
+	if vent_none and minute >= vent_fatal_due and _woke_for(EV_NO_VENT):
 		suffocated = true
 		return ""
 	if snow_load_due <= minute and not snow_load_active and _woke_for(EV_SNOW_LOAD):
@@ -348,8 +392,7 @@ func available_actions() -> PackedStringArray:
 	if has_fire_place and _fire_factor() > 0.0 and fire_minutes > 0.0 and NightSimulator.wet_fraction(dampness, t) > 0.0:
 		out.append(ACT_DRY_SOCKS)
 	out.append(ACT_EXERCISE)
-	if light_left() >= t.night_get_up_min_light_min:
-		out.append(ACT_GET_UP)
+	out.append(ACT_GET_UP)
 	out.append(ACT_SLEEP)
 	return out
 

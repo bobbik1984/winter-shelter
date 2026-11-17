@@ -26,6 +26,9 @@ const SEED_MAX := 999999
 
 ## 真实游戏启动时自动进入关卡模式（MainLevel._init）。测试工具设为 false 以保留固定基准（山谷 7、不旋转、天气按 Tuning）。
 static var auto_begin: bool = true
+## 简报选择只更新配置；玩家确认后重建一次地图并直接开始。
+static var start_on_load := false
+static var full_day_on_load := false
 ## 章节选择顺序（自由模式排最后）。
 const ORDER := [1, 2, 3, 4, 5, 0]
 
@@ -131,6 +134,8 @@ static func gear() -> Dictionary:
 
 ## 退出关卡模式（测试用；回到旧行为）。
 static func reset() -> void:
+	start_on_load = false
+	full_day_on_load = false
 	level = null
 	stage = 1
 	map_index = 0

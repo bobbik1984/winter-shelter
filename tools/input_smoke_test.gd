@@ -398,30 +398,32 @@ func _levels_part() -> void:
 	Records.record_stage_result(1, 1, "COLD")
 	var id1 := m.get_instance_id()
 	await key(KEY_UP)
-	m = await _scene_after_reload(id1)
-	d = m.get_node("GameDirector")
+	await process_frame
+	check(current_scene.get_instance_id() == id1, "stage selection updates the briefing without rebuilding the world")
 	check(LevelState.level.index == 1 and LevelState.stage == 2 and d.state == d.State.BRIEFING, "after stage 1, ↑ goes to stage 2 (fresh briefing)")
 	check(Records.last_selection() == Vector2i(1, 2), "the chosen chapter / stage is remembered")
 	var seed_a := LevelState.game_seed
 	var id2 := m.get_instance_id()
 	await key(KEY_N)
-	m = await _scene_after_reload(id2)
-	d = m.get_node("GameDirector")
+	await process_frame
+	check(current_scene.get_instance_id() == id2, "new-map selection is deferred until Start")
 	check(LevelState.stage == 2 and LevelState.map_index == 1 and LevelState.game_seed != seed_a, "[N] on the briefing gives a new map for the same stage")
 	await key(KEY_2)
 	check(d.state == d.State.BRIEFING and not d.full_day, "[2] full day is free-mode only")
 	var id3 := m.get_instance_id()
 	await key(KEY_DOWN)
-	m = await _scene_after_reload(id3)
-	d = m.get_node("GameDirector")
+	await process_frame
+	check(current_scene.get_instance_id() == id3, "going back a stage does not reload the scene")
 	check(LevelState.stage == 1, "↓ goes back to stage 1")
 	Records.record_stage_result(1, 5, "COLD")   # 第 5 阶开下一章
 	var id4 := m.get_instance_id()
 	await key(KEY_RIGHT)
-	m = await _scene_after_reload(id4)
-	d = m.get_node("GameDirector")
+	await process_frame
+	check(current_scene.get_instance_id() == id4, "chapter selection does not reload the scene")
 	check(LevelState.level.index == 2 and LevelState.stage == 1, "passing stage 5 opens chapter 2; → goes there")
 	await key(KEY_ENTER)
+	m = await _scene_after_reload(id4)
+	d = m.get_node("GameDirector")
 	check(d.state == d.State.PLAYING and int(d.weather.current_time_minutes) == d.tuning.start_minutes, "chapter 2 stage 1 starts at 14:20")
 	await key(KEY_B)
 	var seen := {}
