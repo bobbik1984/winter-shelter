@@ -1,12 +1,38 @@
-[gd_resource type="Resource" script_class="LevelDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="LevelDef" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/level_def.gd" id="1_level"]
+[ext_resource type="Script" path="res://scripts/resources/chapter_stage.gd" id="2_stage"]
+
+[sub_resource type="Resource" id="Stage1"]
+script = ExtResource("2_stage")
+lesson = "1. Find shelter from the wind: probe a leeward drift, gather materials and build a basic snow cave. You have the whole day."
+introduced_presets = PackedStringArray("BasicCave")
+target_presets = PackedStringArray("BasicCave")
+start_minutes = 600
+difficulty = 0.0
+
+[sub_resource type="Resource" id="Stage2"]
+script = ExtResource("2_stage")
+lesson = "2. Raise the bed: find deeper snow and build a raised cave. Keep the sleeping platform above the entrance passage; the weather is as gentle as in stage 1."
+introduced_presets = PackedStringArray("BasicCave", "RaisedCave")
+target_presets = PackedStringArray("RaisedCave")
+start_minutes = 600
+difficulty = 0.0
+
+[sub_resource type="Resource" id="Stage3"]
+script = ExtResource("2_stage")
+lesson = "3. Prepare for the night: choose your cave, dry your clothes and check the vent and bedding. Wake and get up when needed. Survive to open chapter 2."
+introduced_presets = PackedStringArray("BasicCave", "RaisedCave")
+target_presets = PackedStringArray("RaisedCave", "BasicCave")
+start_minutes = 780
+difficulty = 0.35
 
 [resource]
 script = ExtResource("1_level")
 index = 1
-lesson = "Read the wind, then dig a snow cave on the sheltered side. You have the whole day."
+lesson = "Optional challenge: revisit the snow-cave route with less daylight, stronger wind or fewer resources. Main progress is already complete."
 theme = "deep_drift"
+main_stages = Array[Resource]([SubResource("Stage1"), SubResource("Stage2"), SubResource("Stage3")])
 start_minutes = 600
 weather_weight_clear = 1.0
 weather_weight_overcast = 0.0

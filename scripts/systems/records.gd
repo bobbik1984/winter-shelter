@@ -10,10 +10,27 @@ extends RefCounted
 static var path: String = "user://records.cfg"
 const OUTCOME_RANK := {"DANGEROUS": 0, "COLD": 1, "SAFE": 2}
 const PROGRESS := "progress"
+const CAMPAIGN_VERSION := 2
 
 static func _cfg() -> ConfigFile:
 	var cfg := ConfigFile.new()
-	cfg.load(path)
+	var loaded := cfg.load(path) == OK
+	if int(cfg.get_value(PROGRESS, "campaign_version", 0)) < CAMPAIGN_VERSION:
+		if loaded:
+			var backup := path + ".pre-v03"
+			if not FileAccess.file_exists(backup):
+				if DirAccess.copy_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(backup)) != OK:
+					push_warning("Campaign migration postponed: save backup failed.")
+					return cfg
+		if cfg.has_section_key(PROGRESS, "chapters"):
+			var chapters: Dictionary = cfg.get_value(PROGRESS, "chapters", {1: 1})
+			# 旧最高开放关 >= 4 表示已通过三关；下一章、成绩和地图计数都保留。
+			if int(chapters.get(1, 0)) > LevelState.main_stage_count(1) or chapters.has(2):
+				chapters[1] = LevelState.STAGES
+				if not chapters.has(2): chapters[2] = 1
+			cfg.set_value(PROGRESS, "chapters", chapters)
+		cfg.set_value(PROGRESS, "campaign_version", CAMPAIGN_VERSION)
+		if loaded: cfg.save(path)
 	return cfg
 
 static func save(key: String, outcome: String, score: int) -> void:
@@ -65,7 +82,7 @@ static func chapter_highest(ch: int) -> int:
 static func stage_unlocked(ch: int, st: int) -> bool:
 	if ch == 0:
 		return free_open()
-	return st >= 1 and st <= chapter_highest(ch)
+	return st >= 1 and st <= LevelState.STAGES and st <= chapter_highest(ch)
 
 ## 记一局章节结果；返回新开放的内容 {stage, chapter, free}（只含这次新开放的）。
 static func record_stage_result(ch: int, st: int, outcome: String) -> Dictionary:

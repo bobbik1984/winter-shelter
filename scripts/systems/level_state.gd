@@ -3,7 +3,7 @@ extends RefCounted
 
 ## D12 / D13 当前章节、阶与本局抽取结果（静态，生命周期同 TerrainHeight.SEED）。
 ## 必须在重载 main.tscn 之前调用 begin()：地形、雪深、森林、资源都在 _ready 时读取。
-## 结构：5 章 × 10 阶（CORE_GAMEPLAY §9.1）。每阶默认一张固定的图：种子 = f(章, 阶, 第 k 张图)，
+## 结构：第一章 3 主线 + 7 可选挑战，其余章各 10 阶（CORE_GAMEPLAY §9.1）。每阶默认一张固定的图：种子 = f(章, 阶, 第 k 张图)，
 ## 玩家在简报页按 [N] 才换第 k+1 张。抽取只依赖 (章, 种子, 阶)，同一组合永远得到同一局。
 
 const LEVEL_PATHS := [
@@ -16,7 +16,7 @@ const LEVEL_PATHS := [
 ]
 ## 章数（不含自由模式）。历史原因叫 LEVEL_COUNT：一章 = 原 D12 的一关。
 const LEVEL_COUNT := 5
-## 每章的阶数；通过本章第 CHAPTER_GATE_STAGE 阶开放下一章（用户定，D13）。
+## 历史阶段 ID 上限（保留旧存档与挑战种子）；主线数量和章门槛用访问器读取。
 const STAGES := 10
 const CHAPTER_GATE_STAGE := 5
 ## [GAME] 解锁所需结局（CORE_GAMEPLAY §8.4）。
@@ -50,13 +50,46 @@ static func difficulty_of(p_stage: int) -> float:
 	return clampf(float(p_stage - 1) / float(STAGES - 1), 0.0, 1.0)
 
 static func difficulty() -> float:
-	return difficulty_of(stage) if active() else 0.0
+	var profile := stage_profile()
+	return profile.difficulty if profile != null else (difficulty_of(stage) if active() else 0.0)
+
+static func main_stage_count(ch: int) -> int:
+	var definition := load_level(ch)
+	return definition.main_stages.size() if definition != null and not definition.main_stages.is_empty() else STAGES
+
+static func chapter_gate(ch: int) -> int:
+	return mini(CHAPTER_GATE_STAGE, main_stage_count(ch))
+
+static func is_optional(ch: int = -1, st: int = -1) -> bool:
+	var c := ch if ch >= 0 else (level.index if active() else 0)
+	return c > 0 and (st if st >= 0 else stage) > main_stage_count(c)
+
+static func main_stage_total() -> int:
+	var count := 0
+	for ch in range(1, LEVEL_COUNT + 1): count += main_stage_count(ch)
+	return count
+
+static func stage_profile() -> ChapterStage:
+	if active() and stage >= 1 and stage <= level.main_stages.size():
+		return level.main_stages[stage - 1] as ChapterStage
+	return null
+
+static func lesson() -> String:
+	var profile := stage_profile()
+	return profile.lesson if profile != null else (level.lesson if active() else "")
+
+static func introduced_presets() -> PackedStringArray:
+	var profile := stage_profile()
+	return profile.introduced_presets if profile != null else (level.introduced_presets if active() else PackedStringArray())
 
 ## 全局阶号 1..50（自由模式 = 0）。
 static func global_stage(ch: int = -1, st: int = -1) -> int:
 	var c := ch if ch >= 0 else (level.index if active() else 0)
 	var s := st if st >= 0 else stage
-	return 0 if c <= 0 else (c - 1) * STAGES + s
+	if c <= 0 or is_optional(c, s): return 0
+	var ordinal := s
+	for prior in range(1, c): ordinal += main_stage_count(prior)
+	return ordinal
 
 ## 每阶第 k 张图的种子（确定性）。
 static func stage_seed(ch: int, st: int, k: int) -> int:
@@ -93,6 +126,8 @@ const TARGET_MIN_FRACTION := 0.02
 static func target_presets() -> PackedStringArray:
 	if not active():
 		return PackedStringArray()
+	var profile := stage_profile()
+	if profile != null: return profile.target_presets
 	if level.theme != "storm_mix":
 		return level.target_presets
 	var f := SnowField.map_facts(load("res://resources/tuning.tres") as Tuning)
@@ -116,7 +151,7 @@ static func available_presets(learned: PackedStringArray) -> PackedStringArray:
 		return PackedStringArray(BuildMode.PRESETS)
 	var out := PackedStringArray()
 	for p in BuildMode.PRESETS:
-		if p in learned or p in level.introduced_presets:
+		if p in learned or p in introduced_presets():
 			out.append(p)
 	return out
 
@@ -158,6 +193,11 @@ static func begin(index: int, p_seed: int = -1, p_stage: int = 1, p_map: int = 0
 	map_index = maxi(p_map, 0)
 	game_seed = p_seed if p_seed >= 0 else stage_seed(level.index, stage, map_index)
 	roll = roll_for(level, game_seed, difficulty_of(stage))
+	var profile := stage_profile()
+	if profile != null:
+		roll = roll_for(level, game_seed, profile.difficulty)
+		if profile.start_minutes >= 0:
+			roll["start_minutes"] = profile.start_minutes
 	return roll
 
 ## 纯函数：同一 (def, seed, 难度) 永远返回同一结果。
@@ -245,11 +285,13 @@ static func unlocks_next(outcome: String) -> bool:
 ## 返回 {stage: 本章新开放的阶（0 = 无）, chapter: 新开放的章（0 = 无）, free: 是否开放自由模式}。
 static func unlocks_after(ch: int, st: int, outcome: String) -> Dictionary:
 	var out := {"stage": 0, "chapter": 0, "free": false}
-	if ch < 1 or not unlocks_next(outcome):
+	if ch < 1 or ch > LEVEL_COUNT or st < 1 or st > STAGES or not unlocks_next(outcome):
 		return out
 	if st < STAGES:
 		out["stage"] = st + 1
-	if st >= CHAPTER_GATE_STAGE:
+	if main_stage_count(ch) < STAGES and st >= main_stage_count(ch):
+		out["stage"] = STAGES
+	if st >= chapter_gate(ch):
 		if ch < LEVEL_COUNT:
 			out["chapter"] = ch + 1
 		else:

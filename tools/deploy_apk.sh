@@ -2,12 +2,12 @@
 # 把 GitHub Actions 打好的 APK 放到 test.bobbik.org/winter/download/（vps1 上 /opt/test/winter/download）。
 # 用法：tools/deploy_apk.sh [run-id | path/to/file.apk]
 #   不给参数：取 android.yml 最近一次成功的构建。
-# 只写 /opt/test/winter/download/；deploy_web.sh 的 --delete-after 不会删这个目录。
+# 只写 /opt/test/winter/download/；deploy_web.sh 的 不会删这个目录。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 KEY="${DEPLOY_KEY:-$HOME/.ssh/vps1_deploy_ed25519}"
-DEST="ubuntu@100.64.0.1:/opt/test/winter/download/"
-URL="https://test.bobbik.org/winter/download/"
+DEST="${DEPLOY_DEST:-ubuntu@100.64.0.1:/opt/test/winter/download/}"
+URL="${DEPLOY_URL:-https://test.bobbik.org/winter/download/}"
 REPO="bobbik1984/winter-shelter"
 
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
@@ -83,8 +83,8 @@ open(os.path.join(d, 'index.html'), 'w', encoding='utf-8').write(page)
 print('page for', name, size, sha256[:12])
 PY
 
-# APK 先传，页面最后切换；旧 APK 最后删
-rsync -rtz --delete-after --delay-updates --info=stats1 \
+# APK 先传，页面最后切换；保留旧 APK 以便回滚和对比
+rsync -rtz --delay-updates --info=stats1 \
   -e "ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15" "$work/site/" "$DEST"
 
 curl -sS -m 30 -H 'Cache-Control: no-cache' "$URL?v=$RANDOM" | grep -q "$name" || { echo "verify failed: page does not link $name" >&2; exit 1; }

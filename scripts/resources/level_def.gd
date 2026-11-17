@@ -12,6 +12,8 @@ extends Resource
 @export_multiline var lesson: String = ""
 ## [GAME] 章节主题键（D13 §9.5）：deep_drift / hidden_pockets / blowdown / open_flat / storm_mix / free。报告"本关要点"按它选文案。
 @export var theme: String = "free"
+## [GAME] 有独立配置时，其数量就是主线关数；剩余旧关保留为可选挑战。
+@export var main_stages: Array[Resource] = []
 
 @export_group("Clock")
 ## [GAME] 开局时刻（分钟）。14:20 = 860；10:00 = 600（整个白天）。

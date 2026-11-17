@@ -71,10 +71,11 @@ static func buttons_for(ctx: Dictionary) -> Array:
 		return b
 	match String(ctx.get("state", "")):
 		"briefing":
+			var stage_word := Loc.t("Challenge") if bool(ctx.get("optional_challenge", false)) else Loc.t("Stage")
 			b.append(_key("ch_prev", "◀ " + Loc.t("Chapter"), KEY_LEFT, "bar"))
 			b.append(_key("ch_next", Loc.t("Chapter") + " ▶", KEY_RIGHT, "bar"))
-			b.append(_key("st_prev", "▼ " + Loc.t("Stage"), KEY_DOWN, "bar"))
-			b.append(_key("st_next", Loc.t("Stage") + " ▲", KEY_UP, "bar"))
+			b.append(_key("st_prev", "▼ " + stage_word, KEY_DOWN, "bar"))
+			b.append(_key("st_next", stage_word + " ▲", KEY_UP, "bar"))
 			b.append(_key("map", Loc.t("New map"), KEY_N, "bar"))
 			b.append(_key("lang", "中文 / EN", KEY_L, "bar"))
 			b.append(_key("intel", Loc.t("Intel"), KEY_I, "bar"))

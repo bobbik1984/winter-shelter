@@ -1,5 +1,5 @@
 extends SceneTree
-## Runs against the APK's extracted game.pck from an empty directory.
+## Runs against a ZIP/PCK made from the APK's exported assets, from an empty directory.
 func _initialize() -> void:
 	var failures: Array[String] = []
 	var tuning = load("res://resources/tuning.tres")
@@ -15,6 +15,11 @@ func _initialize() -> void:
 		if load(path) == null: failures.append("missing resource: " + path)
 	if int(ProjectSettings.get_setting("application/run/max_fps.mobile", 0)) != 30:
 		failures.append("startup frame cap missing")
+	var chapter = load("res://resources/levels/level_01.tres")
+	if chapter == null or chapter.main_stages.size() != 3:
+		failures.append("three-stage chapter missing/stale")
+	elif chapter.main_stages[1].target_presets != PackedStringArray(["RaisedCave"]) or chapter.main_stages[2].start_minutes != 780:
+		failures.append("tutorial stage resources stale")
 	print("APK build marker: ", FileAccess.get_file_as_string("res://build_info.txt").strip_edges())
 	for failure in failures: printerr(failure)
 	print("APK CONTENT ", "PASS" if failures.is_empty() else "FAIL")

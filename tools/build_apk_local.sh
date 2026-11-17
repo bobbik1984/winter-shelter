@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 本机打 Android 测试包（GitHub 的构建产物从这边下载太慢、经常断时用）。
-# 用法：tools/build_apk_local.sh   → build/android/winter-shelter-<sha>.apk（正式密钥）或 …-TESTKEY.apk
-# 然后：tools/deploy_apk.sh build/android/winter-shelter-<sha>.apk
+# 用法：tools/build_apk_local.sh   → ~/work/local/stage/winter-shelter/android/winter-shelter-<sha>.apk（正式密钥）或 …-TESTKEY.apk
+# 然后：tools/deploy_apk.sh ~/work/local/stage/winter-shelter/android/winter-shelter-<sha>.apk
 # 需要：Godot 4.3 + Android 导出模板、java、apksigner（Debian 的 android-sdk 包即可）。
 # 不改你的编辑器设置：用临时配置目录指向 Java / SDK；SDK 里缺的 adb 用占位脚本（导出用不到它）。
 # 签名：有正式密钥的密码文件就用正式密钥（见下面），否则用本机固定的测试密钥（~/.local/share/winter-shelter/apk-test.p12）。
@@ -11,6 +11,9 @@ cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 sha=$(git rev-parse --short HEAD)
 git diff --quiet HEAD -- . || sha="$sha-dirty"
+out_dir="${APK_OUTPUT_DIR:-$HOME/work/local/stage/winter-shelter/android}"
+mkdir -p "$out_dir"
+out_dir=$(realpath "$out_dir")
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"; git checkout -q -- build_info.txt 2>/dev/null || true' EXIT
 
 jh=$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")
@@ -23,13 +26,12 @@ else printf '#!/bin/sh\nexit 0\n' > "$tmp/sdk/platform-tools/adb"; chmod +x "$tm
 printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/java_sdk_path = "%s"\nexport/android/android_sdk_path = "%s"\n' "$jh" "$tmp/sdk" \
   > "$tmp/cfg/godot/editor_settings-4.3.tres"
 
-mkdir -p build/android
-touch build/.gdignore
+mkdir -p "$out_dir"
 echo "$sha-android" > build_info.txt
-rm -f build/android/unsigned.apk
+rm -f "$tmp/unsigned.apk"
 # Godot 4.3 的已导出资源缓存可能保留旧 Resource 默认值；每次完整重导出。
 rm -rf .godot/exported
-if ! XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" build/android/unsigned.apk > "$tmp/export.log" 2>&1; then
+if ! XDG_CONFIG_HOME="$tmp/cfg" "$GODOT" --headless --path . --export-release "Android" "$tmp/unsigned.apk" > "$tmp/export.log" 2>&1; then
   tail -n 60 "$tmp/export.log" >&2
   echo "Android export failed" >&2
   exit 1
@@ -38,7 +40,7 @@ if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$tmp/export.log"; then
   echo "Android export reported errors" >&2
   exit 1
 fi
-[ -s build/android/unsigned.apk ] || { echo "export failed" >&2; exit 1; }
+[ -s "$tmp/unsigned.apk" ] || { echo "export failed" >&2; exit 1; }
 
 # 签名：有正式密钥就用正式密钥（和 bob 的 APK 同一把，Actions 打的包也用它），否则用本机测试密钥。
 # 正式密钥：APK_KEYSTORE（默认 ~/credentials/bobbik-release.p12）+ 密码文件 APK_KEY_PASS_FILE
@@ -65,9 +67,9 @@ else
   suffix="-TESTKEY"
   echo "no release key password file ($PASSF): signing with the local TEST key"
 fi
-out="build/android/winter-shelter-$sha$suffix.apk"
+out="$out_dir/winter-shelter-$sha$suffix.apk"
 apksigner sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias "$alias_" --ks-pass "$ks_pass" \
-  --out "$out" build/android/unsigned.apk
+  --out "$out" "$tmp/unsigned.apk"
 apksigner verify "$out"
-rm -f build/android/unsigned.apk
+rm -f "$tmp/unsigned.apk"
 echo "built $out ($(stat -c%s "$out") bytes)"

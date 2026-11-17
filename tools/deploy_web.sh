@@ -6,8 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 KEY="${DEPLOY_KEY:-$HOME/.ssh/vps1_deploy_ed25519}"
-DEST="ubuntu@100.64.0.1:/opt/test/winter/"
-URL="https://test.bobbik.org/winter/"
+DEST="${DEPLOY_DEST:-ubuntu@100.64.0.1:/opt/test/winter/}"
+URL="${DEPLOY_URL:-https://test.bobbik.org/winter/}"
 build_only=0; allow_dirty=0
 for a in "$@"; do
   case "$a" in
@@ -27,19 +27,29 @@ if ! git diff --quiet HEAD -- . ; then
 fi
 echo "$sha" > build_info.txt
 
-rm -rf build/web; mkdir -p build/web
-touch build/.gdignore   # 别让编辑器把导出的文件当资源导入（否则还会被打进别的导出包）
+stage_parent="${WINTER_STAGE_ROOT:-$HOME/work/local/stage/winter-shelter}"
+mkdir -p "$stage_parent"
+out_dir=$(mktemp -d "$stage_parent/web-XXXXXXXX")
 "$GODOT" --headless --path . --import >/dev/null 2>&1
 # 导出缓存可能留着旧的脚本默认值（见 tools/dump_resource_values.gd），每次都重新转换
 rm -rf .godot/exported
-"$GODOT" --headless --path . --export-release "Web" build/web/index.html 2>&1 | grep -E "ERROR|WARNING: .*export" || true
-[ -s build/web/index.pck ] || { echo "export failed: no index.pck" >&2; exit 1; }
+export_log=$(mktemp)
+trap 'rm -f "$export_log"' EXIT
+if ! "$GODOT" --headless --path . --export-release "Web" "$out_dir/index.html" > "$export_log" 2>&1; then
+  tail -n 60 "$export_log" >&2
+  exit 1
+fi
+if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' "$export_log"; then
+  echo "Web export reported errors" >&2
+  exit 1
+fi
+[ -s "$out_dir/index.pck" ] || { echo "export failed: no index.pck" >&2; exit 1; }
 
 # 游戏数据按内容命名，手机浏览器不会用缓存里的旧版；再加上手机专用的 <head>
-python3 - "$sha" <<'PY'
+python3 - "$sha" "$out_dir" <<'PY'
 import hashlib, os, re, sys
 sha = sys.argv[1]
-d = 'build/web'
+d = sys.argv[2]
 h = hashlib.sha256(open(f'{d}/index.pck', 'rb').read()).hexdigest()[:10]
 pck = f'index-{h}.pck'
 os.rename(f'{d}/index.pck', f'{d}/{pck}')
@@ -57,18 +67,18 @@ open(f'{d}/index.html', 'w', encoding='utf-8').write(html)
 print('built', sha, pck, os.path.getsize(f'{d}/{pck}'))
 PY
 
-GODOT="$GODOT" tools/check_export_values.sh "build/web/$(ls build/web | grep -E '^index-.*\.pck$')"
+GODOT="$GODOT" tools/check_export_values.sh "$out_dir/$(ls "$out_dir" | grep -E '^index-.*\.pck$')"
 
-[ $build_only = 1 ] && { echo "build only: build/web"; exit 0; }
+[ $build_only = 1 ] && { echo "build only: $out_dir"; exit 0; }
 
 # 先传新文件，HTML 最后切换，旧的 pck 最后才删，上传途中打开的人不会拿到一半
 # /download/ 是 tools/deploy_apk.sh 放的 APK 页面，别删
 rsync -rtz --delete-after --delay-updates --info=stats1 --filter='P /download/' \
-  -e "ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15" build/web/ "$DEST"
+  -e "ssh -i $KEY -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15" "$out_dir/" "$DEST"
 
 live=$(curl -sS -m 30 -H 'Cache-Control: no-cache' "$URL?v=$sha" | grep -o 'name="build" content="[^"]*"' || true)
 [ "$live" = "name=\"build\" content=\"$sha\"" ] || { echo "verify failed: live says '$live', expected $sha" >&2; exit 1; }
-pck=$(ls build/web | grep -E '^index-.*\.pck$')
+pck=$(ls "$out_dir" | grep -E '^index-.*\.pck$')
 code=$(curl -sS -m 60 -o /dev/null -w '%{http_code}' "$URL$pck")
 [ "$code" = "200" ] || { echo "verify failed: $pck returned $code" >&2; exit 1; }
 echo "deployed $sha to $URL"

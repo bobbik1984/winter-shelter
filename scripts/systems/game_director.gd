@@ -283,7 +283,7 @@ func start_game() -> void:
 	interaction.enabled = true
 	weather.time_scale = _saved_time_scale
 	if LevelState.active() and not LevelState.level.is_free():
-		ui.toast(Loc.t(LevelState.level.lesson), 7.0)
+		ui.toast(Loc.t(LevelState.lesson()), 7.0)
 	else:
 		ui.toast(Loc.t("Probe the snow [Space]: its depth decides which shelter you can build."), 6.0)
 
@@ -788,16 +788,21 @@ func _level_info() -> Dictionary:
 		chips.append({"label": Loc.t("Free") if idx == 0 else str(idx), "current": idx == ch,
 			"unlocked": Records.stage_unlocked(idx, 1)})
 	var stage_chips: Array = []
+	var optional := LevelState.is_optional()
 	if ch >= 1:
-		for st in range(1, LevelState.STAGES + 1):
-			stage_chips.append({"label": str(st), "current": st == LevelState.stage, "unlocked": Records.stage_unlocked(ch, st)})
+		var first := LevelState.main_stage_count(ch) + 1 if optional else 1
+		var last := LevelState.STAGES if optional else LevelState.main_stage_count(ch)
+		for st in range(first, last + 1):
+			stage_chips.append({"label": str(st - first + 1), "current": st == LevelState.stage, "unlocked": Records.stage_unlocked(ch, st)})
 	var locked_hint := ""
 	if ch >= 1:
 		var hi := Records.chapter_highest(ch)
-		if hi < LevelState.STAGES:
+		if hi < LevelState.main_stage_count(ch):
 			locked_hint = Loc.t("COLD or SAFE on stage %d opens stage %d.") % [hi, hi + 1]
 		if ch < LevelState.LEVEL_COUNT and not Records.stage_unlocked(ch + 1, 1):
-			locked_hint += ("   ·   " if locked_hint != "" else "") + Loc.t("Pass stage %d to open chapter %d.") % [LevelState.CHAPTER_GATE_STAGE, ch + 1]
+			locked_hint += ("   ·   " if locked_hint != "" else "") + Loc.t("Pass stage %d to open chapter %d.") % [LevelState.chapter_gate(ch), ch + 1]
+		elif LevelState.main_stage_count(ch) < LevelState.STAGES:
+			locked_hint = Loc.t("Main chapter complete. Optional challenges do not block chapter 2.")
 	var names := Records.preset_names()
 	var learned := Records.learned_shelters()
 	var known: Array[String] = []
@@ -811,9 +816,12 @@ func _level_info() -> Dictionary:
 	if not new_here.is_empty():
 		shelters += "\n" + Loc.t("New here: %s") % ", ".join(new_here)
 	shelters += "\n\n" + Loc.t("Survive a night in a shelter and you've learned it — use it on any level after that.")
-	var title := Loc.t("Free play") if ch == 0 else Loc.t("Chapter %d · Stage %d  (%d of 50)") % [ch, LevelState.stage, LevelState.global_stage()]
-	return {"index": ch, "title": title, "lesson": Loc.t(LevelState.level.lesson), "seed": LevelState.game_seed, "conditions": _conditions_line(),
+	var title := Loc.t("Free play")
+	if ch > 0:
+		title = Loc.t("Chapter %d · Optional challenge %d/%d") % [ch, LevelState.stage - LevelState.main_stage_count(ch), LevelState.STAGES - LevelState.main_stage_count(ch)] if optional else Loc.t("Chapter %d · Stage %d/%d") % [ch, LevelState.stage, LevelState.main_stage_count(ch)]
+	return {"index": ch, "title": title, "lesson": Loc.t(LevelState.lesson()), "seed": LevelState.game_seed, "conditions": _conditions_line(),
 		"map": LevelState.map_index + 1, "shelters_only": shelters, "chips": chips, "stage_chips": stage_chips,
+		"optional": optional, "has_challenges": ch > 0 and LevelState.main_stage_count(ch) < LevelState.STAGES,
 		"best": Records.stage_best(ch, LevelState.stage) if ch >= 1 else Records.text(),
 		"locked_hint": locked_hint, "full_day_option": ch == 0}
 
@@ -825,7 +833,7 @@ func _switch_chapter(step: int) -> void:
 	for k in range(1, LevelState.ORDER.size()):
 		var idx: int = LevelState.ORDER[posmod(pos + step * k, LevelState.ORDER.size())]
 		if Records.stage_unlocked(idx, 1):
-			_go_to(idx, maxi(Records.chapter_highest(idx), 1) if idx >= 1 else 1)
+			_go_to(idx, maxi(mini(Records.chapter_highest(idx), LevelState.main_stage_count(idx)), 1) if idx >= 1 else 1)
 			return
 
 func _switch_stage(step: int) -> void:
@@ -858,7 +866,8 @@ func _next_stage() -> Vector2i:
 		return Vector2i(-1, -1)
 	var ch := LevelState.level.index
 	var st := LevelState.stage
-	if st < LevelState.STAGES and Records.stage_unlocked(ch, st + 1):
+	var last := LevelState.STAGES if LevelState.is_optional() else LevelState.main_stage_count(ch)
+	if st < last and Records.stage_unlocked(ch, st + 1):
 		return Vector2i(ch, st + 1)
 	var nch := ch + 1 if ch < LevelState.LEVEL_COUNT else 0
 	if Records.stage_unlocked(nch, 1):
@@ -871,7 +880,7 @@ func _unlock_after_report(ch: int, outcome: String) -> void:
 	var news := Records.record_stage_result(ch, LevelState.stage, outcome)
 	var msgs: Array[String] = []
 	if int(news["stage"]) > 0:
-		msgs.append(Loc.t("Stage %d unlocked!") % int(news["stage"]))
+		msgs.append(Loc.t("Optional challenges unlocked!") if int(news["stage"]) > LevelState.main_stage_count(ch) else Loc.t("Stage %d unlocked!") % int(news["stage"]))
 	if int(news["chapter"]) > 0:
 		msgs.append(Loc.t("Chapter %d unlocked!") % int(news["chapter"]))
 	if bool(news["free"]):
@@ -952,7 +961,7 @@ const SHELTER_ABOUT := {
 func shelter_cards() -> Array:
 	var names := Records.preset_names()
 	var learned := Records.learned_shelters()
-	var here: PackedStringArray = LevelState.level.introduced_presets if LevelState.active() else PackedStringArray()
+	var here: PackedStringArray = LevelState.introduced_presets()
 	var intro := {}
 	for ch in range(1, LevelState.LEVEL_COUNT + 1):
 		var lv := LevelState.load_level(ch)

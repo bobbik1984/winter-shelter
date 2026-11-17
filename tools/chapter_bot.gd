@@ -1,7 +1,7 @@
 extends SceneTree
 ## S7 章节机器人：godot --headless --path . -s res://tools/chapter_bot.gd -- --ch=1 --st=1 --map=0 --route=RaisedCave --care=full
 ## 和 playtest_bot 不同：读地图上的地物找工地（任意地形 / 旋转），走路花真实的游戏时间，从真实资源点采集，
-## 受背包上限约束，到强制入睡时间就必须睡。输出一行 S7 ...（tools/s7_matrix.sh 汇总）。
+## 受背包上限约束，以黄昏为规划截止时间（游戏本身允许夜间继续行动）。输出一行 S7 ...（tools/s7_matrix.sh 汇总）。
 ## route：庇护所预设名 / none（不建）/ intowind:<预设>（入口迎风）。care：full（备足、烘干、暖身）/ basic（建完就睡）。
 
 var d
@@ -309,6 +309,9 @@ func _run() -> void:
 				await _gather("bedding", 3)
 				if d.inventory.wood > 0 or d.inventory.bedding > 0:
 					_back_to_site()
+	# 卸货点在门外；过夜评估前实际走到庇护所内，计入返程时间。
+	if d.site != null and d.site.is_complete():
+		_walk(d.site.global_position)
 	var forced: bool = _late()
 	var inp: Dictionary = d.night_input()
 	inp["night_snowfall"] = d.weather.atmosphere.snowfall

@@ -421,7 +421,9 @@ func _make_briefing(forecast: String = "", intro: String = "", level: Dictionary
 	if not level.is_empty():
 		_chip_row(left, Loc.t("[←] CHAPTER [→]"), level.get("chips", []), "LevelChip_", "LevelRow")
 		if not (level.get("stage_chips", []) as Array).is_empty():
-			_chip_row(left, Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
+			_chip_row(left, Loc.t("[↓] CHALLENGE [↑]") if bool(level.get("optional", false)) else Loc.t("[↓] STAGE [↑]"), level["stage_chips"], "StageChip_", "StageRow")
+		if bool(level.get("has_challenges", false)):
+			left.add_child(_label(Loc.t("After the 3 main stages, use ▲/▼ to revisit optional challenges."), 13, MUTED))
 		var meta := Loc.t("Map %d  ·  [N] new map") % int(level.get("map", 1))
 		meta += "\n" + Loc.t("Map loads when you press Start.")
 		var ml := _label(meta, 13, MUTED)
