@@ -1,0 +1,53 @@
+{
+  "version": "0.3",
+  "version_code": 3,
+  "source": "9547f4ea8803dd1696636fd67ce7f05df060c24d",
+  "apk": "winter-shelter-9547f4e.apk",
+  "bytes": 31475824,
+  "sha256": "e7c9b1c3efa05fe36098cf5f07bf5b584af818075756f28d03102bf00c8fc6b9",
+  "signing_sha256": "dafb9fbdc736f2c70864a7005cb199b70ab5816a6833e8ec3e5ba743fee338f5",
+  "abis": [
+    "arm64-v8a"
+  ],
+  "manifest": {
+    "versionCode": 3,
+    "versionName": "0.3",
+    "installLocation": 0,
+    "compileSdkVersion": 34,
+    "compileSdkVersionCodename": "14",
+    "package": "org.bobbik.wintershelter",
+    "platformBuildVersionCode": 34,
+    "platformBuildVersionName": 14
+  },
+  "date": "2026-11-17",
+  "release_url": "https://github.com/bobbik1984/winter-shelter/releases/tag/v0.3",
+  "web_url": "https://test.bobbik.org/winter/",
+  "apk_url": "https://test.bobbik.org/winter/download/winter-shelter-9547f4e.apk",
+  "web_pck": "index-4c02213836.pck",
+  "web_pck_sha256": "4c02213836c02435c8feff0d4795dca92f945463c02b1de160fee4f955e8034d",
+  "public_apk_hash_matches": true,
+  "public_pck_hash_matches": true,
+  "github_asset_digest_matches": true,
+  "web_resource_values_checked": 595,
+  "apk_content_audit": "PASS",
+  "ci": {
+    "suites": 15,
+    "assertions": 4160,
+    "logic": "PASS",
+    "touch": "PASS",
+    "input": "PASS",
+    "wildlife": "PASS"
+  },
+  "window_review": "PASS: 3 main chips, bilingual lesson, 13:00 stage 3, next chapter, optional seven, return to main",
+  "route_simulation": [
+    "S7 ch=1 st=1 map=0 shape=ridge_valley weather=clear route=BasicCave care=full start=10:00 placed=true stage=5 done=12:00 bed=12:45 forced=false trips=1 walked=147 short=- temp=-24 wind=20 bedW=100 damp=0.00 prot=0.74 loss=2.2 hours=18.9 smart=SAFE/63/0 sleep=SAFE/63 why=isolation maxsnow=3.0",
+    "S7 ch=1 st=2 map=0 shape=ridge_valley weather=clear route=RaisedCave care=full start=10:00 placed=true stage=5 done=12:47 bed=13:48 forced=false trips=1 walked=173 short=- temp=-24 wind=20 bedW=97 damp=0.00 prot=0.89 loss=0.4 hours=17.9 smart=SAFE/90/0 sleep=SAFE/90 why=structure maxsnow=3.0",
+    "S7 ch=1 st=3 map=0 shape=ridge_valley weather=overcast route=RaisedCave care=full start=13:00 placed=true stage=5 done=15:45 bed=16:24 forced=false trips=1 walked=101 short=- temp=-25 wind=24 bedW=100 damp=0.00 prot=0.82 loss=1.0 hours=15.3 smart=SAFE/84/0 sleep=SAFE/84 why=structure maxsnow=3.0"
+  ],
+  "android_device_tested": false,
+  "phone_temperature_measured": false,
+  "known_limitations": [
+    "Existing Godot shutdown resource/RID cleanup warnings",
+    "Global project_aligner registry path wild does not resolve; progress projections untouched"
+  ]
+}

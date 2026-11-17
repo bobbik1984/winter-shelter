@@ -14,7 +14,7 @@
 
 验收进展：15 suites / 4160 assertions PASS，触屏整局、输入整局、地物回归均 PASS。真实窗口专项验证第一章三按钮、第二关课题中英切换、第三关 13:00、通关默认去第二章、七个可选挑战及返回主线，RESULT PASS；截图 `snapshots/compact_chapter_*.png`，末帧 21 FPS（并发测试期间，GPU 计时不可用）。规划机器人按真实资源与步行耗时完成默认地图三条准备路线，实际返回铺位后评估：BasicCave SAFE/最低 63、高床 SAFE/90、第三关高床 SAFE/84；这是路线模拟，不代替手机人工试玩。旧机器人卸货点在门外，已修正为过夜评估前走入实际铺位；未放宽保暖规则。逻辑测试退出时仍有既有 ObjectDB/Resource 清理警告。
 
-构建 / 发布核验进行中。`project_aligner.py` 的公共注册相对路径仍指向不存在的 `wild`，因此不直接改 `progress.yaml` / `todo.md`；待公共映射修正后对齐。
+发布完成：0.3 / versionCode 3，发布代码 `9547f4ea8803dd1696636fd67ce7f05df060c24d` 已推送 master，GitHub Release `v0.3` 已附正式签名 APK 与校验清单。Web 标记 `9547f4e`，PCK `index-4c02213836.pck`；595 项导出资源属性与源码一致。APK 31,475,824 bytes，SHA-256 `e7c9b1c3efa05fe36098cf5f07bf5b584af818075756f28d03102bf00c8fc6b9`；版本、arm64 架构、与旧版相同的正式签名及包内三关/翻译/手机配置检查 PASS。下载页已切换 0.3；从公网重新下载 APK 与 PCK 后全文件哈希均与本地产物一致，GitHub 资产 digest 同样一致。旧 APK 保留。证据 `playtests/v03_20261117_delivery.json`；入口见 HANDOVER_CODEX §6。未连接 Android 真机，安装及手机温度实测仍待用户验证。`project_aligner.py` 的公共注册相对路径仍指向不存在的 `wild`，因此不直接改 `progress.yaml` / `todo.md`；待公共映射修正后对齐。
 
 ## 当前任务：MENU-DEFERRED / NIGHT-RECOVERY（2026-11-16）
 

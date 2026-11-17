@@ -1,7 +1,7 @@
 # HANDOVER — Winter Shelter / Snow Shelter Challenge
 
 > 交接给同一台设备上的 Codex。  
-> 最后更新：2026-11-15 · 当前发布代码：`28fbf8c`（0.2；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
+> 最后更新：2026-11-17 · 当前发布代码：`9547f4e`（0.3；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
 
 ---
 
@@ -34,7 +34,7 @@ Godot 主场景：
   scripts/systems/      GameDirector、NightCurve/NightSimulator、LevelState、Inventory、Records
   scripts/world/        ShelterSite、ShelterInterior、Campfire、地形 / 森林 / 资源
   scripts/ui/           GameUI、HUD、WorldCallouts、NightReportText、TouchControls
-  scripts/resources/    Tuning、LevelDef、ShelterPreset
+  scripts/resources/    Tuning、LevelDef、ChapterStage、ShelterPreset
   resources/            tuning.tres、levels/*.tres、default_wind.tres
   assets/               UI / 模型 / 音效
   tests/                headless 逻辑测试；入口 tests/run_all.gd
@@ -42,7 +42,7 @@ Godot 主场景：
   web/                  Web 页面注入片段
   snapshots/            截图证据（大量未跟踪文件）
   playtests/            试玩日志 / 报告（大量未跟踪文件）
-  build/                构建产物（已被 .gitignore 忽略）
+  build/                历史构建产物（忽略）；新包输出至 ~/work/local/stage/winter-shelter/
 ```
 
 **不要**把 `references/`、`snapshots/`、`playtests/`、`build/` 当成生产源码；它们通常是证据或历史材料。
@@ -115,22 +115,28 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 
 ---
 
+## 0.3 本轮交付
+
+第一章为三关主线（读风探雪 → 高床结构 → 完整过夜准备），旧 4–10 阶为七个可选挑战；通过第三关进入第二章。旧存档迁移前备份，保留旧阶段 ID 和记录。选关只更新简报，确认开始才生成地图；天黑可继续行动，夜间能主动起床外出，实际睡点决定庇护。规则见 CORE_GAMEPLAY §9.1，结构见 ARCHITECTURE_GODOT 的第一章教学配置。
+
+15 suites / 4160 assertions、触屏整局、输入整局、地物回归、第一章窗口专项均 PASS；三条默认图准备路线模拟均 SAFE。Web 595 项资源属性与源一致；APK 的版本 / 正式签名 / 三关资源 / 双语 / 手机限帧配置通过检查。未做 Android 真机安装及温度实测。发布证据见 `playtests/v03_20261117_delivery.json`。全局 aligner 登记路径仍无法定位本项目，未直接改进度投影。
+
 ## 5. Git / GitHub 状态
 
 ```text
 默认分支：master
-发布代码：28fbf8ccf33da448411f9aac8fbc030dd4e44bc5
+发布代码：9547f4ea8803dd1696636fd67ce7f05df060c24d
 代码已推送 origin/master；后续仅文档提交以 git log 为准
-发布 Tag：v0.2（指向发布代码）
+发布 Tag：v0.3（指向发布代码）
 ```
 
 已发布：
 
 ```text
-GitHub Release v0.2
-https://github.com/bobbik1984/winter-shelter/releases/tag/v0.2
-APK: winter-shelter-28fbf8c.apk
-SHA-256: c7ccbbdb0f4c86a5026fdc87461b0476b27b89d5f141e6ea37bf82c617b76c87
+GitHub Release v0.3
+https://github.com/bobbik1984/winter-shelter/releases/tag/v0.3
+APK: winter-shelter-9547f4e.apk
+SHA-256: e7c9b1c3efa05fe36098cf5f07bf5b584af818075756f28d03102bf00c8fc6b9
 ```
 
 **Codex 请直接用 `master`，不要新开长期开发分支。**  
@@ -146,10 +152,10 @@ SHA-256: c7ccbbdb0f4c86a5026fdc87461b0476b27b89d5f141e6ea37bf82c617b76c87
 | :--- | :--- |
 | Web | https://test.bobbik.org/winter/ |
 | APK 下载页 | https://test.bobbik.org/winter/download/ |
-| APK 直链 | https://test.bobbik.org/winter/download/winter-shelter-28fbf8c.apk |
-| GitHub Release | https://github.com/bobbik1984/winter-shelter/releases/tag/v0.2 |
+| APK 直链 | https://test.bobbik.org/winter/download/winter-shelter-9547f4e.apk |
+| GitHub Release | https://github.com/bobbik1984/winter-shelter/releases/tag/v0.3 |
 
-线上 Web build 标记为 `28fbf8c`（`index-78a1006059.pck`）；APK 内标记为 `28fbf8c-android`。下载页已指向 0.2；服务器仍保留旧 6a0c85a APK 供对比。
+线上 Web build 标记为 `9547f4e`（`index-4c02213836.pck`）；APK 内标记为 `9547f4e-android`。下载页已指向 0.3；服务器保留 0.2 与更早 APK 供对比。
 
 ---
 
@@ -217,20 +223,20 @@ tools/deploy_web.sh
 ```bash
 export GODOT=/home/bobbik/.local/bin/godot
 tools/build_apk_local.sh
-# → build/android/winter-shelter-<sha>.apk
-tools/deploy_apk.sh build/android/winter-shelter-<sha>.apk
+# → ~/work/local/stage/winter-shelter/android/winter-shelter-<sha>.apk
+tools/deploy_apk.sh ~/work/local/stage/winter-shelter/android/winter-shelter-<sha>.apk
 ```
 
 当前 Android 配置：
 
 ```text
 package: org.bobbik.wintershelter
-version: 0.2 (code 2)
+version: 0.3 (code 3)
 arch: arm64-v8a
 signing: release key
 ```
 
-0.2 APK 未在本机连接的真机安装验证；正式签名与 v0.1 一致、版本号、包结构、导出资源及公开下载均已核验。
+0.3 APK 未在本机连接的真机安装验证；正式签名与 v0.2 一致、版本号、包结构、导出资源及公开下载均已核验。
 
 ---
 
@@ -259,7 +265,7 @@ signing: release key
 - Tent / TreeWell 在密林里的相机遮挡和树冠可读性仍需继续改；
 - 帐篷火盆的平衡（柴耗、最低体温）只做过逻辑/夜间模拟，没有真人长时间试玩；
 - APK 未在真机安装；
-- 线上 Web、APK 下载页和 GitHub Release v0.2 已更新为 `28fbf8c`；后续改动发布新版本，不覆盖历史 Release。
+- 线上 Web、APK 下载页和 GitHub Release v0.3 已更新为 `9547f4e`；后续改动发布新版本，不覆盖历史 Release。
 
 ---
 
