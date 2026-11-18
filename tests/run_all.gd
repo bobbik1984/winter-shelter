@@ -15,6 +15,7 @@ extends SceneTree
 const TUNING_PATH := "res://resources/tuning.tres"
 
 const SUITES := [
+	{"name": "tree_candidates", "path": "res://tests/test_tree_candidates.gd", "required": true},
 	{"name": "environment_detail", "path": "res://tests/test_environment_detail.gd", "required": true},
 	{"name": "night_sim", "path": "res://tests/test_night_sim.gd", "required": true},
 	{"name": "terrain", "path": "res://tests/test_terrain.gd", "required": false},

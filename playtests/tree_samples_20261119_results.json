@@ -1,0 +1,179 @@
+{
+  "task": "TREE-SAMPLES",
+  "date": "2026-11-19",
+  "source_baseline": "cf7fc13",
+  "status": "candidate implementation and technical validation complete; user visual selection pending",
+  "production_tree_replaced": false,
+  "apk_or_web_published": false,
+  "profiles": {
+    "0": {
+      "role": "pre-detail baseline",
+      "triangles": 542
+    },
+    "A": {
+      "role": "full crown",
+      "triangles": 664,
+      "resource": "resources/tree_candidates/full.tres"
+    },
+    "B": {
+      "role": "slightly open crown",
+      "triangles": 576,
+      "resource": "resources/tree_candidates/open.tres"
+    },
+    "C": {
+      "role": "drooping crown",
+      "triangles": 608,
+      "resource": "resources/tree_candidates/drooping.tres"
+    }
+  },
+  "validation": {
+    "suites": 17,
+    "assertions": 4250,
+    "candidate_assertions": 54,
+    "result": "PASS"
+  },
+  "desktop": [
+    {
+      "draw_calls": 942,
+      "fps": 24.03405329041,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 639284,
+      "view": "forest_0",
+      "triangles_change_percent": 0.0
+    },
+    {
+      "draw_calls": 943,
+      "fps": 23.9299490624445,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 681306,
+      "view": "forest_A",
+      "triangles_change_percent": 6.57
+    },
+    {
+      "draw_calls": 942,
+      "fps": 25.2442296175267,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 650810,
+      "view": "forest_B",
+      "triangles_change_percent": 1.8
+    },
+    {
+      "draw_calls": 943,
+      "fps": 24.4648479807243,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 662266,
+      "view": "forest_C",
+      "triangles_change_percent": 3.59
+    }
+  ],
+  "desktop_with_mobile_low_profile": [
+    {
+      "draw_calls": 643,
+      "fps": 30.0058494919779,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 232467,
+      "view": "forest_0",
+      "triangles_change_percent": 0.0
+    },
+    {
+      "draw_calls": 643,
+      "fps": 29.9790904080418,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 254671,
+      "view": "forest_A",
+      "triangles_change_percent": 9.55
+    },
+    {
+      "draw_calls": 643,
+      "fps": 30.0055625696764,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 238655,
+      "view": "forest_B",
+      "triangles_change_percent": 2.66
+    },
+    {
+      "draw_calls": 643,
+      "fps": 29.9977501687373,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 244479,
+      "view": "forest_C",
+      "triangles_change_percent": 5.17
+    }
+  ],
+  "comparison_conditions": {
+    "clock_minutes": 860,
+    "weather": "clear",
+    "same_camera": true,
+    "same_material_and_palette": true,
+    "common_needle_tone_gain": 1.5,
+    "sway_frozen_for_all_styles": true,
+    "far_trees_unchanged": true,
+    "terrain_resources_collisions_and_anchors_unchanged": true
+  },
+  "prototype_iterations_rejected": [
+    "Smooth closed ring crowns read as snow cones / tiered rings.",
+    "Simplified needle cutout cards read as isolated dots; not included in final candidate code/assets."
+  ],
+  "recommended_next": "Review A as main-tree candidate, B/C as variation candidates; do not replace production forest before visual selection.",
+  "limits": [
+    "X1T UHD 620 measurements are not Android device/thermal tests.",
+    "Three-second fixed-camera samples measure short-run frame rate, not sustained thermals.",
+    "Capped runs returned GPU timing 0; uncapped run enabled GPU measurement, but recorded values are single end-frame readings, not averages. Existing Godot exit cleanup warnings remain.",
+    "Global project_aligner registry path wild is unresolved; no manual projection writes.",
+    "Uncapped comparison is one sequential short run (0/A/B/C); FPS differences include UI/warmup/thermal variance and are not isolated tree cost measurements."
+  ],
+  "artifact_root": "~/work/local/stage/winter-shelter/tree-candidates-20261118",
+  "screenshots": {
+    "gallery": "snapshots/tree_samples_20261119_gallery.png",
+    "mobile_gallery": "snapshots/tree_samples_20261119_mobile_gallery.png",
+    "forest_A": "snapshots/tree_samples_20261119_forest_A.png",
+    "forest_B": "snapshots/tree_samples_20261119_forest_B.png",
+    "forest_C": "snapshots/tree_samples_20261119_forest_C.png"
+  },
+  "desktop_with_mobile_low_profile_uncapped": [
+    {
+      "draw_calls": 651,
+      "fps": 63.1401922735781,
+      "gpu_ms": 20.4659996032715,
+      "max_fps": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 232567,
+      "view": "forest_0"
+    },
+    {
+      "draw_calls": 641,
+      "fps": 49.5045721957736,
+      "gpu_ms": 17.8649997711182,
+      "max_fps": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 254671,
+      "view": "forest_A"
+    },
+    {
+      "draw_calls": 641,
+      "fps": 54.6935338983894,
+      "gpu_ms": 10.3360004425049,
+      "max_fps": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 238655,
+      "view": "forest_B"
+    },
+    {
+      "draw_calls": 641,
+      "fps": 48.5365888287263,
+      "gpu_ms": 13.9759998321533,
+      "max_fps": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 244479,
+      "view": "forest_C"
+    }
+  ]
+}

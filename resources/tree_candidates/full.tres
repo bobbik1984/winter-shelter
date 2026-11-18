@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="SpruceCrownProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/spruce_crown_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+sample_id = "A"
+tiers = 7
+radial_segments = 22
+lower_tier_y = 0.95
+upper_tier_y = 5.3
+lower_radius = 1.95
+upper_radius = 0.46
+lower_bough_height = 1.65
+upper_bough_height = 1.08
+droop = 0.43
+edge_variation = 0.1
+tier_variation = 0.06
+crown_lean = 0.22
+valley_radius_ratio = 0.68

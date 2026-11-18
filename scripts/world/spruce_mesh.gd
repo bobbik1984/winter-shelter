@@ -16,6 +16,11 @@ static func build(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38, spi
 	# 远景保留原来的低面数轮廓，近景改成分离枝簇；不使用透明叶片。
 	if spikes >= SPIKES:
 		return _branched(seed_idx, wind_dir, wind_bias)
+	return build_baseline(seed_idx, wind_dir, wind_bias, spikes)
+
+
+## Exact pre-ENV-DETAIL geometry for controlled comparisons; also retains the existing far-tree path.
+static func build_baseline(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38, spikes: int = SPIKES) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var wd := Vector2(wind_dir.x, wind_dir.z)

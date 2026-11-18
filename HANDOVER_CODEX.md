@@ -1,7 +1,7 @@
 # HANDOVER — Winter Shelter / Snow Shelter Challenge
 
 > 交接给同一台设备上的 Codex。  
-> 最后更新：2026-11-18 · 当前发布代码：`9547f4e`（0.3；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
+> 最后更新：2026-11-19 · 当前发布代码：`9547f4e`（0.3；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
 
 ---
 
@@ -114,6 +114,10 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 ```
 
 ---
+
+## 当前样树候选：待视觉选择
+
+用户已批准按 TREE-LOOK 推进样树测试。2026-11-19 完成 0 原版 / A 饱满 / B 略疏 / C 下垂枝的资源化候选、单树与临时成林对照；17 suites / 4250 assertions PASS，手机低档在 X1T 模拟短时约 30 FPS，非真机温度或持续性能验证。建议 A 主树、B/C 变体，尚未视觉确认；游戏默认树尚未替换，也未打包部署。入口 CURRENT_STAGE TREE-SAMPLES、证据 `playtests/tree_samples_20261119_results.json`。
 
 ## 最新反馈：树形未通过视觉审阅
 

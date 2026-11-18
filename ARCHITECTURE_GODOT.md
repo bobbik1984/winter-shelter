@@ -341,3 +341,10 @@ scripts/
 `SpruceMesh.build` 的正常近景路径生成分离枝簇（单 surface，树皮/针叶以顶点 R 通道标识）；远景传入 `spikes=6` 时走原来的低面数轮廓。`snow_cover.gdshader.tree_branches` 默认关闭，只有近景树材质启用；岩石的 `surface_kind` 只复用原噪声。`EnvPalette` 为生态小岛、森林和庇护所枝条提供一致的针叶色。
 
 `Footprints.make_mesh` 提供共享脚掌/雪边网格，`surface_basis` 沿真实坡面放置；移动实例保留 `MAX_PRINTS=160`，施工区 `WorksiteFootprints` 仅随阶段刷新，不增加逐帧节点。GLB 的 `glow` 矩形代理隐藏，`ShelterSite` 的既有洞口灯内移并读取日夜低强度值，不产生新火源或加温。`AtmosphereSetup` 读取同一配置的日夜补光并保持 `AtmosphereState` 的真实太阳驱动。测试入口 `tests/test_environment_detail.gd`，固定机位评审工具 `tools/environment_detail_review.gd -- --out=<外置证据目录> [--low] [--mobile-profile]`；工具使用独立存档，不写玩家画质设置。
+
+
+### 样树测试（TREE-SAMPLES，尚未接入默认森林）
+
+`SpruceCrownProfile` / `resources/tree_candidates/{full,open,drooping}.tres` 仅定义 [TUNE] 艺术比例；`SpruceCrownMesh.build` 生成封闭、搭接的枝层与树干，单不透明表面，不依赖贴图、额外灯光或每树更新。模型参数有限制与异常回退。`SpruceMesh.build_baseline` 提取原来几何作为精确对照，远景仍调用同一旧路径；正常近景 `build` 仍是 c6b19ec 的生产形态，等待样树视觉选择后再接入候选。
+
+`tools/tree_candidate_review.gd` 必须在真实窗口运行，隔离存档且不保存设置；提供 0/A/B/C 单树、正常距离与每种临时成林图，记录短时帧率 / 绘制 / 三角形和固定条件。所有候选使用同一预览针叶色增益与静止枝摆，结束时恢复材质 / 网格。隐藏场景节点的原可见性仅保存一次，避免画廊结束后漏恢复几何。原始地物注册与碰撞不动；工具不构成候选在正式游戏中的接入。验证入口 `tests/test_tree_candidates.gd`；用户视觉审阅是独立步骤。
