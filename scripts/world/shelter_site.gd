@@ -48,6 +48,7 @@ var _tent_mat: StandardMaterial3D
 var _bag_mat: StandardMaterial3D
 var _model_mats := {}
 var _has_model := false
+var _detail := EnvironmentDetails.settings()
 
 func setup(p_preset: String, p_dir: Vector3, depth: float, slope: float, windbreak: bool) -> void:
 	preset_id = p_preset
@@ -207,8 +208,8 @@ func _refresh() -> void:
 
 ## 地面过渡（2026-11-09 用户反馈：庇护所像一个放在雪面上的盒子）：
 ## ① 一圈起伏的雪裙，里侧抬高盖住模型底边、外侧没入地面，边缘用地形高度逐点贴合（坡上也不悬空）；
-## ② 几团被踩出来 / 堆出来的雪块撒在周围；③ 入口前一片被踩实、发暗的雪。
-## 全是一个小网格 + 一个 MultiMesh（共 3 次绘制），不随画质档位变化。
+## ② 几团被踩出来 / 堆出来的雪块撒在周围；③ 入口前有暗底与雪边的施工鞋印。
+## 一个雪裙网格 + 雪块/鞋印各一个 MultiMesh（共 3 次绘制），不随画质档位变化。
 func _site_ground_y(local: Vector3) -> float:
 	var w := to_global(Vector3(local.x, 0.0, local.z))
 	return TerrainHeight.height_at(w.x, w.z) - global_position.y
@@ -276,34 +277,29 @@ func _ground_blend(s: int) -> void:
 	clumps.material_override = _snow
 	clumps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	_visual.add_child(clumps)
-	# 入口前被踩实的雪（半透明发暗的一片，随地形起伏）
+	# 已发生的施工留下鞋印，复用单 surface 鞋印网格，不叠一整片透明色块。
 	if s >= 2:
+		var config := EnvironmentDetails.settings()
+		var print_count := clampi(config.worksite_prints, 0, 16)
+		if not config.enabled or print_count == 0: return
 		var door_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) + 0.5 if _has_model else 1.9
-		var pst := SurfaceTool.new()
-		pst.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var ring: Array[Vector3] = []
-		for i in 16:
-			var a := TAU * float(i) / 16.0
-			var rr := 1.15 * (0.85 + 0.3 * TerrainHeight.hash2(i, 13, 331))
-			var v := Vector3(sin(a) * rr * 1.25, 0.0, door_z + cos(a) * rr)
-			v.y = _site_ground_y(v) + 0.06
-			ring.append(v)
-		var ctr := Vector3(0.0, 0.0, door_z)
-		ctr.y = _site_ground_y(ctr) + 0.07
-		for i in 16:
-			pst.add_vertex(ctr); pst.add_vertex(ring[(i + 1) % 16]); pst.add_vertex(ring[i])
-		pst.generate_normals()
-		var trod := MeshInstance3D.new()
-		trod.name = "TroddenSnow"
-		trod.mesh = pst.commit()
-		var tm := StandardMaterial3D.new()
-		tm.albedo_color = Color(0.46, 0.52, 0.68, 0.5)
-		tm.roughness = 1.0
-		tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		tm.cull_mode = BaseMaterial3D.CULL_DISABLED
-		trod.material_override = tm
-		trod.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_visual.add_child(trod)
+		var prints := MultiMeshInstance3D.new()
+		prints.name = "WorksiteFootprints"
+		var marks := MultiMesh.new()
+		marks.transform_format = MultiMesh.TRANSFORM_3D
+		marks.mesh = Footprints.make_mesh()
+		marks.instance_count = print_count
+		for i in print_count:
+			var local := Vector3((0.2 if i % 2 == 0 else -0.2) + (TerrainHeight.hash2(i, 2, 839) - 0.5) * 0.8,
+				0, door_z + (float(i) / maxi(1, print_count - 1) - 0.5) * 1.6)
+			var world := to_global(local)
+			world.y = SnowField.height_at(world.x, world.z) + 0.012
+			var facing := entrance_dir.rotated(Vector3.UP, (TerrainHeight.hash2(i, 3, 839) - 0.5) * 0.8)
+			var basis := global_basis.inverse() * Footprints.surface_basis(world, facing)
+			marks.set_instance_transform(i, Transform3D(basis.scaled(Vector3(0.24, 1.0, 0.42)), to_local(world)))
+		prints.multimesh = marks
+		prints.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_visual.add_child(prints)
 
 ## 模型外观：按阶段显示部件，材质换成游戏里的雪 / 木头 / 枝条，完工后入口亮灯（倒棚生火）。
 func _model_visual(s: int) -> void:
@@ -333,14 +329,16 @@ func _model_visual(s: int) -> void:
 				mi.set_surface_override_material(i, m)
 		if label == "mound" and on:
 			_mound = mi
-		if label == "glow" and on:
-			glow_at = mi.get_aabb().get_center()
+		if label == "glow":
+			# The GLB rectangle was a lighting proxy, not a luminous door panel.
+			mi.visible = false
+			if on: glow_at = mi.get_aabb().get_center()
 	if glow_at != Vector3.INF:
 		_entrance_light = OmniLight3D.new()
 		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
 		_entrance_light.omni_range = 5.0
-		_entrance_light.light_energy = 1.4
-		_entrance_light.position = glow_at + Vector3(0, 0.25, 0.7)
+		_entrance_light.light_energy = _detail.entrance_day_energy
+		_entrance_light.position = glow_at + Vector3(0, 0.25, -0.3)
 		_visual.add_child(_entrance_light)
 	if preset_id == "LeanTo" and s >= 5 and fire == null:
 		fire = Campfire.new()
@@ -498,7 +496,7 @@ func _cave_visual(s: int) -> void:
 		_entrance_light = OmniLight3D.new()
 		_entrance_light.light_color = Color(1.0, 0.6, 0.25)
 		_entrance_light.omni_range = 5.0
-		_entrance_light.light_energy = 1.4
+		_entrance_light.light_energy = _detail.entrance_day_energy
 		_entrance_light.position = Vector3(0, 0.6, 1.9)
 		_visual.add_child(_entrance_light)
 
@@ -617,14 +615,14 @@ func _leanto_visual(s: int) -> void:
 		add_child(fire)
 
 
-## R3：洞口灯随天色变亮（白天 1.4 → 入夜 3.2），远处也能看到雪地上的暖光。
+## 洞口已有灯只透出柔和暖光；强度来自视觉资源，不代表可添柴的火源。
 func _process(_delta: float) -> void:
 	if _entrance_light == null:
 		return
 	var w := get_tree().get_first_node_in_group("weather")
 	if w:
 		var elev: float = w.sun_elevation_deg
-		_entrance_light.light_energy = lerpf(1.4, 3.2, clampf((6.0 - elev) / 8.0, 0.0, 1.0))
+		_entrance_light.light_energy = lerpf(_detail.entrance_day_energy, _detail.entrance_night_energy, clampf((6.0 - elev) / 8.0, 0.0, 1.0))
 
 ## S5 树井外观（工地中心 = 树干）：树干周围挖开的浅坑、修剪后的低枝、枝条地板、补顶的枝条裙、封门。
 ## 2026-11-12 帐篷套装：草甸 → 帐篷壳 → 火盆/烟囱 → 睡袋 → 压边。

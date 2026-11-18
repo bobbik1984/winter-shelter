@@ -330,3 +330,12 @@ scripts/
     ├── night_report_text.gd          ✅ 英文报告文案（展示层）
     └── （提示文案在 GameRules.tip_for）
 ```
+
+
+### 环境细节（ENV-DETAIL）
+
+`EnvironmentDetailSettings` → `resources/environment_detail.tres` 是纯视觉预算源，`EnvironmentDetails.build` 在 `ForestScatter` 完成地物与碰撞登记之后构造贴地细节；只读取已有 `rock_spheres / spruce_points`，不写入 `LandFeatures / OldSpruces / MapLayout`。地形高度/有效性在每次生成内缓存，构造完成即释放；每块一个静态不透明网格，无逐帧更新、阴影或碰撞；独立视距，不加入会被画质档位覆盖视距的 `near_forest` 组。
+
+`SpruceMesh.build` 的正常近景路径生成分离枝簇（单 surface，树皮/针叶以顶点 R 通道标识）；远景传入 `spikes=6` 时走原来的低面数轮廓。`snow_cover.gdshader.tree_branches` 默认关闭，只有近景树材质启用；岩石的 `surface_kind` 只复用原噪声。`EnvPalette` 为生态小岛、森林和庇护所枝条提供一致的针叶色。
+
+`Footprints.make_mesh` 提供共享脚掌/雪边网格，`surface_basis` 沿真实坡面放置；移动实例保留 `MAX_PRINTS=160`，施工区 `WorksiteFootprints` 仅随阶段刷新，不增加逐帧节点。GLB 的 `glow` 矩形代理隐藏，`ShelterSite` 的既有洞口灯内移并读取日夜低强度值，不产生新火源或加温。`AtmosphereSetup` 读取同一配置的日夜补光并保持 `AtmosphereState` 的真实太阳驱动。测试入口 `tests/test_environment_detail.gd`，固定机位评审工具 `tools/environment_detail_review.gd -- --out=<外置证据目录> [--low] [--mobile-profile]`；工具使用独立存档，不写玩家画质设置。

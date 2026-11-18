@@ -56,8 +56,10 @@ func _make_materials() -> void:
 	_mat_green = _make_material(Color(0.07, 0.16, 0.11), 0.92)
 	_mat_spruce = ShaderMaterial.new()
 	_mat_spruce.shader = SNOW_COVER_SHADER
-	_mat_spruce.set_shader_parameter("base_color", Color(0.035, 0.11, 0.07))
+	_mat_spruce.set_shader_parameter("base_color", EnvPalette.SPRUCE)
 	_mat_spruce.set_shader_parameter("snow_amount", 0.56)
+	_mat_spruce.set_shader_parameter("tree_branches", true)
+	_mat_spruce.set_shader_parameter("bark_color", EnvPalette.DEAD_WOOD)
 	_mat_spruce.set_shader_parameter("occlusion_fade", true)
 	_mat_spruce.set_shader_parameter("sway_amount", 1.0)
 	var bd := _wind_dir()

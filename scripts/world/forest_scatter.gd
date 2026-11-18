@@ -67,6 +67,7 @@ func _ready() -> void:
 	_scatter_ground_props()
 	_place_outcrops()
 	_build_colliders()
+	EnvironmentDetails.build(self, rock_spheres, spruce_points)
 
 
 ## 大型棱角岩体（T4.7 差距 2）：Blender 生成的 rock_outcrop_A/B/C.glb，放在脊线与陡坡上。
@@ -83,6 +84,7 @@ func _place_outcrops() -> void:
 		meshes.append(mi.mesh)
 		inst.free()
 	var mat := _material(Color(0.17, 0.17, 0.20), 0.38, 0.07)
+	_rock_detail(mat)
 	mat.set_shader_parameter("rim_amount", 0.35)
 	_enable_fade(mat)
 	var buckets: Array = [[], [], []]
@@ -201,6 +203,8 @@ func _scatter_spruce(blow: Vector3) -> void:
 			if s >= _old_min_scale():
 				OldSpruces.add(Vector2(x, z))
 	var mat := _material(EnvPalette.SPRUCE, 0.56)
+	mat.set_shader_parameter("tree_branches", true)
+	mat.set_shader_parameter("bark_color", EnvPalette.DEAD_WOOD)
 	_enable_fade(mat)
 	mat.set_shader_parameter("sway_amount", 1.0)
 	mat.set_shader_parameter("wind_dir", Vector2(blow.x, blow.z))
@@ -332,6 +336,7 @@ func _scatter_rocks() -> void:
 		rock_spheres.append(Vector3(x, z, s * lerpf(0.8, 1.2, big)))
 		placed += 1
 	var mat := _material(Color(0.20, 0.20, 0.24), 0.30, 0.06)
+	_rock_detail(mat)
 	_enable_fade(mat)
 	mat.set_shader_parameter("rim_amount", 0.5)
 	for v in range(ROCK_VARIANTS):
@@ -370,3 +375,10 @@ static func add_chunked(parent: Node3D, node_name: String, mesh: Mesh, mat: Mate
 			mmi.add_to_group("far_forest")
 		else:
 			mmi.add_to_group("near_forest")
+
+
+func _rock_detail(mat: ShaderMaterial) -> void:
+	var config := EnvironmentDetails.settings()
+	if config != null and config.enabled:
+		mat.set_shader_parameter("surface_kind", 1)
+		mat.set_shader_parameter("detail_strength", config.surface_detail_strength)

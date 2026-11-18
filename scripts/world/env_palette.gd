@@ -6,7 +6,7 @@ extends RefCounted
 ## 庇护所用的枝条 = 从云杉上砍下来的，所以和云杉同色；柱子 / 横梁 = 枯木同色；垫层干草 = 草丛同色。
 
 ## 云杉针叶（很暗的蓝绿；雪盖在上面由 snow_cover 着色器加）。
-const SPRUCE := Color(0.035, 0.11, 0.07)
+const SPRUCE := Color(0.10, 0.16, 0.13)
 ## 立枯木 / 树干（灰褐）。
 const DEAD_WOOD := Color(0.30, 0.28, 0.26)
 ## 倒木 / 湿木（略深的灰褐）。

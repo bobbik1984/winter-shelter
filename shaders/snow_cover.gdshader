@@ -14,6 +14,12 @@ uniform float snow_softness : hint_range(0.01, 0.6) = 0.16;
 // 噪声让雪线不规则（世界空间，单位 1/m）。
 uniform float noise_scale = 1.7;
 uniform float noise_strength : hint_range(0.0, 0.6) = 0.22;
+// 近景树单材质顶点掩码；默认关闭，旧网格与远景不受影响。
+uniform bool tree_branches = false;
+uniform vec4 bark_color : source_color;
+// 0 普通覆雪，1 岩石层理，2 树皮；只复用已有噪声，不增加纹理采样。
+uniform int surface_kind = 0;
+uniform float detail_strength = 0.0;
 uniform float base_roughness : hint_range(0.0, 1.0) = 0.92;
 // 遮挡透视：挡在玩家前面的树按抖动镂空，保证玩家永远可见。
 // focus_pos 由相机 rig 经 "occlusion_fade" 组每帧推送；occlusion_radius 为屏幕空间半径（tan 单位）。
@@ -95,7 +101,14 @@ void fragment() {
 	float threshold = mix(1.0, -0.25, snow_amount);
 	float cover = smoothstep(threshold, threshold + snow_softness, up + n * noise_strength);
 	// 复用单次噪声 n 给木头、树枝、岩石加细微肌理明暗，并在积雪与基底交界处加一层薄霜冷边（零额外纹理/噪声开销）
-	vec3 base_shaded = base_color.rgb * (0.94 + 0.14 * (n + 0.5)) * mix(0.86, 1.04, clamp(up * 0.5 + 0.5, 0.0, 1.0));
+	vec3 substrate = base_color.rgb;
+	if (tree_branches) substrate = mix(bark_color.rgb, base_color.rgb, COLOR.r);
+	vec3 base_shaded = substrate * (0.94 + 0.14 * (n + 0.5)) * mix(0.86, 1.04, clamp(up * 0.5 + 0.5, 0.0, 1.0));
+	if (surface_kind != 0) {
+		float axis = surface_kind == 1 ? dot(w_pos, vec3(0.8, 5.0, 0.4)) : dot(w_pos.xz, vec2(19.0, 13.0));
+		float grain = sin(axis + n * 9.0);
+		base_shaded *= 1.0 + grain * detail_strength * (1.0 - cover);
+	}
 	vec3 snow_shaded = snow_color.rgb + vec3(-0.02, -0.005, 0.025) * (1.0 - clamp(up, 0.0, 1.0)) + n * 0.035;
 	float frost_rim = smoothstep(threshold - 0.14, threshold + 0.02, up + n * noise_strength) * (1.0 - cover);
 	vec3 col = mix(base_shaded, snow_shaded, cover);

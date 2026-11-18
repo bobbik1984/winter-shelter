@@ -6,6 +6,7 @@ extends WorldEnvironment
 const SKY_SHADER := preload("res://shaders/sky_backdrop.gdshader")
 
 var _sky_mat: ShaderMaterial
+var _detail := EnvironmentDetails.settings()
 
 ## 天空 shader 的太阳方向 + 随日高变化的环境光 / 雾（订阅 AtmosphereState，V7）。
 func set_sun_dir(dir: Vector3) -> void:
@@ -13,7 +14,7 @@ func set_sun_dir(dir: Vector3) -> void:
 		_sky_mat.set_shader_parameter("sun_dir", dir)
 	if environment:
 		var day := smoothstep(-0.10, 0.12, dir.y)
-		environment.ambient_light_energy = lerpf(0.30, 0.75, day)
+		environment.ambient_light_energy = lerpf(_detail.ambient_night_energy, _detail.ambient_day_energy, day)
 		environment.fog_light_energy = lerpf(0.18, 0.75, day)
 		environment.fog_sun_scatter = 0.25 * day
 
@@ -56,9 +57,12 @@ func _ready() -> void:
 	add_to_group("world_environment")
 	env.sky = sky
 
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 0.55
-	env.ambient_light_energy = 0.75
+	# Compatibility 的程序化天空会把阴影染成深蓝黑；用资源化的中性天空补光。
+	# 只替换原环境光，不增加实时光源，太阳/天气继续决定直射光。
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = _detail.ambient_fill_color
+	env.ambient_light_sky_contribution = 0.0
+	env.ambient_light_energy = _detail.ambient_day_energy
 
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 0.82

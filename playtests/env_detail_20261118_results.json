@@ -1,0 +1,121 @@
+{
+  "task": "ENV-DETAIL",
+  "date": "2026-11-18",
+  "source_baseline": "b338a5a",
+  "status": "implemented and verified; user visual review pending",
+  "published": false,
+  "artifact_root": "~/work/local/stage/winter-shelter/env-detail-20261118",
+  "logic": {
+    "suites": 16,
+    "assertions": 4196,
+    "result": "PASS"
+  },
+  "scene_regression": {
+    "touch": "PASS",
+    "input": "PASS",
+    "wildlife": "PASS"
+  },
+  "window_checks": [
+    "daylight / overcast / night",
+    "worksite bootprints visible after winding correction",
+    "emissive door proxy hidden; existing light bounded by configured energy"
+  ],
+  "fixed_camera_comparison": [
+    {
+      "view": "world",
+      "draw_calls_before": 940,
+      "draw_calls_after": 944,
+      "triangle_change_percent": 3.342,
+      "fps_before": 24.158337228969,
+      "fps_after": 23.5167549452641
+    },
+    {
+      "view": "rocks",
+      "draw_calls_before": 524,
+      "draw_calls_after": 528,
+      "triangle_change_percent": 1.036,
+      "fps_before": 26.6369925590682,
+      "fps_after": 26.3760260834015
+    },
+    {
+      "view": "shelter",
+      "draw_calls_before": 968,
+      "draw_calls_after": 972,
+      "triangle_change_percent": 4.378,
+      "fps_before": 22.9366775674058,
+      "fps_after": 25.7397620096607
+    }
+  ],
+  "desktop": [
+    {
+      "draw_calls": 944,
+      "fps": 23.5167549452641,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 660570,
+      "view": "world"
+    },
+    {
+      "draw_calls": 528,
+      "fps": 26.3760260834015,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 437654,
+      "view": "rocks"
+    },
+    {
+      "draw_calls": 972,
+      "fps": 25.7397620096607,
+      "gpu_ms": 0,
+      "render_scale": 0.666666686534882,
+      "triangles": 690290,
+      "view": "shelter"
+    }
+  ],
+  "desktop_with_mobile_low_profile": [
+    {
+      "draw_calls": 641,
+      "fps": 29.9932800180059,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 242295,
+      "view": "world"
+    },
+    {
+      "draw_calls": 385,
+      "fps": 30.0003892612491,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 134978,
+      "view": "rocks"
+    },
+    {
+      "draw_calls": 654,
+      "fps": 30.0078218735694,
+      "gpu_ms": 0,
+      "render_scale": 0.444444447755814,
+      "triangles": 265685,
+      "view": "shelter"
+    }
+  ],
+  "terrain_and_gameplay_anchors_unchanged": true,
+  "ground_generation_ms": {
+    "uncached_initial": 977,
+    "cached_desktop": 488,
+    "cached_mobile_profile": 459
+  },
+  "mobile_device_tested": false,
+  "phone_temperature_measured": false,
+  "gpu_timing_available": false,
+  "known_limits": [
+    "Measurements are from X1T UHD 620, not an Android device.",
+    "Existing Godot exit resource / texture cleanup warnings remain.",
+    "Project aligner registry path wild still does not resolve; projections untouched."
+  ],
+  "images": {
+    "before": "snapshots/env_detail_20261118_before.png",
+    "after": "snapshots/env_detail_20261118_after.png",
+    "entrance": "snapshots/env_detail_20261118_entrance.png",
+    "night": "snapshots/env_detail_20261118_night.png"
+  }
+}
