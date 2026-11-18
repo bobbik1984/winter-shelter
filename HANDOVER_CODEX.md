@@ -115,6 +115,10 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 
 ---
 
+## 最新反馈：树形未通过视觉审阅
+
+用户认为 c6b19ec 的树冠零散、效果不如旧版。同光照 / 同机位临时网格对照确认整体轮廓变碎；技术测试与 30 FPS 不代表美术通过。下一候选建议为连续饱满的锥形树冠、重叠枝层与下垂枝梢，先做样树审阅。研究结果见 CURRENT_STAGE TREE-LOOK 和 VISUAL_LANGUAGE §2.3b。本轮没有把临时旧树对照替换写回游戏，也未打包发布；不要把下面的工程通过误当作用户认可树形。
+
 ## 当前源码增量：ENV-DETAIL（尚未发布）
 
 2026-11-18 已实现近景分枝云杉、岩脚 / 树根贴地积雪与碎石、坡面鞋印和施工区脚印、中性日夜补光；隐藏洞口发光矩形代理，既有灯低强度向内照明。远景简化树、真实太阳、雪深与地物/资源/碰撞位置保持原契约。视觉配置见 `resources/environment_detail.tres`；规则与结构已归并 VISUAL_LANGUAGE §2.3b、ARCHITECTURE_GODOT 的环境细节。
