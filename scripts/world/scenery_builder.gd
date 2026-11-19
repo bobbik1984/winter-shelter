@@ -58,7 +58,7 @@ func _make_materials() -> void:
 	_mat_spruce.shader = SNOW_COVER_SHADER
 	_mat_spruce.set_shader_parameter("base_color", EnvPalette.SPRUCE)
 	_mat_spruce.set_shader_parameter("snow_amount", 0.56)
-	_mat_spruce.set_shader_parameter("tree_branches", true)
+	_mat_spruce.set_shader_parameter("tree_branches", false)
 	_mat_spruce.set_shader_parameter("bark_color", EnvPalette.DEAD_WOOD)
 	_mat_spruce.set_shader_parameter("occlusion_fade", true)
 	_mat_spruce.set_shader_parameter("sway_amount", 1.0)
@@ -75,7 +75,12 @@ func _make_materials() -> void:
 	dw.set_shader_parameter("occlusion_fade", true)
 	dw.set_shader_parameter("rim_amount", 0.45)
 	_mat_deadwood = dw
-	_mat_rock = _fade_material(Color(0.12, 0.13, 0.16), 0.0)
+	var rock_style := EnvironmentDetails.settings()
+	_mat_rock = _fade_material(rock_style.rock_color, rock_style.rock_snow_amount)
+	_mat_rock.set_shader_parameter("snow_softness", rock_style.rock_snow_softness)
+	_mat_rock.set_shader_parameter("noise_strength", rock_style.rock_snow_noise)
+	_mat_rock.set_shader_parameter("surface_kind", 1)
+	_mat_rock.set_shader_parameter("detail_strength", rock_style.surface_detail_strength)
 	_mat_rock.set_shader_parameter("rim_amount", 0.35)
 	_mat_rock_snow = _fade_material(Color(0.86, 0.90, 0.98), 1.0)
 	_mat_grass = _make_material(EnvPalette.DRY_GRASS, 0.94)
@@ -182,13 +187,7 @@ func _rock_outcrop(pos: Vector3, scale_vec: Vector3, yaw_deg: float) -> void:
 	rock.scale = scale_vec
 	root.add_child(rock)
 
-	var cap := MeshInstance3D.new()
-	cap.name = "SnowCap"
-	cap.mesh = mesh
-	cap.material_override = _mat_rock_snow
-	cap.position = Vector3(0.0, scale_vec.y * 0.95, 0.0)
-	cap.scale = Vector3(scale_vec.x * 0.92, scale_vec.y * 0.42, scale_vec.z * 0.92)
-	root.add_child(cap)
+	# Coat the rock's actual faces instead of adding a detached, uniformly white cap.
 
 	# 背风侧雪枕：局部 +x（东侧）1.1m 处贴地隆起。
 	var pillow_mesh := SphereMesh.new()

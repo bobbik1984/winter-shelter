@@ -10,6 +10,8 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 uniform vec3 sun_dir_world = vec3(-0.7, 0.16, -0.7);
 // 低画质：跳过法线扰动的两次额外 fbm、detail 用一次 vnoise（GraphicsSettings 设置）。
 uniform bool low_quality = false;
+// [TUNE] Resource-driven subtle crystals; avoid white confetti across the entire snowfield.
+uniform float sparkle_strength : hint_range(0.0, 1.0) = 0.025;
 // 开发热力图（F3，T1.2）：按雪深着色，D5 门槛处画等值线。snow_depth 是归一化值（÷2.5 m）。
 uniform bool debug_depth = false;
 // 风的去向（世界 xz，单位向量）：风蚀雪纹沿它拉长（TerrainBuilder 从 WindData 设置，随 L3 地图旋转）。
@@ -128,7 +130,7 @@ void fragment() {
 
 	// 5. 高频雪晶闪点 (Sparkle)
 	float sparkle_grid = hash21(floor(world_pos.xz * 14.0));
-	float sparkle = step(0.965, sparkle_grid) * (sun_face * 0.5 + forward_scatter * 1.5) * (1.0 - rock_mask) * (1.0 - bare) * 0.22;
+	float sparkle = step(0.965, sparkle_grid) * (sun_face * 0.5 + forward_scatter * 1.5) * (1.0 - rock_mask) * (1.0 - bare) * sparkle_strength;
 	base += vec3(sparkle);
 	// 朝太阳方向看去的雪面：暖金逆光辉
 	base = mix(base, vec3(1.0, 0.82, 0.62), forward_scatter * 0.35 * (1.0 - rock_mask) * (1.0 - bare * 0.7));

@@ -203,7 +203,7 @@ func _scatter_spruce(blow: Vector3) -> void:
 			if s >= _old_min_scale():
 				OldSpruces.add(Vector2(x, z))
 	var mat := _material(EnvPalette.SPRUCE, 0.56)
-	mat.set_shader_parameter("tree_branches", true)
+	mat.set_shader_parameter("tree_branches", false)
 	mat.set_shader_parameter("bark_color", EnvPalette.DEAD_WOOD)
 	_enable_fade(mat)
 	mat.set_shader_parameter("sway_amount", 1.0)
@@ -335,7 +335,7 @@ func _scatter_rocks() -> void:
 		buckets[k % ROCK_VARIANTS].append(Transform3D(basis, Vector3(x, TerrainHeight.height_at(x, z) - s * 0.18, z)))
 		rock_spheres.append(Vector3(x, z, s * lerpf(0.8, 1.2, big)))
 		placed += 1
-	var mat := _material(Color(0.20, 0.20, 0.24), 0.30, 0.06)
+	var mat := _material(EnvironmentDetails.settings().rock_color, EnvironmentDetails.settings().rock_snow_amount, 0.06)
 	_rock_detail(mat)
 	_enable_fade(mat)
 	mat.set_shader_parameter("rim_amount", 0.5)
@@ -380,5 +380,7 @@ static func add_chunked(parent: Node3D, node_name: String, mesh: Mesh, mat: Mate
 func _rock_detail(mat: ShaderMaterial) -> void:
 	var config := EnvironmentDetails.settings()
 	if config != null and config.enabled:
+		mat.set_shader_parameter("snow_softness", config.rock_snow_softness)
+		mat.set_shader_parameter("noise_strength", config.rock_snow_noise)
 		mat.set_shader_parameter("surface_kind", 1)
 		mat.set_shader_parameter("detail_strength", config.surface_detail_strength)

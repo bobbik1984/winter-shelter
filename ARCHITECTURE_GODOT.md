@@ -348,3 +348,7 @@ scripts/
 `SpruceCrownProfile` / `resources/tree_candidates/{full,open,drooping}.tres` 仅定义 [TUNE] 艺术比例；`SpruceCrownMesh.build` 生成封闭、搭接的枝层与树干，单不透明表面，不依赖贴图、额外灯光或每树更新。模型参数有限制与异常回退。`SpruceMesh.build_baseline` 提取原来几何作为精确对照，远景仍调用同一旧路径；正常近景 `build` 仍是 c6b19ec 的生产形态，等待样树视觉选择后再接入候选。
 
 `tools/tree_candidate_review.gd` 必须在真实窗口运行，隔离存档且不保存设置；提供 0/A/B/C 单树、正常距离与每种临时成林图，记录短时帧率 / 绘制 / 三角形和固定条件。所有候选使用同一预览针叶色增益与静止枝摆，结束时恢复材质 / 网格。隐藏场景节点的原可见性仅保存一次，避免画廊结束后漏恢复几何。原始地物注册与碰撞不动；工具不构成候选在正式游戏中的接入。验证入口 `tests/test_tree_candidates.gd`；用户视觉审阅是独立步骤。
+
+### 营地地面与材料表现（CAMP-DETAIL）
+
+`CampGroundDress` 接收工地的世界变换、实际入口距离、施工阶段和是否雪庇护所，生成局部坐标的单表面不透明入口 / 弃雪网格；每个顶点采样 SnowField 并反变换，冰面过滤。由 ShelterSite._ground_blend 随阶段重建，不新增过程帧回调、交互节点或玩法状态。旧 GLB 的 spoil 部件在新弃雪启用的阶段隐藏，关闭配置时恢复原模型部件；GroundSkirt 与施工脚印沿用原路径。SitePile 始终是库存真相源，refresh_pile 仅按实际数量生成两类 MultiMesh（木柴与垫层），共享顶点色粗糙材质；候选摆位避让已有树冠和岩石，不改变以工地为中心的卸料 / 耗料范围；显示上限沿用 15 / 6，不改变库存与扣料规则。样板参数与岩面 / 雪面强度统一在 EnvironmentDetailSettings，地形及资源锚点不变。

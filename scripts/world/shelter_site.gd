@@ -209,7 +209,7 @@ func _refresh() -> void:
 ## 地面过渡（2026-11-09 用户反馈：庇护所像一个放在雪面上的盒子）：
 ## ① 一圈起伏的雪裙，里侧抬高盖住模型底边、外侧没入地面，边缘用地形高度逐点贴合（坡上也不悬空）；
 ## ② 几团被踩出来 / 堆出来的雪块撒在周围；③ 入口前有暗底与雪边的施工鞋印。
-## 一个雪裙网格 + 雪块/鞋印各一个 MultiMesh（共 3 次绘制），不随画质档位变化。
+## 雪裙 + 合并入口 / 弃雪网格 + 鞋印批绘；只在施工阶段变化时生成。
 func _site_ground_y(local: Vector3) -> float:
 	var w := to_global(Vector3(local.x, 0.0, local.z))
 	return TerrainHeight.height_at(w.x, w.z) - global_position.y
@@ -248,41 +248,22 @@ func _ground_blend(s: int) -> void:
 	skirt.material_override = _snow
 	skirt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_visual.add_child(skirt)
-	# 雪块
-	var clump := SphereMesh.new()
-	clump.radius = 1.0
-	clump.height = 2.0
-	clump.radial_segments = 6
-	clump.rings = 3
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = clump
-	var count := 8 + s
-	mm.instance_count = count
-	for i in count:
-		var a := TAU * (float(i) + TerrainHeight.hash2(i, 5, 317)) / float(count)
-		var d := Vector3(sin(a), 0.0, cos(a))
-		if d.z > 0.75:
-			a += 0.9   # 别堆在门口
-			d = Vector3(sin(a), 0.0, cos(a))
-		var r := outer * (0.8 + 0.5 * TerrainHeight.hash2(i, 7, 319))
-		var pos := d * r
-		pos.y = _site_ground_y(pos)
-		var sc := 0.14 + 0.2 * TerrainHeight.hash2(i, 9, 323)
-		var b := Basis(Vector3.UP, TerrainHeight.hash2(i, 11, 329) * TAU).scaled(Vector3(sc * 1.5, sc * 0.55, sc * 1.2))
-		mm.set_instance_transform(i, Transform3D(b, pos + Vector3(0, sc * 0.15, 0)))
-	var clumps := MultiMeshInstance3D.new()
-	clumps.name = "SnowClumps"
-	clumps.multimesh = mm
-	clumps.material_override = _snow
-	clumps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	_visual.add_child(clumps)
+	# Deposits live beside the actual opening; no fake stock or extra gameplay nodes.
+	var door_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) if _has_model else entrance_point().distance_to(global_position)
+	var dressed := CampGroundDress.build(global_transform, door_z, s, is_snow_shelter(), _detail)
+	if dressed:
+		var camp := MeshInstance3D.new()
+		camp.name = "CampGroundDress"
+		camp.mesh = dressed
+		camp.material_override = CampGroundDress.material()
+		camp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_visual.add_child(camp)
 	# 已发生的施工留下鞋印，复用单 surface 鞋印网格，不叠一整片透明色块。
 	if s >= 2:
 		var config := EnvironmentDetails.settings()
 		var print_count := clampi(config.worksite_prints, 0, 16)
 		if not config.enabled or print_count == 0: return
-		var door_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) + 0.5 if _has_model else 1.9
+		var prints_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) + 0.5 if _has_model else 1.9
 		var prints := MultiMeshInstance3D.new()
 		prints.name = "WorksiteFootprints"
 		var marks := MultiMesh.new()
@@ -291,7 +272,7 @@ func _ground_blend(s: int) -> void:
 		marks.instance_count = print_count
 		for i in print_count:
 			var local := Vector3((0.2 if i % 2 == 0 else -0.2) + (TerrainHeight.hash2(i, 2, 839) - 0.5) * 0.8,
-				0, door_z + (float(i) / maxi(1, print_count - 1) - 0.5) * 1.6)
+				0, prints_z + (float(i) / maxi(1, print_count - 1) - 0.5) * 1.6)
 			var world := to_global(local)
 			world.y = SnowField.height_at(world.x, world.z) + 0.012
 			var facing := entrance_dir.rotated(Vector3.UP, (TerrainHeight.hash2(i, 3, 839) - 0.5) * 0.8)
@@ -316,6 +297,9 @@ func _model_visual(s: int) -> void:
 		var a := int(range_[0])
 		var b := int(range_[1]) if range_.size() > 1 else 5
 		var on := a <= s and s <= b
+		# Replace the GLB's isolated spoil balls with the ground-following side heaps.
+		if label.begins_with("spoil") and s >= 2 and _detail.enabled and _detail.camp_enabled:
+			on = false
 		if label == "vent":
 			on = on and vent_count >= 1
 		elif label == "vent2":
@@ -415,32 +399,36 @@ func refresh_pile() -> void:
 		away = away.normalized()
 	if side.dot(entrance_dir) > 0.0:
 		side = -side
-	var at := global_position + side * 3.2 + away * 0.8
+	# Keep supplies beside the approach, outside the mound and existing trunks/rocks.
+	var trees := PackedVector2Array()
+	var rocks: Array[Vector3] = []
+	for forest in get_tree().get_nodes_in_group("forest"):
+		trees.append_array(forest.spruce_points)
+		rocks.append_array(forest.rock_spheres)
+	for scenery in get_tree().get_nodes_in_group("scenery"):
+		trees.append_array(scenery.spruce_points)
+	var at := CampGroundDress.pile_position(global_position, side, entrance_dir, trees, rocks)
 	_pile_root.global_position = Vector3(at.x, SnowField.height_at(at.x, at.z) + 0.06, at.z)
 	_pile_root.global_rotation = Vector3(0.0, atan2(away.x, away.z), 0.0)
-	var wood := mini(pile.amount("wood"), 15)
-	for i in wood:
-		var row := int(i / 4)
-		var col := i % 4
-		var m := MeshInstance3D.new()
-		var c := CylinderMesh.new()
-		c.top_radius = 0.06
-		c.bottom_radius = 0.07
-		c.height = 0.9
-		m.mesh = c
-		m.material_override = _wood
-		m.rotation.x = PI * 0.5
-		m.position = Vector3((float(col) - 1.5) * 0.15, 0.07 + float(row) * 0.13, 0.0)
-		_pile_root.add_child(m)
-	for i in mini(pile.amount("bedding"), 6):
-		var b := MeshInstance3D.new()
-		var bx := BoxMesh.new()
-		bx.size = Vector3(0.5, 0.05, 0.75)
-		b.mesh = bx
-		b.material_override = _bough
-		b.position = Vector3(0.65, 0.03 + float(i) * 0.05, 0.0)
-		b.rotation.y = float(i) * 0.5
-		_pile_root.add_child(b)
+	# One draw per resource type, with visible cut ends and irregular branch bundles.
+	_pile_batch("StoredWood", CampGroundDress.log_mesh(), mini(pile.amount("wood"), 15), false)
+	_pile_batch("StoredBoughs", CampGroundDress.bough_mesh(), mini(pile.amount("bedding"), 6), true)
+
+func _pile_batch(label: String, mesh: ArrayMesh, count: int, bedding: bool) -> void:
+	if count <= 0: return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = count
+	for i in count:
+		var pos := Vector3(0.68, 0.04 + float(i) * 0.06, 0.0) if bedding else Vector3((float(i % 4) - 1.5) * 0.17, 0.08 + float(i / 4) * 0.15, 0.0)
+		var yaw := float(i) * 0.36 if bedding else (0.04 if i % 2 else -0.04)
+		mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, yaw), pos))
+	var drawn := MultiMeshInstance3D.new()
+	drawn.name = label
+	drawn.multimesh = mm
+	drawn.material_override = CampGroundDress.material()
+	_pile_root.add_child(drawn)
 
 func _box(pos: Vector3, size: Vector3, mat: Material, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()

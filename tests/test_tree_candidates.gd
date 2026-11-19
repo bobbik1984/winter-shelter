@@ -63,7 +63,7 @@ func run() -> Dictionary:
 	validate(SpruceCrownMesh.build(21, Vector3.ZERO, bad, -1.0), 1000, "invalid editor values")
 	check(SpruceMesh.build_baseline(21, Vector3.RIGHT).surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() / 3 == 542, "pre-detail baseline remains exactly 542 triangles")
 	check(SpruceMesh.build(9, Vector3.RIGHT, 0.38, 6).surface_get_arrays(0)[Mesh.ARRAY_VERTEX] == SpruceMesh.build_baseline(9, Vector3.RIGHT, 0.38, 6).surface_get_arrays(0)[Mesh.ARRAY_VERTEX], "production far-tree path is unchanged")
-	check(SpruceMesh.build(21, Vector3.RIGHT).surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() / 3 == 596, "production near tree is not silently replaced by a candidate")
+	check(SpruceMesh.build(21, Vector3.RIGHT).surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() / 3 == 542, "production near tree returns to user-retained coherent legacy crown")
 	return {"passed": passed, "failures": failures}
 
 func continuous_canopy(mesh: ArrayMesh, profile: SpruceCrownProfile) -> bool:

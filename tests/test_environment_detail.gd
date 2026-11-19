@@ -27,7 +27,7 @@ func run() -> Dictionary:
 	check(config != null and config.view_distance_m <= 50.0, "ground-detail distance is resource-driven and limited")
 	var mesh := SpruceMesh.build(21, Vector3.RIGHT)
 	mesh_ok(mesh, 660, "near spruce")
-	check(mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL][0].x < 0.0, "bark faces outward with Godot clockwise winding")
+	check(mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] == SpruceMesh.build_baseline(21, Vector3.RIGHT).surface_get_arrays(0)[Mesh.ARRAY_VERTEX], "production tree uses coherent legacy mesh")
 	var again := SpruceMesh.build(21, Vector3.RIGHT)
 	check(mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] == again.surface_get_arrays(0)[Mesh.ARRAY_VERTEX], "tree seed is deterministic")
 	check(mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] != SpruceMesh.build(22, Vector3.RIGHT).surface_get_arrays(0)[Mesh.ARRAY_VERTEX], "tree variants differ")

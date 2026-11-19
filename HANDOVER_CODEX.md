@@ -115,7 +115,11 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 
 ---
 
-## 当前样树候选：待视觉选择
+## 当前营地细节：CAMP-DETAIL
+
+2026-11-19 用户认为四版树差别不值得继续比较，批准改进营地 / 地面组合。当前实施入口踩实雪、侧边弃雪、真实库存材料批绘、岩面与岩脚覆雪、降低雪晶噪点；默认近树回到连贯旧版，样树仍保留为独立研究资源。规则、碰撞、库存扣除与雪深不改。已通过 18 suites / 4281 assertions 和窗口验证，截图与实测见 `playtests/camp_detail_20261119_results.json`；整体视觉待用户审阅。施工及验收入口 CURRENT_STAGE CAMP-DETAIL；本轮没有打包、部署或 GitHub 推送，正式发布仍为 0.3。
+
+## 样树候选记录：已停止选择（由 CAMP-DETAIL 取代）
 
 用户已批准按 TREE-LOOK 推进样树测试。2026-11-19 完成 0 原版 / A 饱满 / B 略疏 / C 下垂枝的资源化候选、单树与临时成林对照；17 suites / 4250 assertions PASS，手机低档在 X1T 模拟短时约 30 FPS，非真机温度或持续性能验证。建议 A 主树、B/C 变体，尚未视觉确认；游戏默认树尚未替换，也未打包部署。入口 CURRENT_STAGE TREE-SAMPLES、证据 `playtests/tree_samples_20261119_results.json`。
 

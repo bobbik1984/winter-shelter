@@ -1,0 +1,152 @@
+{
+  "task": "CAMP-DETAIL",
+  "date": "2026-11-19",
+  "baseline_commit": "1de6a63",
+  "status": "implementation and local technical validation complete; overall visual acceptance pending",
+  "published": false,
+  "changes": [
+    "Coherent legacy spruce restored (542 triangles), candidate resources retained without further selection.",
+    "Opaque terrain-following approach and side spoil; old GLB spoil parts hidden at replaced stages.",
+    "Actual SitePile stock drives at most two MultiMeshes; cut wood / bough geometry, placement avoids existing trees/rocks.",
+    "Rock face coating replaces detached scenery caps; wider irregular snow banks, existing collision/windbreak anchors unchanged.",
+    "Resource-driven snow sparkle strength reduced from 0.22 to 0.025."
+  ],
+  "validation": {
+    "logic_suites": 18,
+    "logic_assertions": 4281,
+    "camp_assertions": 31,
+    "logic_result": "PASS",
+    "touch_result": "PASS on final implementation; construction, entering/exiting shelter, sleep/wake and retry",
+    "native_window": "PASS including stage replacement, skirt normals, zero/stocked/repeated pile refresh, immutable anchors and stock"
+  },
+  "conditions": {
+    "hardware": "X1T Intel UHD620",
+    "window": "1920x1080",
+    "profile": "mobile low; 480 high 3D, native UI, 30 FPS budget",
+    "fixed_clock_minutes": 860,
+    "night_clock_minutes": 1380,
+    "same_cameras": true,
+    "fixture_completed_shelter": true,
+    "fixture_stock": {
+      "wood": 12,
+      "bedding": 4
+    }
+  },
+  "comparison": [
+    {
+      "view": "camp_close",
+      "before": {
+        "draw_calls": 592,
+        "fps": 30.0296732771547,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 254087,
+        "view": "camp_close"
+      },
+      "after": {
+        "draw_calls": 541,
+        "fps": 29.9804534032921,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 220545,
+        "view": "camp_close"
+      },
+      "draw_change_percent": -8.61,
+      "triangle_change_percent": -13.2
+    },
+    {
+      "view": "camp_play",
+      "before": {
+        "draw_calls": 594,
+        "fps": 29.997830156952,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 254602,
+        "view": "camp_play"
+      },
+      "after": {
+        "draw_calls": 543,
+        "fps": 29.9954940834712,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 221060,
+        "view": "camp_play"
+      },
+      "draw_change_percent": -8.59,
+      "triangle_change_percent": -13.17
+    },
+    {
+      "view": "rock_close",
+      "before": {
+        "draw_calls": 362,
+        "fps": 29.9924718895557,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 132662,
+        "view": "rock_close"
+      },
+      "after": {
+        "draw_calls": 354,
+        "fps": 30.0337178539107,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 130580,
+        "view": "rock_close"
+      },
+      "draw_change_percent": -2.21,
+      "triangle_change_percent": -1.57
+    },
+    {
+      "view": "camp_night",
+      "before": {
+        "draw_calls": 347,
+        "fps": 30.0080955906236,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 121829,
+        "view": "camp_night"
+      },
+      "after": {
+        "draw_calls": 324,
+        "fps": 29.9993400145197,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 107819,
+        "view": "camp_night"
+      },
+      "draw_change_percent": -6.63,
+      "triangle_change_percent": -11.5
+    }
+  ],
+  "additional_stock_view": {
+    "draw_calls": 550,
+    "fps": 29.9373618275608,
+    "gpu_ms": 0,
+    "render_scale": 0.444444447755814,
+    "triangles": 254024,
+    "view": "stock_close"
+  },
+  "invariants": {
+    "anchors_unchanged": true,
+    "stock_unchanged": true
+  },
+  "screenshots": {
+    "camp_before": "snapshots/camp_detail_20261119_before.png",
+    "camp_after": "snapshots/camp_detail_20261119_after.png",
+    "camp_clean": "snapshots/camp_detail_20261119_clean.png",
+    "rock_before": "snapshots/camp_detail_20261119_rock_before.png",
+    "rock_after": "snapshots/camp_detail_20261119_rock_after.png",
+    "stock_close": "snapshots/camp_detail_20261119_stock.png",
+    "night": "snapshots/camp_detail_20261119_night.png"
+  },
+  "raw_artifacts": "~/work/local/stage/winter-shelter/camp-detail-20261119",
+  "limits": [
+    "These desktop-host mobile-profile short samples are not Android sustained performance or thermal measurements.",
+    "Combined rollback/batching/material changes; draw/FPS differences do not isolate added camp detail cost.",
+    "GPU timing returns 0 and is unavailable in these captures.",
+    "Reference-level sculpted rock, detailed snow material and richer shelter assets are not achieved by this incremental pass.",
+    "Native art frames optionally hide CanvasLayers; paired measurements retain normal UI. Stock is a declared fixture, not a full manual playthrough.",
+    "Known Godot Compatibility/cleanup warnings remain; logic fixture also exercises save backup failure.",
+    "project_aligner reviewed-patch dry-run still fails because registered common/wild/todo.md does not exist. No direct projection writes."
+  ]
+}

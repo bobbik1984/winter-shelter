@@ -16,7 +16,7 @@ static func build(parent: Node3D, rocks: Array[Vector3], trees: PackedVector2Arr
 	for r in rocks:
 		if not _valid(Vector2(r.x, r.y), config, samples): continue
 		var st := _bucket(buckets, Vector2(r.x, r.y), config)
-		_snow_apron(st, Vector2(r.x, r.y), r.z * 0.95, r.z * 1.25, config, samples)
+		_snow_apron(st, Vector2(r.x, r.y), r.z * 0.72, r.z * 1.55, config, samples)
 		for i in clampi(config.rock_chips_per_group, 0, 6):
 			var a := TerrainHeight.hash2(roundi(r.x * 10), i, 823) * TAU
 			var rad := r.z * (1.12 + 0.45 * TerrainHeight.hash2(roundi(r.y * 10), i, 827))
@@ -64,16 +64,18 @@ static func _point(q: Vector2, lift: float, samples: Dictionary) -> Vector3:
 	return Vector3(q.x, float(samples.height[q]) + lift, q.y)
 
 static func _snow_apron(st: SurfaceTool, q: Vector2, inner: float, outer: float, config: EnvironmentDetailSettings, samples: Dictionary) -> void:
-	# Eight low snow lobes, with the outer edge sunk into the terrain. Model proportions only.
-	for i in 8:
-		var a := TAU * float(i) / 8.0
-		var b := TAU * float(i + 1) / 8.0
+	# Irregular bank around the anchor; its broad outer edge sinks into the terrain.
+	for i in 12:
+		var a := TAU * float(i) / 12.0
+		var b := TAU * float(i + 1) / 12.0
 		var da := Vector2(cos(a), sin(a))
 		var db := Vector2(cos(b), sin(b))
-		var qa := q + da * outer
-		var qb := q + db * outer
+		var ra := outer * (0.9 + 0.18 * TerrainHeight.hash2(roundi(q.x * 10), i, 853))
+		var rb := outer * (0.9 + 0.18 * TerrainHeight.hash2(roundi(q.x * 10), (i + 1) % 12, 853))
+		var qa := q + da * ra
+		var qb := q + db * rb
 		if not _valid(qa, config, samples) or not _valid(qb, config, samples): continue
-		var ridge := 0.05 + 0.07 * TerrainHeight.hash2(roundi(q.x * 10), i, 831)
+		var ridge := minf(0.24, inner * 0.2) + 0.04 * TerrainHeight.hash2(roundi(q.x * 10), i, 831)
 		st.set_color(config.snow_color)
 		_tri(st, _point(q + da * inner, ridge, samples), _point(qb, -0.018, samples), _point(qa, -0.018, samples))
 		_tri(st, _point(q + da * inner, ridge, samples), _point(q + db * inner, ridge, samples), _point(qb, -0.018, samples))

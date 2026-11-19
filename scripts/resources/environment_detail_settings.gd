@@ -22,3 +22,14 @@ extends Resource
 ## [TUNE] Existing entrance lamp: a soft interior cue, not an emissive door or a heating fire.
 @export var entrance_day_energy := 0.12
 @export var entrance_night_energy := 0.75
+
+## [TUNE] Camp art: dimensions in meters; no change to navigable terrain or snow depth.
+@export var camp_enabled := true
+@export_range(0.3, 1.2) var camp_entry_width_m := 0.68
+@export_range(0.6, 2.5) var camp_entry_length_m := 1.65
+@export_range(0, 12) var camp_mound_count := 8
+@export_range(0.02, 0.4) var camp_mound_height_m := 0.24
+@export_range(0.0, 1.0) var snow_sparkle_strength := 0.025
+@export_range(0.0, 1.0) var rock_snow_amount := 0.53
+@export_range(0.01, 0.6) var rock_snow_softness := 0.3
+@export_range(0.0, 0.6) var rock_snow_noise := 0.38

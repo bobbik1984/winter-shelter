@@ -13,9 +13,7 @@ const SPIKES := 11
 
 ## spikes：每层枝尖数（远景可降到 6 省面数）。
 static func build(seed_idx: int, wind_dir: Vector3, wind_bias: float = 0.38, spikes: int = SPIKES) -> ArrayMesh:
-	# 远景保留原来的低面数轮廓，近景改成分离枝簇；不使用透明叶片。
-	if spikes >= SPIKES:
-		return _branched(seed_idx, wind_dir, wind_bias)
+	# User retained the coherent legacy crown; sample variants remain separate resources.
 	return build_baseline(seed_idx, wind_dir, wind_bias, spikes)
 
 
@@ -90,79 +88,3 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 	st.add_vertex(a)
 	st.add_vertex(b)
 	st.add_vertex(c)
-
-
-## 近景单 surface：黑色顶点标树干、灰白顶点标针叶，由统一积雪材质区分。
-## 下面的长度/比例都是模型内部几何，不是玩法或环境参数。每棵 <= 660 三角形。
-static func _branched(seed_idx: int, wind_dir: Vector3, wind_bias: float) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var wd := wind_dir.normalized() if wind_dir.length_squared() > 0.0001 else Vector3.RIGHT
-	var lean := wd * wind_bias * 0.42
-	st.set_color(Color.BLACK)
-	for section in 3:
-		var a := float(section) / 3.0
-		var b := float(section + 1) / 3.0
-		_branch_wood(st, Vector3(0, a * 6.6, 0) + lean * a * a,
-			Vector3(0, b * 6.6, 0) + lean * b * b, lerpf(0.18, 0.025, a))
-	for tier in TIERS:
-		var f := float(tier) / float(TIERS - 1)
-		var y := lerpf(1.25, 5.85, f)
-		var radius := lerpf(1.95, 0.48, f)
-		var phase := TerrainHeight.hash2(seed_idx, tier, 811) * TAU
-		var center := Vector3(0, y, 0) + lean * f * f
-		for branch in 6:
-			var rnd := TerrainHeight.hash2(seed_idx * 13 + tier, branch, 813)
-			var angle := phase + TAU * float(branch) / 6.0 + (rnd - 0.5) * 0.3
-			var dir := Vector3(cos(angle), 0, sin(angle))
-			var side := Vector3(-dir.z, 0, dir.x)
-			var length := radius * (0.76 + 0.3 * rnd) * (1.0 + wind_bias * dir.dot(wd) * 0.55)
-			var start := center + dir * 0.14
-			var end := center + dir * length + Vector3(0, -length * 0.24, 0)
-			st.set_color(Color.BLACK)
-			_branch_wood(st, start, end, lerpf(0.045, 0.018, f))
-			st.set_color(Color.WHITE * (0.78 + 0.22 * rnd))
-			_bough(st, start.lerp(end, 0.22), end + dir * 0.12, side, length * 0.29, length * 0.11)
-			# 每根枝条的侧枝是一簇四面体，不增加透明叠层或材质槽。
-			var fork := start.lerp(end, 0.6)
-			var tip := fork + side * length * (0.26 if branch % 2 == 0 else -0.26) + dir * length * 0.2
-			_twig(st, fork, tip, length * 0.16)
-	st.set_color(Color.WHITE)
-	_bough(st, Vector3(0, 5.7, 0) + lean, Vector3(0, 6.85, 0) + lean, Vector3.RIGHT, 0.22, 0.15)
-	st.generate_normals()
-	return st.commit()
-
-
-## 四面体木枝，连续三节树干也用相同封闭几何。
-static func _branch_wood(st: SurfaceTool, a: Vector3, b: Vector3, r: float) -> void:
-	var axis := (b - a).normalized()
-	var side := axis.cross(Vector3.FORWARD).normalized()
-	if side.length_squared() < 0.01: side = Vector3.RIGHT
-	var up := axis.cross(side).normalized()
-	var p := a + side * r
-	var q := a - side * r * 0.5 + up * r
-	var t := a - side * r * 0.5 - up * r
-	_near_tri(st, p, q, b); _near_tri(st, q, t, b); _near_tri(st, t, p, b); _near_tri(st, p, t, q)
-
-
-## 厚枝簇：上表面接雪，尖端下垂，枝间空隙能透出树干。
-static func _bough(st: SurfaceTool, a: Vector3, b: Vector3, side: Vector3, width: float, height: float) -> void:
-	var mid := a.lerp(b, 0.55)
-	var l := mid - side * width
-	var r := mid + side * width
-	var top := mid + Vector3.UP * height
-	var bottom := mid - Vector3.UP * height * 0.24
-	_near_tri(st, a, top, l); _near_tri(st, l, top, b); _near_tri(st, b, top, r); _near_tri(st, r, top, a)
-	_near_tri(st, a, l, bottom); _near_tri(st, l, b, bottom); _near_tri(st, b, r, bottom); _near_tri(st, r, a, bottom)
-
-
-static func _twig(st: SurfaceTool, a: Vector3, b: Vector3, width: float) -> void:
-	var side := (b - a).cross(Vector3.UP).normalized() * width
-	var top := a.lerp(b, 0.4) + Vector3.UP * width * 0.5
-	_near_tri(st, a - side, top, b); _near_tri(st, b, top, a + side)
-	_near_tri(st, a + side, top, a - side); _near_tri(st, a - side, b, a + side)
-
-
-## Godot front faces use clockwise winding. Keep the legacy far mesh unchanged.
-static func _near_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
-	_tri(st, a, c, b)
