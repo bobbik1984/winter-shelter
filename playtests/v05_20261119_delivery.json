@@ -1,0 +1,38 @@
+{
+  "version": "0.5",
+  "version_code": 5,
+  "source": "481a5adfc65c70e2afc3bf2f8123f573081105ec",
+  "apk": "winter-shelter-481a5ad.apk",
+  "bytes": 31506351,
+  "sha256": "754a42ce53dabbc0122531fa1834eb4d0d9256e42de228039814aae6fd0f2547",
+  "signing_sha256": "dafb9fbdc736f2c70864a7005cb199b70ab5816a6833e8ec3e5ba743fee338f5",
+  "abis": [
+    "arm64-v8a"
+  ],
+  "manifest": {
+    "versionCode": 5,
+    "versionName": "0.5",
+    "installLocation": 0,
+    "compileSdkVersion": 34,
+    "compileSdkVersionCodename": "14",
+    "package": "org.bobbik.wintershelter",
+    "platformBuildVersionCode": 34,
+    "platformBuildVersionName": 14
+  },
+  "web_pck": "index-2bd27e92f6.pck",
+  "web_pck_sha256": "2bd27e92f6f4f16916ab0d163806018b2b970258e985d1919096d16f75c55af2",
+  "public_apk_hash_matches": true,
+  "public_pck_hash_matches": true,
+  "github_asset_digest_matches": true,
+  "web_resource_values_checked": 666,
+  "logic_assertions_passed": 4281,
+  "touch_smoke": "PASS",
+  "apk_content_audit": "PASS",
+  "mobile_profile_on_intel_uhd620_fps": {
+    "world": 30,
+    "pause": 15,
+    "report": 15
+  },
+  "shutdown_diagnostics": "Godot reported retained resources and GL textures at test exit.",
+  "android_device_tested": false
+}
