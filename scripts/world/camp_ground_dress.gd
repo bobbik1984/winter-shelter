@@ -4,7 +4,7 @@ extends RefCounted
 ## Local +Z is the entrance. No resources, terrain, collision or warmth are changed.
 
 static func build(at: Transform3D, door: float, stage: int, snow_shelter: bool,
-		config: EnvironmentDetailSettings = null) -> ArrayMesh:
+		config: EnvironmentDetailSettings = null, surface_height: Callable = Callable()) -> ArrayMesh:
 	if config == null: config = EnvironmentDetails.settings()
 	if config == null or not config.enabled or not config.camp_enabled or stage < 2: return null
 	var st := SurfaceTool.new()
@@ -12,7 +12,7 @@ static func build(at: Transform3D, door: float, stage: int, snow_shelter: bool,
 	var samples := {}
 	# A narrow trampled approach; its irregular outer ring returns to clean snow.
 	_patch(st, at, Vector2(0, door + 0.9), Vector2(clampf(config.camp_entry_width_m, 0.3, 1.2),
-		clampf(config.camp_entry_length_m, 0.6, 2.5)), 0.0, config, samples, true, 17)
+		clampf(config.camp_entry_length_m, 0.6, 2.5)), 0.0, samples, true, 17, surface_height)
 	if snow_shelter:
 		# Excavation is deposited in two unequal side heaps, never across the doorway.
 		var count := clampi(config.camp_mound_count, 0, 12)
@@ -22,7 +22,7 @@ static func build(at: Transform3D, door: float, stage: int, snow_shelter: bool,
 			var jitter := TerrainHeight.hash2(i, roundi(at.origin.x * 10), 857)
 			var q := Vector2(side * (1.05 + jitter * 0.7), door + 0.2 + f * 1.5)
 			var height := clampf(config.camp_mound_height_m, 0.02, 0.4) * (0.65 + jitter * 0.35) * clampf(float(stage) / 4.0, 0.5, 1.0)
-			_patch(st, at, q, Vector2(0.55 + jitter * 0.25, 0.38 + jitter * 0.24), height, config, samples, false, i + 31)
+			_patch(st, at, q, Vector2(0.55 + jitter * 0.25, 0.38 + jitter * 0.24), height, samples, false, i + 31, surface_height)
 	if not st.get_meta("triangles", 0): return null
 	st.generate_normals()
 	return st.commit()
@@ -34,16 +34,17 @@ static func material() -> StandardMaterial3D:
 	mat.metallic_specular = 0.08
 	return mat
 
-static func _point(at: Transform3D, q: Vector2, lift: float, samples: Dictionary) -> Vector3:
+static func _point(at: Transform3D, q: Vector2, lift: float, samples: Dictionary, surface_height: Callable) -> Vector3:
 	if not samples.has(q):
 		var w := at * Vector3(q.x, 0, q.y)
 		var ok := not TerrainHeight.is_lake_at(w.x, w.z) and TerrainHeight.snow_depth_at(w.x, w.z) >= 0.08
-		var p := Vector3(w.x, SnowField.height_at(w.x, w.z), w.z)
+		var height: float = surface_height.call(w.x, w.z) if surface_height.is_valid() else SnowField.height_at(w.x, w.z)
+		var p := Vector3(w.x, height, w.z)
 		samples[q] = at.affine_inverse() * p if ok else Vector3.INF
 	return samples[q] + Vector3.UP * lift
 
 static func _patch(st: SurfaceTool, at: Transform3D, center: Vector2, radius: Vector2,
-		height: float, config: EnvironmentDetailSettings, samples: Dictionary, packed: bool, seed_idx: int) -> void:
+		height: float, samples: Dictionary, packed: bool, seed_idx: int, surface_height: Callable) -> void:
 	# Three radial strips keep the patch on the snow surface instead of bridging slopes.
 	var segments := 16
 	var rings: Array = []
@@ -55,8 +56,8 @@ static func _patch(st: SurfaceTool, at: Transform3D, center: Vector2, radius: Ve
 			var jitter := 0.9 + TerrainHeight.hash2(i, seed_idx, 859) * 0.2
 			var q := center + Vector2(cos(angle), sin(angle)) * radius * t * jitter
 			# Raised center sinks into the surface at the edge; packed approach is a thin veneer.
-			var lift := 0.014 if packed else height * pow(1.0 - t, 0.7) - 0.012 * t
-			points.append(_point(at, q, lift, samples))
+			var lift := lerpf(0.02, -0.02, smoothstep(0.66, 1.0, t)) if packed else height * pow(1.0 - t, 0.7) - 0.012 * t
+			points.append(_point(at, q, lift, samples, surface_height))
 		rings.append(points)
 	for ring in 3:
 		for i in segments:
@@ -65,11 +66,9 @@ static func _patch(st: SurfaceTool, at: Transform3D, center: Vector2, radius: Ve
 			var b: Vector3 = rings[ring + 1][i]
 			var c: Vector3 = rings[ring + 1][j]
 			var e: Vector3 = rings[ring][j]
-			var inner_col := config.snow_color
-			var outer_col := config.snow_color
-			if packed:
-				inner_col = config.snow_color.lerp(config.compacted_snow_color, (1.0 - float(ring) / 3.0) * 0.42)
-				outer_col = config.snow_color.lerp(config.compacted_snow_color, (1.0 - float(ring + 1) / 3.0) * 0.42)
+			# Blue carries the packed-snow mask used by the shared snow shader.
+			var inner_col := Color(0, 0, 1.0 - float(ring) / 3.0 if packed else 0.0)
+			var outer_col := Color(0, 0, 1.0 - float(ring + 1) / 3.0 if packed else 0.0)
 			_tri(st, a, b, c, inner_col, outer_col, outer_col)
 			if ring > 0: _tri(st, a, c, e, inner_col, outer_col, inner_col)
 

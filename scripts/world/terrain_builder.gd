@@ -9,6 +9,8 @@ const TERRAIN_SHADER := preload("res://shaders/snow_terrain.gdshader")
 @export var resolution: int = 100
 @export var world_size: float = 100.0
 
+signal snow_render_changed
+
 var _material: ShaderMaterial
 
 func _ready() -> void:
@@ -29,12 +31,36 @@ func set_debug_depth(on: bool) -> void:
 		_material.set_shader_parameter("debug_depth", on)
 
 func set_low_quality(on: bool) -> void:
-	if _material:
+	if _material and _material.get_shader_parameter("low_quality") != on:
 		_material.set_shader_parameter("low_quality", on)
+		snow_render_changed.emit()
 
 func set_sun_dir(dir: Vector3) -> void:
-	if _material:
+	if _material and _material.get_shader_parameter("sun_dir_world") != dir:
 		_material.set_shader_parameter("sun_dir_world", dir)
+		snow_render_changed.emit()
+
+func sync_constructed_snow(material: ShaderMaterial) -> void:
+	for parameter in ["sun_dir_world", "wind_blow", "low_quality", "sparkle_strength"]:
+		material.set_shader_parameter(parameter, _material.get_shader_parameter(parameter))
+
+## Height on the same triangle diagonal used by the visual and collision mesh.
+func surface_height_at(x: float, z: float) -> float:
+	var half := world_size * 0.5
+	var step := world_size / float(resolution)
+	if absf(x) > half or absf(z) > half:
+		return TerrainHeight.height_at(x, z)
+	var cell := Vector2((x + half) / step, (z + half) / step)
+	var base := Vector2(minf(floorf(cell.x), resolution - 1), minf(floorf(cell.y), resolution - 1))
+	var uv := cell - base
+	base = base * step - Vector2.ONE * half
+	var a := TerrainHeight.height_at(base.x, base.y)
+	var d := TerrainHeight.height_at(base.x + step, base.y + step)
+	if uv.x >= uv.y:
+		var b := TerrainHeight.height_at(base.x + step, base.y)
+		return a * (1.0 - uv.x) + b * (uv.x - uv.y) + d * uv.y
+	var c := TerrainHeight.height_at(base.x, base.y + step)
+	return a * (1.0 - uv.y) + c * (uv.y - uv.x) + d * uv.x
 
 func _build_terrain() -> void:
 	var half := world_size * 0.5

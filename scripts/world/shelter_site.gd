@@ -40,6 +40,8 @@ var _inside := false
 
 var _visual: Node3D
 var _snow: ShaderMaterial
+var _camp_snow: ShaderMaterial
+var _terrain: TerrainBuilder
 var _dark: StandardMaterial3D
 var _wood: ShaderMaterial
 var _bough: ShaderMaterial
@@ -66,7 +68,17 @@ func _ready() -> void:
 	builder.set_site_conditions(snow_depth, slope_deg, near_windbreak)
 	global_position.y = TerrainHeight.height_at(global_position.x, global_position.z)
 	rotation.y = atan2(entrance_dir.x, entrance_dir.z)
-	_snow = _snow_mat(Color(0.86, 0.90, 0.97), 1.0)
+	_terrain = get_tree().get_first_node_in_group("terrain") as TerrainBuilder
+	_snow = ShaderMaterial.new()
+	_snow.shader = TerrainBuilder.TERRAIN_SHADER
+	_snow.set_shader_parameter("constructed_snow", true)
+	_snow.set_shader_parameter("site_snow_depth", clampf(TerrainHeight.snow_depth_at(global_position.x, global_position.z) / 2.5, 0.0, 1.0))
+	_snow.set_shader_parameter("site_ground_normal", TerrainHeight.normal_at(global_position.x, global_position.z))
+	_camp_snow = _snow.duplicate() as ShaderMaterial
+	_camp_snow.set_shader_parameter("packed_vertex_mask", true)
+	if _terrain:
+		_terrain.snow_render_changed.connect(_sync_snow_render)
+		_sync_snow_render()
 	_wood = _snow_mat(EnvPalette.DEAD_WOOD, 0.3)
 	_bough = _snow_mat(EnvPalette.SPRUCE, 0.35)
 	_dark = StandardMaterial3D.new()
@@ -179,6 +191,10 @@ func advance() -> Dictionary:
 	_refresh()
 	return r
 
+func _sync_snow_render() -> void:
+	_terrain.sync_constructed_snow(_snow)
+	_terrain.sync_constructed_snow(_camp_snow)
+
 func _snow_mat(base: Color, amount: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = SNOW_COVER_SHADER
@@ -212,7 +228,8 @@ func _refresh() -> void:
 ## 雪裙 + 合并入口 / 弃雪网格 + 鞋印批绘；只在施工阶段变化时生成。
 func _site_ground_y(local: Vector3) -> float:
 	var w := to_global(Vector3(local.x, 0.0, local.z))
-	return TerrainHeight.height_at(w.x, w.z) - global_position.y
+	var h := _terrain.surface_height_at(w.x, w.z) if _terrain else TerrainHeight.height_at(w.x, w.z)
+	return h - global_position.y
 
 func _ground_blend(s: int) -> void:
 	var fr := footprint_radius()
@@ -250,12 +267,12 @@ func _ground_blend(s: int) -> void:
 	_visual.add_child(skirt)
 	# Deposits live beside the actual opening; no fake stock or extra gameplay nodes.
 	var door_z := float(ENTRANCE_DIST.get(preset_id, 1.9)) if _has_model else entrance_point().distance_to(global_position)
-	var dressed := CampGroundDress.build(global_transform, door_z, s, is_snow_shelter(), _detail)
+	var dressed := CampGroundDress.build(global_transform, door_z, s, is_snow_shelter(), _detail, _terrain.surface_height_at if _terrain else Callable())
 	if dressed:
 		var camp := MeshInstance3D.new()
 		camp.name = "CampGroundDress"
 		camp.mesh = dressed
-		camp.material_override = CampGroundDress.material()
+		camp.material_override = _camp_snow
 		camp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_visual.add_child(camp)
 	# 已发生的施工留下鞋印，复用单 surface 鞋印网格，不叠一整片透明色块。

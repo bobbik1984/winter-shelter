@@ -20,6 +20,12 @@ uniform vec2 wind_blow = vec2(1.0, 0.0);
 uniform float bare_full_m = 0.08;
 uniform float bare_none_m = 0.30;   // = D5 "太薄挖不了" 门槛：≥ 0.3 m 的雪足以盖住地面
 
+// Constructed snow shares the terrain palette, without terrain-only rock and ice.
+uniform bool constructed_snow = false;
+uniform float site_snow_depth = 0.0;
+uniform vec3 site_ground_normal = vec3(0.0, 1.0, 0.0);
+uniform bool packed_vertex_mask = false;
+varying float compaction_mask;
 varying float snow_depth;
 varying float lake_mask;
 varying vec3 world_normal;
@@ -57,9 +63,10 @@ float fbm(vec2 p) {
 }
 
 void vertex() {
-	snow_depth = COLOR.r;
-	lake_mask = COLOR.g;
-	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	snow_depth = constructed_snow ? site_snow_depth : COLOR.r;
+	lake_mask = constructed_snow ? 0.0 : COLOR.g;
+	compaction_mask = packed_vertex_mask ? COLOR.b : 0.0;
+	world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	slope_v = 1.0 - clamp(world_normal.y, 0.0, 1.0);
 	height_v = clamp(VERTEX.y / 8.5, 0.0, 1.0);
@@ -92,7 +99,10 @@ void fragment() {
 	float up = clamp(bumped_world_n.y, 0.0, 1.0);
 	vec3 sun_dir = normalize(sun_dir_world);
 	// 逆光：太阳很低，用"朝太阳的水平分量 + 坡面朝上"判断受光，避免整片雪面发黑
-	float sun_face = clamp(dot(bumped_world_n, normalize(sun_dir + vec3(0.0, 0.55, 0.0))), 0.0, 1.0);
+	// The mound keeps its actual lighting normals. Its material tint stays close
+	// to the local snowfield rather than treating a steep carved wall as a drift.
+	vec3 tint_normal = constructed_snow ? normalize(mix(site_ground_normal, bumped_world_n, 0.18)) : bumped_world_n;
+	float sun_face = clamp(dot(tint_normal, normalize(sun_dir + vec3(0.0, 0.55, 0.0))), 0.0, 1.0);
 	vec3 view_w = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	float forward_scatter = pow(clamp(dot(-view_w, sun_dir), 0.0, 1.0), 6.0);
 	float rim_grazing = pow(1.0 - clamp(dot(bumped_world_n, -view_w), 0.0, 1.0), 3.2);
@@ -113,7 +123,7 @@ void fragment() {
 	// 3b. 薄雪露地：雪越薄，地面（深褐土 / 帚石楠）与枯草越多地露出来，斑块由噪声决定。
 	//     让"这里雪很薄"不用探针也能看出来（第 3 / 4 关、风蚀脊顶）。
 	float depth_m = snow_depth * 2.5;
-	float thin = (1.0 - smoothstep(bare_full_m, bare_none_m, depth_m)) * (1.0 - step(0.5, lake_mask));   // 冰面上不露地
+	float thin = constructed_snow ? 0.0 : (1.0 - smoothstep(bare_full_m, bare_none_m, depth_m)) * (1.0 - step(0.5, lake_mask));   // 冰面上不露地
 	float patch_n = low_quality ? vnoise(world_pos.xz * 0.9) : fbm(world_pos.xz * 0.9);
 	float bare = smoothstep(0.42, 0.72, thin * (0.35 + 0.9 * patch_n));
 	// 草丛：平滑值噪声的高值斑点（圆润、不规则；不能用 floor 网格，会出现方块像素）
@@ -125,7 +135,7 @@ void fragment() {
 	vec3 rock_dark = vec3(0.19, 0.21, 0.25);
 	vec3 rock_warm = vec3(0.31, 0.28, 0.26);
 	vec3 rock_col = mix(rock_dark, rock_warm, detail_n * sun_face);
-	float rock_mask = smoothstep(0.34, 0.62, slope_v + (detail_n - 0.5) * 0.18 - snow_depth * 0.12);
+	float rock_mask = constructed_snow ? 0.0 : smoothstep(0.34, 0.62, slope_v + (detail_n - 0.5) * 0.18 - snow_depth * 0.12);
 	vec3 base = mix(snow_col, rock_col, rock_mask);
 
 	// 5. 高频雪晶闪点 (Sparkle)
@@ -147,8 +157,8 @@ void fragment() {
 		base = mix(base, lake_col, ice);
 		rock_mask *= 1.0 - ice;
 	}
-	ALBEDO = clamp(base, vec3(0.08), vec3(0.96));
-	if (debug_depth) {
+	ALBEDO = clamp(base * (1.0 - compaction_mask * 0.12), vec3(0.08), vec3(0.96));
+	if (debug_depth && !constructed_snow) {
 		float m = snow_depth * 2.5;   // 还原为米
 		vec3 c = vec3(1.0, 0.4, 0.15);
 		if (m < 2.0) { c = vec3(1.0, 0.8, 0.2); }
@@ -163,5 +173,5 @@ void fragment() {
 	}
 	ROUGHNESS = mix(max(mix(0.82, 0.96, rock_mask) - smoothstep(0.3, 0.9, snow_depth) * 0.12, bare * 0.95), 0.18, clear_ice);
 	SPECULAR = mix(0.28, 0.12, rock_mask);
-	AO = mix(0.72, 1.0, up) * mix(0.85, 1.0, drift_n);
+	AO = mix(0.72, 1.0, constructed_snow ? clamp(tint_normal.y, 0.0, 1.0) : up) * mix(0.85, 1.0, drift_n);
 }
