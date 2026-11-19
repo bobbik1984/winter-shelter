@@ -2,7 +2,7 @@ class_name FarTerrainBuilder
 extends Node3D
 
 ## 100 m 地图之外的一圈山谷与远山（无碰撞，仅视觉）。
-## 内缘高度取自 TerrainHeight（略下沉避免接缝露底），向外平滑过渡到山脊噪声。
+## 内缘高度取自 TerrainHeight（沿接边逐米采样），向外平滑过渡到山脊噪声。
 ## 材质复用 snow_cover.gdshader：平坡积雪、陡坡露岩。
 
 const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
@@ -16,6 +16,7 @@ const SNOW_COVER_SHADER := preload("res://shaders/snow_cover.gdshader")
 @export var seed_idx: int = 5
 
 var _coords: PackedFloat32Array
+var _heights: PackedFloat32Array
 
 ## [TUNE] 远景林：采样间距（m）与林线（相对谷底的最大海拔，m）。
 @export var far_tree_spacing: float = 12.0
@@ -42,8 +43,9 @@ func _build_coords() -> PackedFloat32Array:
 	var all := PackedFloat32Array()
 	for i in range(pos.size() - 1, -1, -1):
 		all.append(-pos[i])
-	all.append(-map_half)
-	all.append(map_half)
+	var segments := maxi(1, ceili(2.0 * map_half))
+	for i in range(1, segments):
+		all.append(lerpf(-map_half, map_half, float(i) / segments))
 	for v in pos:
 		all.append(v)
 	return all
@@ -54,7 +56,7 @@ const VISTA_DIR := Vector2(-0.7071, 0.7071)
 func _height(x: float, z: float) -> float:
 	var cx := clampf(x, -map_half, map_half)
 	var cz := clampf(z, -map_half, map_half)
-	var edge := TerrainHeight.height_at(cx, cz) - 0.35
+	var edge := TerrainHeight.height_at(cx, cz)
 	var dist := maxf(absf(x), absf(z)) - map_half
 	var along := Vector2(x, z).normalized().dot(VISTA_DIR)
 	var vista := smoothstep(0.15, 0.8, along)
@@ -96,6 +98,11 @@ func _build() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n := _coords.size()
+	_heights.resize(n * n)
+	for j in n:
+		for i in n:
+			if maxf(absf(_coords[i]), absf(_coords[j])) >= map_half:
+				_heights[j * n + i] = _height(_coords[i], _coords[j])
 	for j in range(n - 1):
 		for i in range(n - 1):
 			var x0 := _coords[i]
@@ -105,16 +112,17 @@ func _build() -> void:
 			# 跳过被 100 m 地图占据的中心洞
 			if x0 >= -map_half and x1 <= map_half and z0 >= -map_half and z1 <= map_half:
 				continue
-			var p00 := Vector3(x0, _height(x0, z0), z0)
-			var p10 := Vector3(x1, _height(x1, z0), z0)
-			var p01 := Vector3(x0, _height(x0, z1), z1)
-			var p11 := Vector3(x1, _height(x1, z1), z1)
+			var p00 := Vector3(x0, _heights[j * n + i], z0)
+			var p10 := Vector3(x1, _heights[j * n + i + 1], z0)
+			var p01 := Vector3(x0, _heights[(j + 1) * n + i], z1)
+			var p11 := Vector3(x1, _heights[(j + 1) * n + i + 1], z1)
 			st.add_vertex(p00)
 			st.add_vertex(p11)
 			st.add_vertex(p01)
 			st.add_vertex(p00)
 			st.add_vertex(p10)
 			st.add_vertex(p11)
+	st.index()
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.name = "FarTerrainMesh"
@@ -131,6 +139,18 @@ func _build() -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
+
+func _mesh_height(x: float, z: float) -> float:
+	var n := _coords.size()
+	var i := clampi(_coords.bsearch(x) - 1, 0, n - 2)
+	var j := clampi(_coords.bsearch(z) - 1, 0, n - 2)
+	var u := inverse_lerp(_coords[i], _coords[i + 1], x)
+	var v := inverse_lerp(_coords[j], _coords[j + 1], z)
+	var a := _heights[j * n + i]
+	var d := _heights[(j + 1) * n + i + 1]
+	if u >= v:
+		return a * (1.0 - u) + _heights[j * n + i + 1] * (u - v) + d * v
+	return a * (1.0 - v) + _heights[(j + 1) * n + i] * (v - u) + d * u
 
 ## 远景云杉林：低面数 SpruceMesh（6 枝尖）MultiMesh，铺在谷坡与山脚、林线以下。
 func _build_far_forest() -> void:
@@ -157,7 +177,7 @@ func _build_far_forest() -> void:
 			if Vector2(gx, gz).length() / 4.0 > 0.75:
 				continue
 			var s := lerpf(1.0, 2.1, TerrainHeight.hash2(i, j, 507))
-			transforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(x, h - 0.3, z)))
+			transforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(x, _mesh_height(x, z) - 0.3, z)))
 	if transforms.is_empty():
 		return
 	var mat := ShaderMaterial.new()
