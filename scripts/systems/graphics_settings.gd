@@ -191,7 +191,10 @@ func apply() -> void:
 		vp.scaling_3d_scale = float(p[0])
 	# 低档关闭 FXAA（画面已经过 FSR 放大；约 +2 FPS）
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if level == 0 else Viewport.SCREEN_SPACE_AA_FXAA
-	RenderingServer.directional_soft_shadow_filter_set_quality(int(p[6]) as RenderingServer.ShadowQuality)
+	# 手机移轴镜头下，长树影跨越级联时会在雪面出现整条错位的硬边。
+	var single_shadow := BuildInfo.is_compat() and (mobile_profile() or TouchMode.enabled)
+	var shadow_quality := RenderingServer.SHADOW_QUALITY_SOFT_LOW if single_shadow else int(p[6])
+	RenderingServer.directional_soft_shadow_filter_set_quality(shadow_quality as RenderingServer.ShadowQuality)
 	if mobile_profile():
 		RenderingServer.directional_shadow_atlas_set_size(power_tuning.mobile_shadow_size, true)
 	var env_node := get_tree().get_first_node_in_group("world_environment") as WorldEnvironment
@@ -214,7 +217,10 @@ func apply() -> void:
 	var sun := get_tree().current_scene.get_node_or_null("SunLight") as DirectionalLight3D if get_tree().current_scene else null
 	if sun:
 		sun.directional_shadow_max_distance = float(p[4])
-		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(p[7]) == 2 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		if single_shadow:
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+		else:
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(p[7]) == 2 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	var terrain := get_tree().get_first_node_in_group("terrain")
 	if terrain:
 		terrain.set_low_quality(level == 0)
