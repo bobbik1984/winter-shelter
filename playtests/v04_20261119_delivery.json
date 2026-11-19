@@ -1,0 +1,89 @@
+{
+  "version": "0.4",
+  "version_code": 4,
+  "source": "014d907b2658b92f8814738285127081f3c9905b",
+  "apk": "winter-shelter-014d907.apk",
+  "bytes": 31506351,
+  "sha256": "319852e6067daa3946c443446b8ec980acd994dce03afb81bc11f6c2f59cde0f",
+  "signing_sha256": "dafb9fbdc736f2c70864a7005cb199b70ab5816a6833e8ec3e5ba743fee338f5",
+  "abis": [
+    "arm64-v8a"
+  ],
+  "manifest": {
+    "versionCode": 4,
+    "versionName": "0.4",
+    "installLocation": 0,
+    "compileSdkVersion": 34,
+    "compileSdkVersionCodename": "14",
+    "package": "org.bobbik.wintershelter",
+    "platformBuildVersionCode": 34,
+    "platformBuildVersionName": 14
+  },
+  "date": "2026-11-19",
+  "release_url": "https://github.com/bobbik1984/winter-shelter/releases/tag/v0.4",
+  "web_url": "https://test.bobbik.org/winter/",
+  "apk_url": "https://test.bobbik.org/winter/download/winter-shelter-014d907.apk",
+  "web_pck": "index-b7219e3e1d.pck",
+  "web_pck_sha256": "b7219e3e1d767a0c4f90cfb34c2f99e4ef101bfaeb17edaf757ed5e4d279cb10",
+  "public_apk_hash_matches": true,
+  "public_pck_hash_matches": true,
+  "github_asset_digest_matches": true,
+  "web_resource_values_checked": 666,
+  "apk_content_audit": "PASS",
+  "touch_final": "PASS",
+  "logic_before_final_tint_adjustment": {
+    "suites": 18,
+    "assertions": 4281,
+    "result": "PASS"
+  },
+  "native_mobile_low": {
+    "result": "PASS",
+    "measurements": [
+      {
+        "draw_calls": 541,
+        "fps": 29.9977901627913,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 220545,
+        "view": "camp_close"
+      },
+      {
+        "draw_calls": 543,
+        "fps": 29.9706583960823,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 221060,
+        "view": "camp_play"
+      },
+      {
+        "draw_calls": 354,
+        "fps": 29.9998153857515,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 130580,
+        "view": "rock_close"
+      },
+      {
+        "draw_calls": 324,
+        "fps": 29.6373257142096,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 107819,
+        "view": "camp_night"
+      },
+      {
+        "draw_calls": 550,
+        "fps": 30.0068191320841,
+        "gpu_ms": 0,
+        "render_scale": 0.444444447755814,
+        "triangles": 254024,
+        "view": "stock_close"
+      }
+    ],
+    "hardware": "X1T UHD 620",
+    "fps_cap": 30
+  },
+  "screenshot": "snapshots/snow_match_v04.png",
+  "android_device_tested": false,
+  "phone_temperature_measured": false
+}

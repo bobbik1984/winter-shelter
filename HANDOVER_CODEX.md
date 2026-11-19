@@ -1,7 +1,7 @@
 # HANDOVER — Winter Shelter / Snow Shelter Challenge
 
 > 交接给同一台设备上的 Codex。  
-> 最后更新：2026-11-19 · 当前发布代码：`9547f4e`（0.3；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
+> 最后更新：2026-11-19 · 当前发布代码：`014d907`（0.4；master 可包含后续文档提交） · 默认/唯一开发分支：`master`
 
 ---
 
@@ -133,7 +133,15 @@ ln -sfn /home/bobbik/.local/share/godot/export_templates/4.3.stable \
 
 最终 16 suites / 4196 assertions，触屏/键盘/地物回归与桌面/手机配置窗口检查通过。手机配置在 X1T 模拟约 30 FPS，不是 Android 真机温度实测。证据与截图见 CURRENT_STAGE 的 ENV-DETAIL 验收及 `playtests/env_detail_20261118_results.json`。本轮只改源码和验证，没有打包或部署；正式版本仍是以下 0.3，后续发布需升 versionCode。
 
-## 0.3 本轮交付
+## 0.4 发布
+
+发布源码 `014d907`，Android `versionName=0.4`、`versionCode=4`，应用 ID 与正式签名沿用 0.3。雪洞外壳、弃雪和入口压雪复用地面雪色及日照参数，洞内保留独立阴影。
+
+- [网页版](https://test.bobbik.org/winter/) 使用 `index-b7219e3e1d.pck`。
+- [Android 下载页](https://test.bobbik.org/winter/download/) 与 [GitHub Release v0.4](https://github.com/bobbik1984/winter-shelter/releases/tag/v0.4) 提供 `winter-shelter-014d907.apk`。
+- 触屏整局、原生窗口、Web 666 项资源值、APK 内容与正式签名核验通过。Android 真机安装与温升待实测。证据见 `playtests/v04_20261119_delivery.json`。
+
+## 0.3 历史交付
 
 第一章为三关主线（读风探雪 → 高床结构 → 完整过夜准备），旧 4–10 阶为七个可选挑战；通过第三关进入第二章。旧存档迁移前备份，保留旧阶段 ID 和记录。选关只更新简报，确认开始才生成地图；天黑可继续行动，夜间能主动起床外出，实际睡点决定庇护。规则见 CORE_GAMEPLAY §9.1，结构见 ARCHITECTURE_GODOT 的第一章教学配置。
 
@@ -164,7 +172,7 @@ SHA-256: e7c9b1c3efa05fe36098cf5f07bf5b584af818075756f28d03102bf00c8fc6b9
 
 ---
 
-## 6. 线上测试页 / APK
+## 6. 0.3 历史线上测试页 / APK
 
 | 项 | 地址 |
 | :--- | :--- |
