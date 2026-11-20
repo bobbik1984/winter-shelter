@@ -32,6 +32,9 @@ var _steps_text := ""
 ## 背包格子：小色块 + 数量，满了变琥珀色（参考图里的格子背包，不画物品图）。
 var _slot_box: HBoxContainer
 var _slot_labels: Array[Label] = []
+var _tray_card: PanelContainer
+var _details_open := false
+var _toast_panel: PanelContainer
 var _toast: Label
 var _toast_t := 0.0
 var _build_card: PanelContainer
@@ -109,10 +112,17 @@ func _ready() -> void:
 	pv.add_child(_progress)
 	_prompt_card.visible = false
 
-	# 背包托盘（左下，操作说明上方）
+	# 背包托盘（左下，操作说明上方；触屏模式紧凑挂在保暖卡下方，长说明默认折叠点开看详情）
 	var tray_card := _card(Color(0.62, 0.78, 0.95))
+	_tray_card = tray_card
 	if TouchMode.enabled:
-		tray_card.position = Vector2(10, 134)   # 左下留给摇杆：放到体温卡下面
+		tray_card.position = Vector2(10, 86)   # 左下留给摇杆；每帧按保暖卡底边动态对齐
+		var ts := tray_card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+		ts.content_margin_left = 9
+		ts.content_margin_right = 9
+		ts.content_margin_top = 6
+		ts.content_margin_bottom = 6
+		tray_card.add_theme_stylebox_override("panel", ts)
 	else:
 		tray_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 		tray_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -121,11 +131,13 @@ func _ready() -> void:
 		tray_card.offset_top = -64.0
 	root.add_child(tray_card)
 	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 3 if TouchMode.enabled else 4)
 	tray_card.add_child(tv)
-	_objective = _label("", 14, AMBER)
+	_objective = _label("", 12 if TouchMode.enabled else 14, AMBER)
 	if TouchMode.enabled:
 		_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_objective.custom_minimum_size = Vector2(380, 0)
+		_objective.custom_minimum_size = Vector2(246, 0)
+		_objective.visible = _details_open
 	# 清单在提示句上面：先看"我在哪一步"，下面才是这一步具体怎么做
 	_steps_box = VBoxContainer.new()
 	_steps_box.name = "FirstSteps"
@@ -137,7 +149,7 @@ func _ready() -> void:
 	tv.add_child(_tray)
 	_slot_box = HBoxContainer.new()
 	_slot_box.name = "PackSlots"
-	_slot_box.add_theme_constant_override("separation", 14)
+	_slot_box.add_theme_constant_override("separation", 6 if TouchMode.enabled else 14)
 	tv.add_child(_slot_box)
 	for c in [Color(0.55, 0.36, 0.2), Color(0.93, 0.92, 0.88), Color(0.78, 0.66, 0.36)]:
 		var slot_panel := PanelContainer.new()
@@ -147,36 +159,45 @@ func _ready() -> void:
 		sps.border_color = Color(1, 1, 1, 0.14)
 		sps.set_border_width_all(1)
 		sps.set_corner_radius_all(4)
-		sps.content_margin_left = 8
-		sps.content_margin_right = 8
-		sps.content_margin_top = 3
-		sps.content_margin_bottom = 3
+		sps.content_margin_left = 5 if TouchMode.enabled else 8
+		sps.content_margin_right = 5 if TouchMode.enabled else 8
+		sps.content_margin_top = 2 if TouchMode.enabled else 3
+		sps.content_margin_bottom = 2 if TouchMode.enabled else 3
 		slot_panel.add_theme_stylebox_override("panel", sps)
 		var chip := HBoxContainer.new()
-		chip.add_theme_constant_override("separation", 6)
+		chip.add_theme_constant_override("separation", 4 if TouchMode.enabled else 6)
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var sw := ColorRect.new()
 		sw.color = c
-		sw.custom_minimum_size = Vector2(12, 12)
+		sw.custom_minimum_size = Vector2(10, 10) if TouchMode.enabled else Vector2(12, 12)
 		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		sw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.add_child(sw)
-		var lb := _label("", 13, CREAM)
+		var lb := _label("", 11 if TouchMode.enabled else 13, CREAM)
 		chip.add_child(lb)
 		_slot_labels.append(lb)
 		slot_panel.add_child(chip)
 		_slot_box.add_child(slot_panel)
 
-	# 消息（顶部居中）
-	_toast = _label("", 17, CREAM)
-	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_toast.position = Vector2(-160, 76) if TouchMode.enabled else Vector2(-330, 250)
-	_toast.custom_minimum_size = Vector2(520 if TouchMode.enabled else 660, 0)
+	# 消息（顶部居中，配深色半透明底框，不再把无底白字直接压在雪地上）
+	_toast_panel = _card(Color(0.62, 0.78, 0.95))
+	var tp_style := _toast_panel.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	tp_style.bg_color = Color(0.024, 0.038, 0.064, 0.84)
+	tp_style.border_width_left = 2
+	tp_style.content_margin_left = 14
+	tp_style.content_margin_right = 14
+	tp_style.content_margin_top = 7
+	tp_style.content_margin_bottom = 7
+	_toast_panel.add_theme_stylebox_override("panel", tp_style)
+	_toast_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_toast_panel.position = Vector2(-210, 62) if TouchMode.enabled else Vector2(-320, 180)
+	_toast_panel.custom_minimum_size = Vector2(420 if TouchMode.enabled else 640, 0)
+	_toast_panel.visible = false
+	root.add_child(_toast_panel)
+	_toast = _label("", 14 if TouchMode.enabled else 16, CREAM)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.06, 0.95))
-	_toast.add_theme_constant_override("outline_size", 6)
-	root.add_child(_toast)
+	_toast_panel.add_child(_toast)
 
 	# 建造面板
 	_build_card = _card(Color(0.45, 1.0, 0.55))
@@ -208,7 +229,13 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _toast_t > 0.0:
 		_toast_t -= delta
-		_toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
+		var a := clampf(_toast_t, 0.0, 1.0)
+		_toast.modulate.a = a
+		if _toast_panel:
+			_toast_panel.modulate.a = a
+			_toast_panel.visible = _toast_t > 0.0 and _toast.text != ""
+	elif _toast_panel and _toast_panel.visible:
+		_toast_panel.visible = false
 
 func _card(accent: Color) -> PanelContainer:
 	var p := PanelContainer.new()
@@ -287,7 +314,7 @@ func set_inventory(wood: int, bark: int, bedding: int, max_wood: int = 4, max_be
 		var full: bool = int(v[2]) > 0 and int(v[1]) >= int(v[2])
 		_slot_labels[i].text = ("%s %d/%d" % [v[0], v[1], v[2]]) if int(v[2]) > 0 else ("%s %d" % [v[0], v[1]])
 		_slot_labels[i].add_theme_color_override("font_color", AMBER if full else CREAM)
-		if full:
+		if full and not TouchMode.enabled:
 			_slot_labels[i].text += " " + Loc.t("full")
 		if _slot_box and i < _slot_box.get_child_count() and _slot_box.get_child(i) is PanelContainer:
 			var sp := _slot_box.get_child(i) as PanelContainer
@@ -316,7 +343,7 @@ func set_steps(steps: Array) -> void:
 		var marks := ""
 		for st in steps:
 			marks += "✓" if bool(st["done"]) else "○"
-		var l := _label("%s  %d/%d  %s" % [marks, done_n, steps.size(), String(steps[cur]["label"]) if cur >= 0 else ""], 13, MUTED)
+		var l := _label("%s %d/%d %s" % [marks, done_n, steps.size(), String(steps[cur]["label"]) if cur >= 0 else ""], 12, CREAM if cur >= 0 else MUTED)
 		_steps_box.add_child(l)
 		_step_labels.append(l)
 		return
@@ -332,11 +359,34 @@ func set_steps(steps: Array) -> void:
 
 func set_objective(text: String) -> void:
 	_objective.text = "▸ " + text
+	if TouchMode.enabled:
+		_objective.visible = _details_open
+
+## D18 / U1：手机左上紧凑任务条点击展开/收起详情，不侵占雪坡视野。
+func toggle_details_at(pos: Vector2) -> bool:
+	if not TouchMode.enabled or _tray_card == null or not _tray_card.is_visible_in_tree():
+		return false
+	if not _tray_card.get_global_rect().grow(6.0).has_point(pos):
+		return false
+	_details_open = not _details_open
+	_objective.visible = _details_open
+	return true
+
+## D18 / U1：手机左侧卡片栈随紧凑保暖卡底边顺排，不留空白也不重叠。
+func sync_touch_stack(warmth_bottom: float) -> void:
+	if not TouchMode.enabled or _tray_card == null:
+		return
+	_tray_card.position = Vector2(10.0, warmth_bottom + 6.0)
+	if _shelter_card and _shelter_card.visible:
+		_shelter_card.position.y = _tray_card.position.y + _tray_card.size.y + 6.0
 
 func toast(text: String, seconds: float = 4.0) -> void:
 	_toast.text = text
-	_toast_t = seconds
-	_toast.modulate.a = 1.0
+	_toast_t = seconds if text != "" else 0.0
+	_toast.modulate.a = 1.0 if _toast_t > 0.0 else 0.0
+	if _toast_panel:
+		_toast_panel.modulate.a = _toast.modulate.a
+		_toast_panel.visible = _toast_t > 0.0
 
 func show_build(visible_: bool, title: String = "", reason: String = "", ok: bool = true, info: String = "") -> void:
 	_build_card.visible = visible_
@@ -810,23 +860,30 @@ func set_shelter_card(title: String, line: String, done: bool) -> void:
 	if _shelter_card == null:
 		_shelter_card = _card(Color(1.0, 0.7, 0.35))
 		_shelter_card.name = "ShelterCard"
-		_shelter_card.position = Vector2(10, 222) if TouchMode.enabled else Vector2(32, 178)
-		_shelter_card.custom_minimum_size = Vector2(398, 0)
+		_shelter_card.position = Vector2(10, 156) if TouchMode.enabled else Vector2(32, 178)
+		_shelter_card.custom_minimum_size = Vector2(258, 0) if TouchMode.enabled else Vector2(398, 0)
+		if TouchMode.enabled:
+			var scs := _shelter_card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+			scs.content_margin_left = 9
+			scs.content_margin_right = 9
+			scs.content_margin_top = 6
+			scs.content_margin_bottom = 6
+			_shelter_card.add_theme_stylebox_override("panel", scs)
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 2)
 		_shelter_card.add_child(v)
-		_shelter_title = _label("", 16, CREAM)
+		_shelter_title = _label("", 13 if TouchMode.enabled else 16, CREAM)
 		_shelter_title.name = "ShelterTitle"
 		v.add_child(_shelter_title)
-		_shelter_line = _label("", 13, MUTED)
+		_shelter_line = _label("", 11 if TouchMode.enabled else 13, MUTED)
 		_shelter_line.name = "ShelterLine"
 		_shelter_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_shelter_line.custom_minimum_size = Vector2(370, 0)
+		_shelter_line.custom_minimum_size = Vector2(240, 0) if TouchMode.enabled else Vector2(370, 0)
 		v.add_child(_shelter_line)
 		get_child(0).add_child(_shelter_card)
 	_shelter_card.visible = title != "" and _day_hud_on
 	var tray := _objective.get_parent().get_parent() as Control
-	_shelter_card.position.y = tray.position.y + tray.size.y + 10.0
+	_shelter_card.position.y = tray.position.y + tray.size.y + (6.0 if TouchMode.enabled else 10.0)
 	_shelter_title.text = title
 	_shelter_line.text = line
 	(_shelter_card.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(1.0, 0.7, 0.35) if done else Color(0.62, 0.78, 0.95)
@@ -883,8 +940,8 @@ func occupied_rects() -> Array[Rect2]:
 	for c in [_prompt_card, _build_card, _objective.get_parent().get_parent(), _shelter_card, _intel, _night_event]:
 		if c != null and (c as Control).is_visible_in_tree():
 			out.append((c as Control).get_global_rect())
-	if _toast.text != "" and _toast.modulate.a > 0.05:
-		out.append(_toast.get_global_rect())
+	if _toast_panel != null and _toast_panel.is_visible_in_tree() and _toast_panel.modulate.a > 0.05:
+		out.append(_toast_panel.get_global_rect())
 	out.append_array(touch_rects)
 	return out
 

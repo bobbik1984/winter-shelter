@@ -9,6 +9,27 @@ extends PanelContainer
 @onready var efficiency_label: Label = $Margin/VBox/BottomRow/EfficiencyLabel
 
 var warmth: WarmthController
+## D18 / U1：触屏紧凑模式（收窄宽度、满效隐藏 EFF 100%、干燥时不占额外一行）。
+var compact_mode: bool = false
+
+func set_compact(on: bool) -> void:
+	compact_mode = on
+	var margin := get_node_or_null("Margin") as MarginContainer
+	if on:
+		offset_right = offset_left + 264.0
+		offset_bottom = offset_top + 88.0
+		custom_minimum_size = Vector2(264.0, 0.0)
+		size = Vector2(264.0, 82.0)
+		if margin:
+			margin.add_theme_constant_override("margin_left", 10)
+			margin.add_theme_constant_override("margin_right", 10)
+			margin.add_theme_constant_override("margin_top", 6)
+			margin.add_theme_constant_override("margin_bottom", 6)
+		if value_label:
+			value_label.add_theme_font_size_override("font_size", 18)
+		if rate_label:
+			rate_label.add_theme_font_size_override("font_size", 13)
+	_refresh()
 
 func _ready() -> void:
 	warmth = get_tree().get_first_node_in_group("warmth_controller") as WarmthController
@@ -32,5 +53,7 @@ func _refresh() -> void:
 	value_label.text = "%d / 100" % int(round(value))
 	warmth_bar.value = value
 	rate_label.text = "%s  %s" % [warmth.get_rate_indicator(), warmth.get_context_label()]
-	efficiency_label.text = "EFF %d%%" % int(round(warmth.get_action_efficiency() * 100.0))
+	var eff_pct := int(round(warmth.get_action_efficiency() * 100.0))
+	efficiency_label.text = "EFF %d%%" % eff_pct
+	efficiency_label.visible = (not compact_mode) or eff_pct < 100
 	# 文字与颜色由 GameDirector 按受潮程度写入（DRY / DAMP / WET）

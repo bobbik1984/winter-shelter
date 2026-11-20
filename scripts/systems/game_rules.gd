@@ -234,3 +234,18 @@ static func clothing_state(dampness: float, t: Tuning) -> String:
 	if dampness < t.damp_threshold:
 		return "damp"
 	return "wet"
+
+
+## 铺位旁硬事实一行（D18 / U1）：只列与此处入睡直接相关的状态（垫层、衣物干湿、现场剩柴）。
+static func bedside_facts(has_bedding: bool, dampness: float, wood_count: int, t: Tuning) -> String:
+	var parts: Array[String] = []
+	parts.append(Loc.t("Bedding laid") if has_bedding else Loc.t("No bedding"))
+	match clothing_state(dampness, t):
+		"dry":
+			parts.append(Loc.t("Clothes dry"))
+		"damp":
+			parts.append(Loc.t("Clothes damp"))
+		_:
+			parts.append(Loc.t("Clothes wet"))
+	parts.append(Loc.t("Wood here: %d") % maxi(wood_count, 0))
+	return "  ·  ".join(parts)

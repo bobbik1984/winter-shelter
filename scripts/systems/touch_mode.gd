@@ -54,9 +54,31 @@ static func ui_factor(css_height: float) -> float:
 
 # ---------------------------------------------------------------- 按钮表
 
+## 右侧情境主键标签（D18 / U1）：按当前高亮对象的类型给出简洁动词+对象，取代泛泛的"动作"。
+static func primary_label(kind: String, site_complete: bool = false, has_pile_drop: bool = false, enterable: bool = true) -> String:
+	match kind:
+		"deadwood":
+			return Loc.t("Chop wood")
+		"birch":
+			return Loc.t("Peel bark")
+		"grass", "bough":
+			return Loc.t("Get bedding")
+		"wet_log":
+			return Loc.t("Chop log")
+		"fire":
+			return Loc.t("Hot drink")
+		"site":
+			if not site_complete:
+				return Loc.t("Work site")
+			if has_pile_drop:
+				return Loc.t("Drop pile")
+			return Loc.t("Enter") if enterable else Loc.t("Use")
+	return Loc.t("Use")
+
 ## ctx：state（briefing / playing / paused / night / report / other）、intel、building、focused、
-## waiting、has_next、free_play、credits、web。返回 [{id, label, key | action | hold_key, slot, primary?}]。
-## slot：big_r / big_l / arc（右侧弧）/ top（右上小钮）/ bar（底部居中一排）。
+## inside、at_bed、site_done、after_dark、near_fire、can_fire、has_target、use_label、
+## waiting、has_next、free_play、credits、web。返回 [{id, label, key | action | hold_key, slot, primary?, dim?}].
+## slot：big_r / big_l / arc（右侧弧）/ sleep（防误触独立槽）/ top（右上小钮）/ bar（底部居中一排）。
 static func buttons_for(ctx: Dictionary) -> Array:
 	var b: Array = []
 	if bool(ctx.get("credits", false)):
@@ -86,7 +108,7 @@ static func buttons_for(ctx: Dictionary) -> Array:
 		"playing":
 			if bool(ctx.get("inside", false)):
 				b.append({"id": "out", "label": Loc.t("Step outside"), "action": "interact", "slot": "big_r", "primary": true})
-				b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "arc"))
+				b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "sleep"))
 				b.append(_key("menu", Loc.t("Menu"), KEY_ESCAPE, "top"))
 				b.append(_key("intel", Loc.t("Intel"), KEY_I, "top"))
 			elif bool(ctx.get("focused", false)):
@@ -102,11 +124,29 @@ static func buttons_for(ctx: Dictionary) -> Array:
 				b.append(_key("roof", Loc.t("Roof"), KEY_T, "top"))
 				b.append(_key("vents", Loc.t("Vents"), KEY_2, "top"))
 			else:
-				b.append({"id": "use", "label": Loc.t("Use"), "action": "interact", "slot": "big_r", "primary": true})
+				var has_target := bool(ctx.get("has_target", false))
+				var use_label := String(ctx.get("use_label", ""))
+				if use_label == "":
+					use_label = Loc.t("Use")
+				b.append({
+					"id": "use", "label": use_label, "action": "interact",
+					"slot": "big_r", "primary": has_target, "dim": not has_target,
+				})
 				b.append({"id": "probe", "label": Loc.t("Probe"), "action": "probe", "slot": "big_l"})
-				b.append(_key("build", Loc.t("Build"), KEY_B, "arc"))
-				b.append({"id": "fire", "label": Loc.t("Add log") if bool(ctx.get("near_fire", false)) else Loc.t("Fire"), "hold_key": KEY_F, "slot": "arc"})
-				b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "arc"))
+				if not bool(ctx.get("site_done", false)):
+					b.append(_key("build", Loc.t("Build"), KEY_B, "arc"))
+				var near_fire := bool(ctx.get("near_fire", false))
+				var can_fire := bool(ctx.get("can_fire", true)) or near_fire
+				b.append({
+					"id": "fire",
+					"label": Loc.t("Add log") if near_fire else Loc.t("Fire"),
+					"hold_key": KEY_F,
+					"slot": "arc",
+					"dim": not can_fire,
+				})
+				# D18 / U1 防误睡：平时野外探索不把"睡觉"塞进高频操作区；仅在铺位旁或日落后出现于独立槽位。
+				if bool(ctx.get("at_bed", false)) or bool(ctx.get("after_dark", false)):
+					b.append(_key("sleep", Loc.t("Sleep"), KEY_N, "sleep"))
 				b.append(_key("menu", Loc.t("Menu"), KEY_ESCAPE, "top"))
 				b.append(_key("intel", Loc.t("Intel"), KEY_I, "top"))
 		"paused":
@@ -154,7 +194,14 @@ static func layout(buttons: Array, size: Vector2) -> Array:
 		counts[bn["slot"]] = int(counts.get(bn["slot"], 0)) + 1
 	var seen := {}
 	var out: Array[Rect2] = []
-	const BIG := 124.0
+	const BIG := 116.0
+	const PROBE := 92.0
+	const ARC_W := 100.0
+	const ARC_H := 50.0
+	const SLEEP_W := 108.0
+	const SLEEP_H := 54.0
+	const TOP_W := 78.0
+	const TOP_H := 44.0
 	const M := 16.0
 	# 底部一排：按总宽度均分，放不下就缩，最窄也要能点
 	var bar_w := minf(190.0, (size.x - M * 2.0 - 8.0 * maxf(float(counts.get("bar", 1)) - 1.0, 0.0)) / maxf(float(counts.get("bar", 1)), 1.0))
@@ -165,8 +212,9 @@ static func layout(buttons: Array, size: Vector2) -> Array:
 		seen[slot] = i + 1
 		match slot:
 			"big_r": out.append(Rect2(size.x - M - BIG, size.y - M - BIG, BIG, BIG))
-			"big_l": out.append(Rect2(size.x - M * 2.0 - BIG * 2.0, size.y - M - BIG * 0.8, BIG * 0.8, BIG * 0.8))
-			"arc": out.append(Rect2(size.x - M - 112.0 - i * 120.0, size.y - M - BIG - 12.0 - 64.0, 112.0, 64.0))
-			"top": out.append(Rect2(size.x - 216.0 - M - (i + 1) * 104.0, 10.0, 96.0, 56.0))
+			"big_l": out.append(Rect2(size.x - M - BIG - 16.0 - PROBE, size.y - M - PROBE, PROBE, PROBE))
+			"arc": out.append(Rect2(size.x - M - ARC_W - i * (ARC_W + 10.0), size.y - M - BIG - 12.0 - ARC_H, ARC_W, ARC_H))
+			"sleep": out.append(Rect2(size.x - M - BIG - 16.0 - PROBE - 24.0 - SLEEP_W, size.y - M - SLEEP_H, SLEEP_W, SLEEP_H))
+			"top": out.append(Rect2(size.x - 216.0 - M - (i + 1) * (TOP_W + 8.0), 10.0, TOP_W, TOP_H))
 			_: out.append(Rect2((size.x - bar_total) * 0.5 + i * (bar_w + 8.0), size.y - 72.0, bar_w, 62.0))
 	return out

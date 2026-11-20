@@ -94,6 +94,11 @@ func run() -> Dictionary:
 	_check(not GameRules.clothing_effective(true, t.damp_threshold, t), "湿透的保暖层无效")
 	_check(GameRules.clothing_state(0.0, t) == "dry" and GameRules.clothing_state(t.damp_threshold * 0.7, t) == "damp" and GameRules.clothing_state(0.9, t) == "wet", "受潮三档")
 	_check(GameRules.next_objective({"clothes_wet": true, "has_site": true}, t).contains("dry"), "湿透时目标行提示烘干")
+	# D18 / U1：铺位旁硬事实（垫层、干湿、现场剩柴；负数柴数归零保护）
+	var bf_good := GameRules.bedside_facts(true, 0.0, 4, t)
+	_check(bf_good.contains("Bedding laid") and bf_good.contains("Clothes dry") and bf_good.contains("Wood here: 4"), "铺位事实应列垫层、干湿和现场柴（%s）" % bf_good)
+	var bf_bad := GameRules.bedside_facts(false, 0.9, -2, t)
+	_check(bf_bad.contains("No bedding") and bf_bad.contains("Clothes wet") and bf_bad.contains("Wood here: 0"), "未铺垫层、湿衣与异常负数柴应如实降级（%s）" % bf_bad)
 
 	# 效率
 	_check(is_equal_approx(GameRules.work_efficiency(1.0, 30.0, t), 1.0), "日落前满效率")

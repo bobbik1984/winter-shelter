@@ -283,8 +283,8 @@ func start_game() -> void:
 	interaction.enabled = true
 	weather.time_scale = _saved_time_scale
 	if LevelState.active() and not LevelState.level.is_free():
-		ui.toast(Loc.t(LevelState.lesson()), 7.0)
-	else:
+		ui.toast(Loc.t(LevelState.lesson()), 5.0 if TouchMode.enabled else 7.0)
+	elif not TouchMode.enabled:
 		ui.toast(Loc.t("Probe the snow [Space]: its depth decides which shelter you can build."), 6.0)
 
 func _load_selected_game() -> void:
@@ -1185,7 +1185,11 @@ func _tick_playing(delta: float) -> void:
 
 	if _in_shelter:
 		_tick_inside_shelter()
-		ui.set_prompt(Loc.t("You're inside  ·  [E] Step outside  ·  [N] Sleep"), 0.0)
+		var bed_facts := _bedside_facts_line()
+		var in_txt := Loc.t("You're inside  ·  [E] Step outside  ·  [N] Sleep")
+		if bed_facts != "":
+			in_txt += "\n" + bed_facts
+		ui.set_prompt(in_txt, 0.0)
 		ui.place_prompt(Vector2(get_viewport().get_visible_rect().size.x * 0.5, get_viewport().get_visible_rect().size.y - 40.0))
 
 	# 世界内洞内视图（T4.4）
@@ -1319,14 +1323,17 @@ func _warmth_inputs() -> Dictionary:
 	return {"windbreak": windbreak, "level": level, "fire": fire, "env": env}
 
 func _update_cloth_label() -> void:
-	if _cloth_label == null:
-		var warm := hud.get_parent().get_node_or_null("HUDWarmth")
-		if warm:
-			_cloth_label = warm.find_child("ClothingLabel", true, false) as Label
+	var warm: Node = null
+	if hud and hud.get_parent():
+		warm = hud.get_parent().get_node_or_null("HUDWarmth")
+	if _cloth_label == null and warm:
+		_cloth_label = warm.find_child("ClothingLabel", true, false) as Label
 	if _cloth_label == null:
 		return
-	_cloth_label.visible = true
-	match GameRules.clothing_state(dampness, tuning):
+	var st := GameRules.clothing_state(dampness, tuning)
+	var compact := warm != null and bool(warm.get("compact_mode"))
+	_cloth_label.visible = (not compact) or st != "dry"
+	match st:
 		"dry":
 			_cloth_label.text = Loc.t("▣ CLOTHING · DRY LAYER")
 			_cloth_label.add_theme_color_override("font_color", Color(0.72, 0.52, 0.24))
@@ -2336,9 +2343,11 @@ func _update_world_callouts() -> void:
 		if d < best_d:
 			best_d = d
 			best = it
-	# 第三次评审（UI）：建造模式只留选址需要的标签（探针 / 深雪）；庇护所完工后"深雪"不再有用
+	# 第三次评审（UI）：建造模式只留选址需要的标签（探针 / 深雪）；庇护所完工后"深雪"不再有用；
+	# D18 / U1：走进立枯木交互圈后由操作提示与主键接管，不再在同一棵树上叠第二张远景标签。
 	var building := build.active
-	if best and not building:
+	var at_deadwood := interaction != null and interaction.current != null and interaction.current.kind == "deadwood"
+	if best and not building and not at_deadwood:
 		callouts.set_callout("deadwood", best.global_position + Vector3(0, 1.0, 0), Loc.t("Deadwood"), Loc.t("Harvest for fuel"),
 			Color(1.0, 0.55, 0.12), Vector2(28.0, 18.0), 1)
 	elif callouts.has_callout("deadwood"):
@@ -2390,6 +2399,8 @@ func _shelter_card_text() -> Array:
 		title += "  ✓"
 		var lee := GameRules.entrance_wind_angle(site.entrance_dir, wind.get_wind_direction_3d()) >= 90.0
 		parts.append((Loc.t("Entrance faces %s, out of the wind") if lee else Loc.t("Entrance faces %s, INTO the wind")) % _dir_word(site.entrance_dir))
+		if _inside_site():
+			parts.append(_bedside_facts_line())
 		parts.append(Loc.t("You're in it · [N] rest when ready") if _inside_site() else Loc.t("[N] rest when ready"))
 	else:
 		parts.append(Loc.t("Next: %s") % site.next_stage_title())
@@ -2416,6 +2427,15 @@ func _shelter_card_text() -> Array:
 	if not site.pile.is_empty():
 		parts.append(Loc.t("pile: %d wood, %d bedding") % [site.pile.amount("wood"), site.pile.amount("bedding")])
 	return [title, "  ·  ".join(parts)]
+
+## D18 / U1：铺位旁硬事实一行（垫层、衣物干湿、现场+背包干柴）。
+func _bedside_facts_line() -> String:
+	if site == null or site.stage() == 0:
+		return ""
+	var sim_in := site.builder.build_night_sim_input(warmth)
+	var has_bed := float(sim_in.get("bedding_quality", 0.0)) > 0.5 or (site.preset_id == "Tent" and site.stage() >= 1) or bool(gear.get("pad", false))
+	var wood_n := site.pile.total("wood", inventory)
+	return GameRules.bedside_facts(has_bed, dampness, wood_n, tuning)
 
 ## 水平方向向量 → "north" / "south-east" 等（世界约定：-Z = 北，+X = 东）。
 func _dir_word(v: Vector3) -> String:

@@ -15,7 +15,7 @@ const MAX_DISTANCE := 45.0
 ## 以下为纯屏幕几何（画布单位，基准 1920×1080）
 const CARD_MIN_WIDTH := 170.0
 const CARD_MAX_WIDTH := 230.0
-const MARKER_GUARD := Vector2(220.0, 170.0)   # 庇护所入口周围不让卡片盖住的区域
+const MARKER_GUARD := Vector2(260.0, 220.0)   # 庇护所入口与门前雪坪不让卡片盖住的区域（D18 / U1）
 const PLAYER_GUARD := Vector2(90.0, 150.0)    # 玩家身体
 const EDGE := 18.0
 const GAP := 6.0
@@ -96,6 +96,8 @@ func shown_ids() -> Array[String]:
 func max_cards() -> int:
 	if card_limit > 0:
 		return card_limit
+	if TouchMode.enabled:
+		return 1
 	return 2 if get_window().size.y <= 800 else 3
 
 func _process(_delta: float) -> void:
@@ -130,7 +132,7 @@ func _process(_delta: float) -> void:
 			continue
 		if e["marker"]:
 			var s: Vector2 = e["screen"]
-			blocked.append(Rect2(s - Vector2(MARKER_GUARD.x * 0.5, MARKER_GUARD.y * 0.7), MARKER_GUARD))
+			blocked.append(Rect2(s - Vector2(MARKER_GUARD.x * 0.5, MARKER_GUARD.y * 0.5), MARKER_GUARD))
 		else:
 			order.append(id)
 	order.sort_custom(func(a, b):

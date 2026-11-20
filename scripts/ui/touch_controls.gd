@@ -82,16 +82,16 @@ func _on_resized() -> void:
 	_sig = ""
 	_canvas.queue_redraw()
 
-## 手机上的 HUD：右上放天气卡和缩小的罗盘，左下留给摇杆，键盘说明不显示。
+## 手机上的 HUD：右上放天气卡和缩小的罗盘，左上紧凑保暖卡与可折叠任务条，左下留给摇杆。
 func _apply_hud_layout() -> void:
 	if director == null or director.hud == null:
 		return
 	var card := director.hud.get_node_or_null("TopRightCard") as Control
 	if card:
-		card.offset_left = -216.0
+		card.offset_left = -204.0
 		card.offset_right = -10.0
 		card.offset_top = 10.0
-		card.offset_bottom = 110.0
+		card.offset_bottom = 104.0
 		var hint := card.get_node_or_null("VBox/HintLabel") as Control
 		if hint:
 			hint.modulate.a = 0.0
@@ -102,10 +102,12 @@ func _apply_hud_layout() -> void:
 	var instr := director.hud.get_node_or_null("Instructions") as Control
 	if instr:
 		instr.modulate.a = 0.0
-	# 体温卡顶到左上，缩小一点，给下面的目标和背包让位
+	# D18 / U1：保暖卡切到紧凑模式，收窄并隐藏无变化的常规行，把空间还给雪坡与工地入口
 	var warm := director.hud.get_parent().get_node_or_null("HUDWarmth") as Control
 	if warm:
-		warm.scale = Vector2(0.86, 0.86)
+		if warm.has_method("set_compact"):
+			warm.call("set_compact", true)
+		warm.scale = Vector2(0.84, 0.84)
 		warm.position = Vector2(10, 8)
 	# 放置时的剖面图：缩小放到屏幕上方中间，不压按钮
 	if director._cutaway_panel:
@@ -118,14 +120,14 @@ func _apply_hud_layout() -> void:
 		director.rig.set_default_zoom(TOUCH_ZOOM)
 	var compass := director.hud.get_node_or_null("Compass") as Control
 	if compass:
-		compass.scale = Vector2(0.56, 0.56)
-		compass.offset_left = -114.0
-		compass.offset_right = -114.0 + 186.0
+		compass.scale = Vector2(0.50, 0.50)
+		compass.offset_left = -104.0
+		compass.offset_right = -104.0 + 186.0
 		compass.offset_top = 0.0
 		compass.offset_bottom = 186.0
 		compass.anchor_top = 0.0
 		compass.anchor_bottom = 0.0
-		compass.position.y = 150.0
+		compass.position.y = 134.0
 
 func _context() -> Dictionary:
 	var d := director
@@ -136,7 +138,19 @@ func _context() -> Dictionary:
 		GameDirector.State.PAUSED: st = "paused"
 		GameDirector.State.NIGHT: st = "night"
 		GameDirector.State.REPORT: st = "report"
-	return {"state": st, "inside": d._in_shelter, "near_fire": d._nearest_fire(d.tuning.fire_warm_radius_m) != null, "intel": d.ui.intel_open(), "building": d.build.active, "focused": d.session.focused(),
+	var cur: Interactable = d.interaction.current if d.interaction else null
+	var has_target := cur != null and cur.current_prompt() != "" and cur.blocked_reason() == ""
+	var site_done := d.site != null and d.site.is_complete()
+	var has_pile_drop := site_done and (d.inventory.wood > 0 or d.inventory.bedding > 0)
+	var enterable := site_done and d.site.preset_id != "Tent"
+	var use_label := TouchMode.primary_label(cur.kind, site_done, has_pile_drop, enterable) if cur != null else Loc.t("Use")
+	var near_fire := d._nearest_fire(d.tuning.fire_warm_radius_m) != null
+	var can_fire := near_fire or (d.inventory.bark >= d.tuning.fire_tinder_cost and d._fire_wood() >= d.tuning.fire_wood_cost)
+	var at_bed := d.site != null and d.site.stage() > 0 and d._inside_site()
+	var after_dark := d.weather != null and d.weather.minutes_to_sunset() <= 0.0
+	return {"state": st, "inside": d._in_shelter, "near_fire": near_fire, "can_fire": can_fire,
+		"has_target": has_target, "use_label": use_label, "site_done": site_done, "at_bed": at_bed, "after_dark": after_dark,
+		"intel": d.ui.intel_open(), "building": d.build.active, "focused": d.session.focused(),
 		"waiting": d.night != null and d.night.waiting(),
 		"fire_place": d.night != null and d.night.has_fire_place, "fire_watch": d.night != null and d.night.fire_watch, "has_next": d.state == GameDirector.State.REPORT and d._next_stage().x >= 0,
 		"optional_challenge": LevelState.is_optional(), "free_play": not LevelState.active() or LevelState.level.is_free(), "credits": d.ui.credits_open(), "web": OS.has_feature("web")}
@@ -144,6 +158,12 @@ func _context() -> Dictionary:
 func _process(delta: float) -> void:
 	if director == null or director.ui == null:
 		return
+	var warm: Control = null
+	if director.hud and director.hud.get_parent():
+		warm = director.hud.get_parent().get_node_or_null("HUDWarmth") as Control
+	if warm and warm.is_visible_in_tree():
+		var wr := warm.get_global_rect()
+		director.ui.sync_touch_stack(wr.position.y + wr.size.y)
 	_portrait_label.visible = portrait
 	_portrait_shade.visible = portrait
 	_portrait_cover.visible = portrait
@@ -175,7 +195,7 @@ func _watch_fps(delta: float) -> void:
 
 func _set_buttons(list: Array) -> void:
 	var size := _canvas.get_rect().size
-	var sig := "%s|%s" % [size, ",".join(list.map(func(b): return "%s:%s" % [b["id"], b["label"]]))]
+	var sig := "%s|%s" % [size, ",".join(list.map(func(b): return "%s:%s:%d:%d" % [b["id"], b["label"], int(bool(b.get("primary", false))), int(bool(b.get("dim", false)))]))]
 	if sig == _sig:
 		return
 	_sig = sig
@@ -224,6 +244,11 @@ func _on_down(idx: int, pos: Vector2) -> void:
 			_send_key(c.get_meta("touch_key") as Key)
 			get_viewport().set_input_as_handled()
 			return
+	# D18 / U1：点击左上紧凑任务条可展开或收起详细指引，不误触摇杆
+	if director != null and director.ui != null and director.state == GameDirector.State.PLAYING \
+			and not director.ui.intel_open() and director.ui.toggle_details_at(pos):
+		get_viewport().set_input_as_handled()
+		return
 	if _stick_idx < 0 and TouchMode.stick_on(_ctx) and pos.x < _canvas.get_rect().size.x * 0.5:
 		_stick_idx = idx
 		_stick_origin = pos
@@ -322,30 +347,42 @@ func _draw_controls() -> void:
 		var b: Dictionary = _buttons[i]
 		var r: Rect2 = _rects[i]
 		var pressed: bool = _held.has(b["id"])
-		var round_btn: bool = b["slot"] == "big_r" or b["slot"] == "big_l"
+		var slot := String(b["slot"])
+		var round_btn: bool = slot == "big_r" or slot == "big_l"
 		var primary := bool(b.get("primary", false))
-		var fill := Color(AMBER, 0.85) if pressed else (Color(AMBER, 0.32) if primary else INK)
-		var edge := AMBER if primary else Color(CREAM, 0.55)
+		var dim := bool(b.get("dim", false))
+		var is_sleep := slot == "sleep"
+		var is_top := slot == "top"
+		var fill := Color(AMBER, 0.85) if pressed else (
+			Color(AMBER, 0.34) if primary else (
+			Color(0.055, 0.095, 0.165, 0.72) if is_sleep else (
+			Color(INK, 0.34) if dim else (
+			Color(INK, 0.48) if is_top else INK))))
+		var edge := AMBER if primary else (
+			Color(0.62, 0.80, 1.0, 0.78) if is_sleep else (
+			Color(CREAM, 0.28) if dim else (
+			Color(CREAM, 0.42) if is_top else Color(CREAM, 0.55))))
 		if round_btn:
 			var c := r.get_center()
 			var rad := r.size.x * 0.5
 			_canvas.draw_circle(c, rad, fill)
-			_canvas.draw_arc(c, rad, 0.0, TAU, 48, edge, 2.5, true)
+			_canvas.draw_arc(c, rad, 0.0, TAU, 48, edge, 2.5 if primary else 2.0, true)
 		else:
 			var s := StyleBoxFlat.new()
 			s.bg_color = fill
 			s.border_color = edge
 			s.set_border_width_all(2)
-			s.set_corner_radius_all(10)
+			s.set_corner_radius_all(9)
 			_canvas.draw_style_box(s, r)
-		var fs := 22 if round_btn or primary else 18
+		var fs := 20 if round_btn or primary else (15 if is_top else 17)
 		var label := String(b["label"])
 		while fs > 11 and font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > r.size.x - 10.0:
 			fs -= 1
 		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 		var at := r.get_center() + Vector2(-tw.x * 0.5, font.get_ascent(fs) * 0.5 - 2.0)
+		var txt_col := Color(CREAM, 0.58) if dim and not pressed else CREAM
 		_canvas.draw_string_outline(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0.02, 0.03, 0.06, 0.8))
-		_canvas.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, CREAM)
+		_canvas.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, txt_col)
 
 ## 网页版：把这台手机上的试玩记录存成一个文件，方便发回来。
 func save_log() -> void:

@@ -73,7 +73,9 @@ func run() -> Dictionary:
 	for cs in [360.0, 390.0, 430.0, 768.0]:
 		var fac := TouchMode.ui_factor(cs)
 		var canvas: Vector2 = Vector2(cs * 2.16, cs) * (1080.0 / cs) / fac
-		for ctx in [{"state": "briefing", "free_play": true}, {"state": "playing"}, {"state": "playing", "building": true}, {"state": "playing", "focused": true},
+		for ctx in [{"state": "briefing", "free_play": true}, {"state": "playing"}, {"state": "playing", "at_bed": true, "has_target": true, "use_label": "Enter"},
+				{"state": "playing", "site_done": true, "after_dark": true}, {"state": "playing", "inside": true},
+				{"state": "playing", "building": true}, {"state": "playing", "focused": true},
 				{"state": "paused", "web": true}, {"state": "night"}, {"state": "night", "fire_place": true, "fire_watch": true}, {"state": "report", "has_next": true, "web": true}, {"state": "playing", "intel": true}]:
 			var bs := TouchMode.buttons_for(ctx)
 			var rs := TouchMode.layout(bs, canvas)
@@ -85,6 +87,29 @@ func run() -> Dictionary:
 					if rs[i].intersects(rs[j]):
 						ok = false
 			_check(ok, "CSS 高 %d，%s：按钮都在屏幕内、够大、不重叠" % [int(cs), str(ctx)])
+	# 2026-11-20 D18 / U1：三意图触屏与防误睡约束
+	var explore_ids := TouchMode.buttons_for({"state": "playing"}).map(func(b): return b["id"])
+	_check(not ("sleep" in explore_ids), "野外白天探索不常驻睡觉键，防连点误睡（%s）" % str(explore_ids))
+	_check("build" in explore_ids and "probe" in explore_ids and "use" in explore_ids, "探索保留移动外的探测、动作与建造入口")
+	var done_ids := TouchMode.buttons_for({"state": "playing", "site_done": true, "at_bed": true}).map(func(b): return b["id"])
+	_check(not ("build" in done_ids) and "sleep" in done_ids, "完工且在铺位旁：隐藏无效建造键并出现睡觉键（%s）" % str(done_ids))
+	var dark_ids := TouchMode.buttons_for({"state": "playing", "after_dark": true}).map(func(b): return b["id"])
+	_check("sleep" in dark_ids, "日落后即使在野外也提供睡觉键")
+	var bed_bs := TouchMode.buttons_for({"state": "playing", "at_bed": true, "has_target": true, "use_label": "Enter"})
+	var bed_rs := TouchMode.layout(bed_bs, Vector2(1088.0, 504.0))
+	var use_r := Rect2()
+	var sleep_r := Rect2()
+	for i in bed_bs.size():
+		if bed_bs[i]["id"] == "use":
+			use_r = bed_rs[i]
+		elif bed_bs[i]["id"] == "sleep":
+			sleep_r = bed_rs[i]
+	_check(use_r.position.x - (sleep_r.position.x + sleep_r.size.x) >= 100.0, "睡觉键与采集主键之间保留明显防误触间距")
+	_check(TouchMode.primary_label("deadwood") == "Chop wood" and TouchMode.primary_label("birch") == "Peel bark"
+		and TouchMode.primary_label("bough") == "Get bedding" and TouchMode.primary_label("fire") == "Hot drink", "情境主键按对象显示动词+目标")
+	_check(TouchMode.primary_label("site", false) == "Work site" and TouchMode.primary_label("site", true, true) == "Drop pile"
+		and TouchMode.primary_label("site", true, false, true) == "Enter" and TouchMode.primary_label("site", true, false, false) == "Use", "工地主键区分施工/卸货/进洞/帐篷")
+	_check(TouchMode.primary_label("") == "Use", "无目标时回退默认动作标签")
 	# 2026-11-07 夜里：睡着时有"醒来"按钮；有火时有"守火"开关；醒着等选择时没有
 	var nb := TouchMode.buttons_for({"state": "night", "fire_place": true, "fire_watch": true})
 	var ids := nb.map(func(b): return b["id"])
