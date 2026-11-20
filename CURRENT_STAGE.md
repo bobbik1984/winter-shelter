@@ -1,8 +1,53 @@
 # CURRENT_STAGE.md — 当前施工合同
 
-> **修订**：2026-11-01（晚）· **当前阶段**：M2 Playable 循环已完成（written-unverified）→ **D12 关卡阶梯（L 轨道）** → 关卡版人工试玩 PT01/PT02 → M3 内容与收尾
-> **上游**：任务定义与闸门见 [`PRODUCTION_PLAN.md`](PRODUCTION_PLAN.md) §4（V 轨道在 §4.V）；协作规则见 [`AGENTS.md`](AGENTS.md) §5–§7；状态投影见 [`progress.yaml`](progress.yaml)。
+> **修订**：2026-11-20 · **当前阶段**：0.6 已发布（`99476e4`）→ **0.7 体验聚焦（U 轨道，D18）**：U1 HUD 减法与三意图触屏（`written-unverified`，待 X1T 在线跑 Godot 回归与实机对比图）‖ U0 原手机 0.6 阴影复测（人工）→ U2 双营址构图 ‖ U3 雪地接触面着色融合 → U4 三时刻晨报 → U5 首章第 2 关 A/B 真人试玩闸门
+> **上游**：任务定义与闸门见 [`PRODUCTION_PLAN.md`](PRODUCTION_PLAN.md) §4.U（D18）；规则归并见 [`CORE_GAMEPLAY.md`](CORE_GAMEPLAY.md) §14；视觉红线见 [`VISUAL_LANGUAGE.md`](VISUAL_LANGUAGE.md) §3.1；提案原稿归档于 `references/historical-plans/2026-11-20_rethink_proposal.md`；协作与诚实验证规则见 [`AGENTS.md`](AGENTS.md) §5–§7；状态投影见 [`progress.yaml`](progress.yaml)。
 > 本文件只回答"**现在做什么、谁来做、按什么顺序、做到什么算完**"。
+
+---
+
+## 当前任务：0.7 体验聚焦 — U 轨道（D18，2026-11-20）
+
+用户批准归并《开发文档_重新思考》提案至权威文档，并率先实施 **U1（HUD 减法与三意图触屏重构）**。在 U5 真人试玩闸门通过之前，暂停新增章节与庇护所种类。
+
+| 顺序 | 任务 | 状态 | 执行者 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| 0 | **U0** 原 Android 手机 0.6（`514ef9b`）阴影复测 | `blocked`（待人工实机） | 用户 | 原设备同地图边走边看录屏，核实长阴影是否仍被误认为雪坎，记录帧时间与误触点 |
+| 1 | **U1** HUD 减法 + 三意图触屏 + 防误睡 + 铺位硬事实 + 单焦点世界标签 | `written-unverified` | Agent | 代码与逻辑测试已写完并完成离线静态校验（4024 项 UTF-8 / i18n / 布局几何 / 符号检查）；本机 Windows 未装 Godot 且 X1T 当前离线，待 X1T 上线后执行下方一键回归与同机位对比截图 |
+| 2 | **U2** 首章“两根探针”双候选营址构图 ‖ **U3** 踩实雪与岩脚接触面合入雪面 Shader + 近景岩体单变量对照 | `todo` | Agent | U1 实机验收后并行推进（文件不相交） |
+| 3 | **U4** 夜间冷醒停表代价透明 + 三时刻故事化晨报 | `todo` | Agent | 复用 `NightCurve` 真实重算反事实建议，首屏只展开 1 项主因 |
+| 4 | **U5** 首章第 2 关 A/B 真人试玩闸门 | `todo` | 用户 + 测试者 | 同存档对照旧版与 0.7 精简界面，回答三问（为什么睡这 / 哪次往返最值 / 明天改什么） |
+
+### U1 任务卡与当前回执（`written-unverified`）
+
+```text
+Task:       U1 HUD 减法与三意图触屏重构（D18）
+Read first: CORE_GAMEPLAY.md §14, VISUAL_LANGUAGE.md §3.1, PRODUCTION_PLAN.md §4.U, AGENTS.md §5
+Files:      scripts/systems/touch_mode.gd, scripts/ui/touch_controls.gd, scripts/ui/game_ui.gd,
+            scripts/ui/hud_warmth.gd, scripts/ui/world_callouts.gd, scripts/systems/game_rules.gd,
+            scripts/systems/game_director.gd, localization/messages.csv,
+            tests/test_build_session.gd, tests/test_game_rules.gd
+Depends:    0.6 (99476e4)
+Status:     written-unverified（原因：当前 Windows 开发机未安装 Godot，且 X1T 100.64.0.5 当前 Tailscale 离线）
+Done when:
+  1. 手机探索态隐藏无效「睡觉」与已完工时的「建造」；「睡觉」仅在进洞 / 铺位旁（at_bed）/ 日落后（after_dark）出现，
+     且固定在独立槽位，与采集主键横向间距 >= 100 px；
+  2. 右侧主键按当前高亮对象动态显示动词+目标（砍枯木 / 剥桦皮 / 采垫层 / 施工 / 卸材料 / 进洞 / 烧水喝），无目标时视觉降权；
+  3. 手机左上保暖卡切为紧凑模式（满效隐藏 EFF 100%，干燥隐藏常规衣物行，潮湿时亮起）；左上任务区默认收起长说明，点击可展开/收起；
+     顶部 Toast 配备深色半透明底框；铺位旁 / 洞内展示「垫层 / 干湿 / 现场柴」三项硬事实；
+  4. 庇护所入口保护区向下覆盖门前雪坪；手机探索期浮动世界标签上限为 1 张，走近立枯木后不叠双卡；
+  5. 在 X1T 上通过：--import、tests/run_all.gd（含新增 U1 断言与 test_loc 全表核验）、tools/touch_smoke_test.gd -- --touch --touch-css=390、
+     tools/camp_detail_review.gd 同机位前后对比截图（附 FPS，与 snapshots/camp_detail_20261119_after.png 并排对照）。
+Do NOT:     改物理/雪深/保暖数值规则；自动打包或部署 APK / Web；在未运行 Godot 前标为 done
+```
+
+**X1T 恢复在线后的一键验收命令**：
+```bash
+godot --headless --path . --import
+godot --headless --path . -s res://tests/run_all.gd
+godot --headless --path . -s res://tools/touch_smoke_test.gd -- --touch --touch-css=390
+godot --path . -s res://tools/camp_detail_review.gd -- --low --touch --touch-css=390 --out=snapshots/u1_hud_review
+```
 
 ---
 
