@@ -215,6 +215,6 @@ static func layout(buttons: Array, size: Vector2) -> Array:
 			"big_l": out.append(Rect2(size.x - M - BIG - 16.0 - PROBE, size.y - M - PROBE, PROBE, PROBE))
 			"arc": out.append(Rect2(size.x - M - ARC_W - i * (ARC_W + 10.0), size.y - M - BIG - 12.0 - ARC_H, ARC_W, ARC_H))
 			"sleep": out.append(Rect2(size.x - M - BIG - 16.0 - PROBE - 24.0 - SLEEP_W, size.y - M - SLEEP_H, SLEEP_W, SLEEP_H))
-			"top": out.append(Rect2(size.x - 216.0 - M - (i + 1) * (TOP_W + 8.0), 10.0, TOP_W, TOP_H))
+			"top": out.append(Rect2(size.x - 252.0 - M - (i + 1) * (TOP_W + 8.0), 10.0, TOP_W, TOP_H))
 			_: out.append(Rect2((size.x - bar_total) * 0.5 + i * (bar_w + 8.0), size.y - 72.0, bar_w, 62.0))
 	return out
