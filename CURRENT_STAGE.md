@@ -37,6 +37,8 @@ Evidence:
   - 审图微调：中文天气卡自动加宽后与右上菜单键接近，已将 top 槽位再左移 36 px 留足边距
 ```
 
+**0.7 Android 测试版交付核验（2026-11-21）**：构建 `d05e35d`（`versionCode 7`，与 0.6 同正式签名 `O=bobbik, OU=Android, CN=bobbik`），已通过 18 suites / 4362 assertions、`touch_smoke_test.gd`、`APK CONTENT PASS` 并上传至 `https://test.bobbik.org/winter/download/`（`winter-shelter-d05e35d.apk`，31,514,543 bytes，本地与公网回拉 SHA-256 一致：`2a57f7ba083570b45f4f925f7edd81795465c925905cea2dda57a4f9d1918d9b`）。等待原手机实机试玩反馈（一并核验 0.6 长阴影与 U1 新 HUD / 防误睡）。
+
 ---
 
 ## 雪洞雪色修正与 0.4 发布（2026-11-19）
